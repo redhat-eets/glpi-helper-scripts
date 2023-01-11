@@ -1,4 +1,4 @@
-# Contributing to ate-lab-management
+# Contributing to glpi-helper-scripts
 
 All contributions are valued and welcomed, whether they come in the form of code, documentation, ideas or discussion.
 While we have not applied a formal Code of Conduct to this, or related, repositories, we require that all contributors
@@ -6,7 +6,7 @@ conduct themselves in a professional and respectful manner.
 
 ## Issues
 
-The easiest way to contribute to ate-lab-management is through Issues. This could be by making a suggestion, reporting a
+The easiest way to contribute to glpi-helper-scripts is through Issues. This could be by making a suggestion, reporting a
 bug, or helping another user.
 
 ### Suggestions
@@ -45,7 +45,7 @@ Request for it to be reviewed.
 ## Peer review
 
 At least two maintainers must "Accept" a Pull Request prior to merging a Pull Request. No Self Review is allowed. The
-maintainers of ate-lab-management are:
+maintainers of glpi-helper-scripts are:
 
 - Daniel Kostecki (dkosteck)
 - Adhitya Logan (adhil0)
