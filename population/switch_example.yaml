@@ -1,0 +1,10 @@
+LAB:                         # lab name
+    switches:
+        IP:                  # IP address
+          name: switch_name  # switch name
+          location: location # location
+          username: username # username
+          password: password # password
+          type: type         # type of switch (currently supports dell or cumulus)
+
+            # Will result in {'lab': {'switches': {'ip': {'name: 'switch_name', 'location': 'location', 'username': 'username', 'password': 'password', type: 'type'}, {'ip_2':...}}}
