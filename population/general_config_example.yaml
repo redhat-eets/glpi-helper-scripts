@@ -1,0 +1,6 @@
+# Optional
+ACCELERATOR_IDS:
+    '0d5c': 
+        'ACC100' 
+    '0d8f': 
+        'N3000'
