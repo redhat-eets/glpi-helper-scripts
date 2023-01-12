@@ -2,7 +2,7 @@
 """
 |------------------------------------------------------------------------------|
 |                                                                              |
-|    Filename: create_reservation_wrapper                                      |
+|    Filename: create_reservation_wrapper.py                                   |
 |     Authors: Daniel Kostecki                                                 |
 |              Adhitya Logan                                                   |
 | Description: Wrapper to upload a list of reservations to GLPI.               |
