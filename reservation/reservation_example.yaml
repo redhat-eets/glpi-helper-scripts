@@ -1,0 +1,13 @@
+JIRA-0000:                                    # reservation tag (JIRA Epic prepended to comment)
+  username: user                              # universal user
+  start: 2022-10-31 00:00:00                  # universal start (YYYY-MM-DD HH-MM-SS)
+  end: 2023-01-31 00:00:00                    # universal end (YYYY-MM-DD HH-MM-SS)
+  comment: comment                            # universal comment or empty (~)
+  servers:
+    hostname:                                 # hostname
+      username: user_2                        # (optional) override user
+      start: 2022-10-30 00:00:00              # (optional) override start
+      end: 2023-01-30 00:00:00                # (optional) override end
+      comment: comment_2                      # (optional) override comment
+    hostname_2:                               # hostname
+      ~                                       # empty (use universal values above)
