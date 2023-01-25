@@ -73,7 +73,7 @@ def main() -> None:
         "--jira",
         metavar="jira_id",
         type=str,
-        required=True,
+        required=False,
         help="the Jira epic ID associated with the reservation",
     )
     parser.add_argument(
@@ -105,7 +105,10 @@ def main() -> None:
     comment = args.comment
     hostname = args.server
 
-    final_comment = jira_id
+    if jira_id:
+        final_comment = jira_id
+    else:
+        final_comment = ""
     if comment:
         final_comment += "\n" + comment
 
