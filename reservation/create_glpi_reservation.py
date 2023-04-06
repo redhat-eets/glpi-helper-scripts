@@ -114,7 +114,7 @@ def main() -> None:
 
     urls = UrlInitialization(ip)
 
-    with SessionHandler(user_token, urls.INIT_URL, urls.KILL_URL, no_verify) as session:
+    with SessionHandler(user_token, urls.INIT_URL, urls.KILL_URL) as session:
         create_reservations(
             session, username, hostname, begin, end, final_comment, urls
         )

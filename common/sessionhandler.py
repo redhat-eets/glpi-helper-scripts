@@ -47,9 +47,14 @@ class SessionHandler:
         log.debug(str(self.session_token) + "\n")
 
     def __enter__(self) -> None:
+        """Return the session
+
+        Args:
+            self: self
+        """
         return self.session
 
-    def __exit__(self,  exception_type, exception, traceback) -> None:
+    def __exit__(self, exception_type, exception, traceback) -> None:
         """Kill the REST session
 
         Args:
