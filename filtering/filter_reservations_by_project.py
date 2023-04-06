@@ -78,18 +78,12 @@ def main() -> None:
 
     urls = UrlInitialization(ip)
 
-    session_object = SessionHandler(user_token, urls.INIT_URL, urls.KILL_URL, no_verify)
-    session = session_object.session
-
-    reservations = yaml.safe_load(get_reservations(session, urls))
-
-    computers = get_computers(session, urls)
-
-    network_equipment = get_network_equipment(session, urls)
+    with SessionHandler(user_token, urls.INIT_URL, urls.KILL_URL, no_verify) as session:
+        reservations = yaml.safe_load(get_reservations(session, urls))
+        computers = get_computers(session, urls)
+        network_equipment = get_network_equipment(session, urls)
 
     get_machines_reserved_with_tag(computers, network_equipment, reservations, jira)
-
-    del session_object
 
     print_final_help()
 

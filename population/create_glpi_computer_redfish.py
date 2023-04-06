@@ -242,25 +242,19 @@ def main() -> None:
             # NOTE: Not a typo, there are escaped newlines in nslookup apparently.
             hostname = strip_hostname(hostname_raw.split("\\n"))
 
-    glpi_session_object = SessionHandler(
-        user_token, urls.INIT_URL, urls.KILL_URL, no_verify
-    )
-    glpi_session = glpi_session_object.session
-
-    post_to_glpi(
-        glpi_session,
-        system_json,
-        cpu_list,
-        hostname,
-        ram_list,
-        storage_list,
-        nic_list,
-        port_list,
-        sku,
-        urls,
-    )
-
-    del glpi_session
+    with SessionHandler(user_token, urls.INIT_URL, urls.KILL_URL, no_verify) as session:
+        post_to_glpi(
+            session,
+            system_json,
+            cpu_list,
+            hostname,
+            ram_list,
+            storage_list,
+            nic_list,
+            port_list,
+            sku,
+            urls,
+        )
 
     print_final_help()
 

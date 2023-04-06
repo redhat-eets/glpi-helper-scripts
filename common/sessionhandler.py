@@ -46,7 +46,10 @@ class SessionHandler:
         )
         log.debug(str(self.session_token) + "\n")
 
-    def __del__(self) -> None:
+    def __enter__(self) -> None:
+        return self.session
+
+    def __exit__(self,  exception_type, exception, traceback) -> None:
         """Kill the REST session
 
         Args:
@@ -55,3 +58,4 @@ class SessionHandler:
         log.debug("Killing session:")
         kill = self.session.get(url=self.del_url)
         log.debug(str(kill) + "\n")
+        del self

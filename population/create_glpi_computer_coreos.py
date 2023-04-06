@@ -127,14 +127,8 @@ def main() -> None:
     urls = UrlInitialization(ip)
     switch_info = Switches(switch_config)
 
-    glpi_session_object = SessionHandler(
-        user_token, urls.INIT_URL, urls.KILL_URL, no_verify
-    )
-    glpi_session = glpi_session_object.session
-
-    post_to_glpi(glpi_session, rsa_key, server_username, server_ip, urls, switch_info)
-
-    del glpi_session
+    with SessionHandler(user_token, urls.INIT_URL, urls.KILL_URL, no_verify) as session:
+        post_to_glpi(session, rsa_key, server_username, server_ip, urls, switch_info)
 
     print_final_help()
 

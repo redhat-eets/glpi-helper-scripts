@@ -114,14 +114,10 @@ def main() -> None:
 
     urls = UrlInitialization(ip)
 
-    glpi_session_object = SessionHandler(user_token, urls.INIT_URL, urls.KILL_URL)
-    session_object = glpi_session_object.session
-
-    create_reservations(
-        session_object, username, hostname, begin, end, final_comment, urls
-    )
-
-    del session_object
+    with SessionHandler(user_token, urls.INIT_URL, urls.KILL_URL, no_verify) as session:
+        create_reservations(
+            session, username, hostname, begin, end, final_comment, urls
+        )
 
     print_final_help()
 
