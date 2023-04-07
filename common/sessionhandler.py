@@ -41,6 +41,9 @@ class SessionHandler:
                 self.session_token = self.session.get(url=init_url)
         else:
             self.session_token = self.session.get(url=init_url)
+        if 'ERROR_GLPI_LOGIN_USER_TOKEN' in self.session_token.json():
+            print("ERROR_GLPI_LOGIN_USER_TOKEN, exiting...")
+            exit()
         self.session.headers.update(
             {"Session-Token": self.session_token.json()["session_token"]}
         )
