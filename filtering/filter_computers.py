@@ -240,7 +240,8 @@ def reservable(  # noqa: C901
                 end="\r",
             )
 
-            # Short circuit for Reservations, as this is where the majority of time goes into filtering
+            # Short circuit for Reservations, as this is where the majority of time 
+            # goes into filtering
             for link in computer["links"]:
                 if link["rel"] == "ReservationItem":
                     computer_reservable = check_computer_reservable(user_token, link)
