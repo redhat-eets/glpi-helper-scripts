@@ -97,3 +97,6 @@ class UrlInitialization:
 
         # Redfish API URLS (Supermicro rev 1.0a)
         self.REDFISH_SYSTEM_GENERIC = "/redfish/v1/Systems"
+
+        # Computer link
+        self.COMPUTER_LINK_URL = self.HOME_URL + "/front/computer.form.php?id="

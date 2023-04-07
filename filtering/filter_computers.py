@@ -102,9 +102,11 @@ def main() -> None:
 
     disks = get_disks(session, urls)
 
-    final_choices = reservable(session, reservations, computers, disks, requirements)
+    available, final_choices = reservable(
+        session, reservations, computers, disks, requirements
+    )
 
-    print_final_decision(final_choices, requirements)
+    print_final_decision(available, final_choices, requirements, urls)
 
     del session_object
 
@@ -229,6 +231,22 @@ def reservable(  # noqa: C901
             nic = True
             computer_reservable = False
             reservation_free = True
+
+            curr_round += 1
+            print(
+                "\tProgress: "
+                + "{:.2f}".format((curr_round / total_rounds) * 100)
+                + "%",
+                end="\r",
+            )
+
+            # Short circuit for Reservations, as this is where the majority of time goes into filtering
+            for link in computer["links"]:
+                if link["rel"] == "ReservationItem":
+                    computer_reservable = check_computer_reservable(user_token, link)
+            if not computer_reservable:
+                continue
+
             for link in computer["links"]:
                 if link["rel"] == "Item_DeviceProcessor":
                     cpu_weight = check_cpus(
@@ -237,10 +255,16 @@ def reservable(  # noqa: C901
                     core_weight = check_cores(
                         user_token, link, requirements[requirement]["cores"]
                     )
+                    if not (cpu_weight or core_weight):
+                        break
+
                 elif link["rel"] == "Item_DeviceMemory":
                     memory_weight = check_memory(
                         user_token, link, requirements[requirement]["ram"]
                     )
+                    if not memory_weight:
+                        break
+
                 elif (
                     "gpu" in requirements[requirement]
                     and link["rel"] == "Item_DeviceGraphicCard"
@@ -255,8 +279,12 @@ def reservable(  # noqa: C901
                     nic = check_network(
                         user_token, link, requirements[requirement]["nic"]
                     )
-                elif link["rel"] == "ReservationItem":
-                    computer_reservable = check_computer_reservable(user_token, link)
+            if (
+                not computer_reservable
+                or not (cpu_weight or core_weight)
+                or not memory_weight
+            ):
+                continue
 
             if "disks" in requirements[requirement]:
                 disks_req = requirements[requirement]["disks"]
@@ -304,13 +332,7 @@ def reservable(  # noqa: C901
                     available[requirement][computer["id"]][
                         "total_weight"
                     ] = total_weight
-            curr_round += 1
-            print(
-                "\tProgress: "
-                + "{:.2f}".format((curr_round / total_rounds) * 100)
-                + "%",
-                end="\r",
-            )
+
     sorted_available = {}
     final_choices = {}
     taken_machines = []
@@ -321,7 +343,7 @@ def reservable(  # noqa: C901
         )
         sorted_available[requirement] = sorted_requirement
     # print(available)
-    print(sorted_available)
+    # print(sorted_available)
     for index in range(len(requirements)):
         min = float("inf")
         pick = None
@@ -352,10 +374,12 @@ def reservable(  # noqa: C901
                     final_choices[pick] = [choice, available[pick][choice]["name"]]
                     del sorted_available[pick]
                     break
-    return final_choices
+    return available, final_choices
 
 
-def print_final_decision(final_choices: list, requirements: list) -> None:
+def print_final_decision(
+    available: dict, final_choices: list, requirements: list, urls
+) -> None:
     """Print the final decisions
 
     Args:
@@ -364,7 +388,23 @@ def print_final_decision(final_choices: list, requirements: list) -> None:
     """
     print(
         "------------------------------------------------------------------"
-        + "--------------\nFinal decisions\n----------------"
+        + "--------------\nAvailable\n----------------"
+        + "----------------------------------------------------------------"
+    )
+    for requirement in requirements:
+        print("requirement: " + str(requirement))
+        if requirement in available:
+            for computer in available[requirement]:
+                print("\tcomputer_id: " + str(computer))
+                print("\tcomputer_name: " + available[requirement][computer]["name"])
+                print("\tcomputer_link: " + urls.COMPUTER_LINK_URL + str(computer))
+        else:
+            print("\tcomputer_id: None")
+            print("\tcomputer_name: None")
+            print("\tcomputer_link: None")
+    print(
+        "------------------------------------------------------------------"
+        + "--------------\nRecommendations\n----------------"
         + "----------------------------------------------------------------"
     )
     all_reserved = True
@@ -373,11 +413,17 @@ def print_final_decision(final_choices: list, requirements: list) -> None:
             print("requirement: " + str(requirement))
             print("\tcomputer_id: " + str(final_choices[requirement][0]))
             print("\tcomputer_name: " + final_choices[requirement][1])
+            print(
+                "\tcomputer_link: "
+                + urls.COMPUTER_LINK_URL
+                + str(final_choices[requirement][0])
+            )
 
         else:
             print("requirement: " + str(requirement))
             print("\tcomputer_id: None")
             print("\tcomputer_name: None")
+            print("\tcomputer_link: None")
             all_reserved = False
 
     if all_reserved:
@@ -557,6 +603,7 @@ def check_computer_reservable(user_token: str, link: str) -> bool:
     )
     if computer_reservable:
         for reservation_info in computer_reservable:
+            # print(reservation_info)
             if reservation_info["is_active"]:
                 return True
 
