@@ -44,6 +44,15 @@ class SessionHandler:
         if 'ERROR_GLPI_LOGIN_USER_TOKEN' in self.session_token.json():
             print("ERROR_GLPI_LOGIN_USER_TOKEN, exiting...")
             exit()
+
+        if "session_token" not in self.session_token.json():
+            print(
+                "An error occurred when initializing the REST session:",
+                self.session_token.json(),
+                "exiting...",
+                sep="\n",
+            )
+            exit()
         self.session.headers.update(
             {"Session-Token": self.session_token.json()["session_token"]}
         )
