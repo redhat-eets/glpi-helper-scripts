@@ -63,4 +63,3 @@ class SessionHandler:
         log.debug("Killing session:")
         kill = self.session.get(url=self.del_url)
         log.debug(str(kill) + "\n")
-        del self
