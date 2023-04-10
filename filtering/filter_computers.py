@@ -95,7 +95,7 @@ def main() -> None:
 
     reservations = get_reservations(user_token, ip, no_verify)
 
-    with SessionHandler(user_token, urls.INIT_URL, urls.KILL_URL, no_verify) as session:
+    with SessionHandler(user_token, urls, no_verify) as session:
         computers = get_computers(session, urls)
         disks = get_disks(session, urls)
         final_choices = reservable(

@@ -70,7 +70,7 @@ def main() -> None:
     urls = UrlInitialization(ip)
     switch_info = Switches(switch_config)
 
-    with SessionHandler(user_token, urls.INIT_URL, urls.KILL_URL) as session:
+    with SessionHandler(user_token, urls) as session:
         post_to_glpi(session, urls, switch_info)
 
     print_final_help()

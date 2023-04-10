@@ -71,7 +71,7 @@ def main() -> None:
 
     urls = UrlInitialization(ip)
 
-    with SessionHandler(user_token, urls.INIT_URL, urls.KILL_URL, no_verify) as session:
+    with SessionHandler(user_token, urls, no_verify) as session:
         print(get_computers(session, urls))
 
     if not concise:

@@ -78,7 +78,7 @@ def main() -> None:
 
     urls = UrlInitialization(ip)
 
-    with SessionHandler(user_token, urls.INIT_URL, urls.KILL_URL, no_verify) as session:
+    with SessionHandler(user_token, urls, no_verify) as session:
         reservations = yaml.safe_load(get_reservations(session, urls))
         computers = get_computers(session, urls)
         network_equipment = get_network_equipment(session, urls)
