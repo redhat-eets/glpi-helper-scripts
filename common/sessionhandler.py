@@ -41,7 +41,7 @@ class SessionHandler:
                 self.session.verify = False
                 self.session_token = self.session.get(url=urls.INIT_URL)
         else:
-            self.session_token = self.session.get(url=init_url)
+            self.session_token = self.session.get(url=urls.INIT_URL)
 
         if "session_token" not in self.session_token.json():
             print(
