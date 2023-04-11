@@ -26,8 +26,10 @@ from common.utils import (
 )
 import json
 import subprocess
+from typing import Tuple
 import yaml
 import operator
+
 
 # Suppress InsecureRequestWarning caused by REST access without
 # certificate validation.
@@ -197,7 +199,7 @@ def reservable(  # noqa: C901
     computers: list,
     disks: list,
     requirements: list,
-) -> list:
+) -> Tuple[dict, dict]:
     """Check for reservable computers, using weighting where able to get as
        close to the requirements as possible
 
@@ -209,6 +211,7 @@ def reservable(  # noqa: C901
         requirements (list): the list of requirements for reservations
 
     Returns:
+        available (dict):      the dictionary of all choices
         final_choices (dict):  the dictionary of final decisions
     """
     print(
@@ -220,7 +223,6 @@ def reservable(  # noqa: C901
 
     total_rounds = len(requirements) * len(computers)
     curr_round = 0
-    # print('Progress: ' + str((curr_round / total_rounds) * 100) + '%', end='\r')
     for requirement in requirements:
         for computer in computers:
             computer = yaml.safe_load(computer)
@@ -292,11 +294,6 @@ def reservable(  # noqa: C901
                 disks_req.sort(key=operator.itemgetter("storage"))
 
                 disks_satisfied = check_disks(computer["id"], disks, disks_req)
-                # disk_and_storage_weight = check_disks(computer['id'], disks,
-                #                                       disks_req)
-            # disk_weight = disk_and_storage_weight[0]
-            # storage_weight = disk_and_storage_weight[1]
-            # type_found = disk_and_storage_weight[2]
 
             if (
                 computer_reservable
@@ -320,11 +317,8 @@ def reservable(  # noqa: C901
                             <= reservations[reservation]["Ends"]
                         ):
                             reservation_free = False
-                            # print('NOT reservable')
                 if reservation_free:
-                    total_weight = (
-                        cpu_weight + core_weight + memory_weight
-                    )  # + disk_weight + storage_weight
+                    total_weight = cpu_weight + core_weight + memory_weight
                     if requirement not in available:
                         available[requirement] = {}
                     if computer["id"] not in available[requirement]:
@@ -343,8 +337,6 @@ def reservable(  # noqa: C901
             key=lambda x: (available[requirement][x]["total_weight"]),
         )
         sorted_available[requirement] = sorted_requirement
-    # print(available)
-    # print(sorted_available)
     for index in range(len(requirements)):
         min = float("inf")
         pick = None
@@ -379,13 +371,15 @@ def reservable(  # noqa: C901
 
 
 def print_final_decision(
-    available: dict, final_choices: list, requirements: list, urls
+    available: dict, final_choices: dict, requirements: list, urls: UrlInitialization
 ) -> None:
     """Print the final decisions
 
     Args:
-        final choices (list): the list of decisions for reservable computers
-        requirements (list):  the list of original requirements
+        available (dict):         the dict of all available machines
+        final choices (dict):     the list of decisions for reservable computers
+        requirements (list):      the list of original requirements
+        urls (UrlInitialization): the URLs
     """
     print(
         "------------------------------------------------------------------"
@@ -604,7 +598,6 @@ def check_computer_reservable(user_token: str, link: str) -> bool:
     )
     if computer_reservable:
         for reservation_info in computer_reservable:
-            # print(reservation_info)
             if reservation_info["is_active"]:
                 return True
 
