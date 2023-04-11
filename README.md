@@ -31,7 +31,7 @@ NOTE: This approach must have direct CLI access to the target server, the abilit
 2. Ensure you have the following Python requirements installed:
     - Python3
     - pip3
-    - pexpect
+    - All packages listed in `requirements.txt` (you can install them by running `pip3 install -r requirements.txt` in your terminal)
 3. Ensure you have the following operating system requirements installed:
     - lshw
     - hostnamectl
@@ -75,8 +75,12 @@ LAB:                     # lab name
 NOTE: Useful for importing many machines sequentially, and those that do not have direct CLI access/an OS installed or do not wish to have the code/to install dependencies on the target machine.
 1. Create a list of machines to populate in the following format (see `population/redfish_list_example` in this repository for a further example):
     IPMI_IP,IPMI_USERNAME,IPMI_PASSWORD,PUBLIC_IP,LAB
-2. Call the `population/create_computer_redfish_wrapper.py` script, passing in the GLPI API token to `-t`, the URL of your GLPI instance to `-i`, and the list from step 1. to `-l`. If you would like to use a custom name for a machine instead of relying on DNS, pass in your custom name to `-n`. If you would like to use the service tag / SKU for Dell Machines rather than the serial number, use `-s`. For other options see the script's help message.
-3. Continue from step 6. of the RHEL, CentOS, Fedora workflow section above.
+2. Ensure you have the following Python requirements installed:
+    - Python3
+    - pip3
+    - All packages listed in `requirements.txt` (you can install them by running `pip3 install -r requirements.txt` in your terminal)
+3. Call the `population/create_computer_redfish_wrapper.py` script, passing in the GLPI API token to `-t`, the URL of your GLPI instance to `-i`, and the list from step 1. to `-l`. If you would like to use a custom name for a machine instead of relying on DNS, pass in your custom name to `-n`. If you would like to use the service tag / SKU for Dell Machines rather than the serial number, use `-s`. For other options see the script's help message.
+4. Continue from step 6. of the RHEL, CentOS, Fedora workflow section above.
 
 ### CoreOS Workflow (Directly on Target CLI):
 ![alt text](/docs/images/GLPI-Remote-SSH-REST.png)
@@ -86,7 +90,7 @@ NOTE: All OpenShift nodes must be accessible via SSH using a key.
 2. Ensure you have the following Python requirements installed:
     - Python3
     - pip3
-    - pexpect
+    - All packages listed in `requirements.txt` (you can install them by running `pip3 install -r requirements.txt` in your terminal)
 3. Run the script with sudo. Pass in the GLPI IP, GLPI API token, username of the user to SSH into, and IP address of the server. Optionally, pass in the SSH key and switch configuration, if necessary/desired. For further usage see the script's help message.
 4. Continue from step 6. of the "RHEL, CentOS, Fedora Workflow" section above.
 
@@ -104,6 +108,8 @@ A script, `population/update_switch_ports.py`, is provided to query the MAC addr
 
 ## Managing Reservations:
 There are scripts included which will help query reservations of machines from, and add reservations to, GLPI.
+
+Before using them, ensure that you have installed all packages listed in `requirements.txt`, by running `pip3 install -r requirements.txt` in your terminal.
 
 ### check_glpi_reservation.py
 The `filtering/check_glpi_reservation.py` script queries the GLPI deployment for reservations and prints a digest including the reservation id, user id, username, computer id, computer name, beginning time, end time, and comment (which would be the work item identifier per the best practice above, or whatever was populated in the comment field). For usage information see the help message provided by the script.
