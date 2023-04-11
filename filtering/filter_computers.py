@@ -26,8 +26,10 @@ from common.utils import (
 )
 import json
 import subprocess
+from typing import Tuple
 import yaml
 import operator
+
 
 # Suppress InsecureRequestWarning caused by REST access without
 # certificate validation.
@@ -98,11 +100,11 @@ def main() -> None:
     with SessionHandler(user_token, urls, no_verify) as session:
         computers = get_computers(session, urls)
         disks = get_disks(session, urls)
-        final_choices = reservable(
+        available, final_choices = reservable(
             session, reservations, computers, disks, requirements
         )
 
-    print_final_decision(final_choices, requirements)
+    print_final_decision(available, final_choices, requirements, urls)
 
     print_final_help()
 
@@ -191,7 +193,7 @@ def reservable(  # noqa: C901
     computers: list,
     disks: list,
     requirements: list,
-) -> list:
+) -> Tuple[dict, dict]:
     """Check for reservable computers, using weighting where able to get as
        close to the requirements as possible
 
@@ -203,6 +205,7 @@ def reservable(  # noqa: C901
         requirements (list): the list of requirements for reservations
 
     Returns:
+        available (dict):      the dictionary of all choices
         final_choices (dict):  the dictionary of final decisions
     """
     print(
@@ -214,7 +217,6 @@ def reservable(  # noqa: C901
 
     total_rounds = len(requirements) * len(computers)
     curr_round = 0
-    # print('Progress: ' + str((curr_round / total_rounds) * 100) + '%', end='\r')
     for requirement in requirements:
         for computer in computers:
             computer = yaml.safe_load(computer)
@@ -225,6 +227,23 @@ def reservable(  # noqa: C901
             nic = True
             computer_reservable = False
             reservation_free = True
+
+            curr_round += 1
+            print(
+                "\tProgress: "
+                + "{:.2f}".format((curr_round / total_rounds) * 100)
+                + "%",
+                end="\r",
+            )
+
+            # Short circuit for Reservations, as this is where the majority of time
+            # goes into filtering
+            for link in computer["links"]:
+                if link["rel"] == "ReservationItem":
+                    computer_reservable = check_computer_reservable(user_token, link)
+            if not computer_reservable:
+                continue
+
             for link in computer["links"]:
                 if link["rel"] == "Item_DeviceProcessor":
                     cpu_weight = check_cpus(
@@ -233,10 +252,16 @@ def reservable(  # noqa: C901
                     core_weight = check_cores(
                         user_token, link, requirements[requirement]["cores"]
                     )
+                    if not (cpu_weight or core_weight):
+                        break
+
                 elif link["rel"] == "Item_DeviceMemory":
                     memory_weight = check_memory(
                         user_token, link, requirements[requirement]["ram"]
                     )
+                    if not memory_weight:
+                        break
+
                 elif (
                     "gpu" in requirements[requirement]
                     and link["rel"] == "Item_DeviceGraphicCard"
@@ -251,19 +276,18 @@ def reservable(  # noqa: C901
                     nic = check_network(
                         user_token, link, requirements[requirement]["nic"]
                     )
-                elif link["rel"] == "ReservationItem":
-                    computer_reservable = check_computer_reservable(user_token, link)
+            if (
+                not computer_reservable
+                or not (cpu_weight or core_weight)
+                or not memory_weight
+            ):
+                continue
 
             if "disks" in requirements[requirement]:
                 disks_req = requirements[requirement]["disks"]
                 disks_req.sort(key=operator.itemgetter("storage"))
 
                 disks_satisfied = check_disks(computer["id"], disks, disks_req)
-                # disk_and_storage_weight = check_disks(computer['id'], disks,
-                #                                       disks_req)
-            # disk_weight = disk_and_storage_weight[0]
-            # storage_weight = disk_and_storage_weight[1]
-            # type_found = disk_and_storage_weight[2]
 
             if (
                 computer_reservable
@@ -287,11 +311,8 @@ def reservable(  # noqa: C901
                             <= reservations[reservation]["Ends"]
                         ):
                             reservation_free = False
-                            # print('NOT reservable')
                 if reservation_free:
-                    total_weight = (
-                        cpu_weight + core_weight + memory_weight
-                    )  # + disk_weight + storage_weight
+                    total_weight = cpu_weight + core_weight + memory_weight
                     if requirement not in available:
                         available[requirement] = {}
                     if computer["id"] not in available[requirement]:
@@ -300,13 +321,7 @@ def reservable(  # noqa: C901
                     available[requirement][computer["id"]][
                         "total_weight"
                     ] = total_weight
-            curr_round += 1
-            print(
-                "\tProgress: "
-                + "{:.2f}".format((curr_round / total_rounds) * 100)
-                + "%",
-                end="\r",
-            )
+
     sorted_available = {}
     final_choices = {}
     taken_machines = []
@@ -316,8 +331,6 @@ def reservable(  # noqa: C901
             key=lambda x: (available[requirement][x]["total_weight"]),
         )
         sorted_available[requirement] = sorted_requirement
-    # print(available)
-    print(sorted_available)
     for index in range(len(requirements)):
         min = float("inf")
         pick = None
@@ -348,19 +361,39 @@ def reservable(  # noqa: C901
                     final_choices[pick] = [choice, available[pick][choice]["name"]]
                     del sorted_available[pick]
                     break
-    return final_choices
+    return available, final_choices
 
 
-def print_final_decision(final_choices: list, requirements: list) -> None:
+def print_final_decision(
+    available: dict, final_choices: dict, requirements: list, urls: UrlInitialization
+) -> None:
     """Print the final decisions
 
     Args:
-        final choices (list): the list of decisions for reservable computers
-        requirements (list):  the list of original requirements
+        available (dict):         the dict of all available machines
+        final choices (dict):     the list of decisions for reservable computers
+        requirements (list):      the list of original requirements
+        urls (UrlInitialization): the URLs
     """
     print(
         "------------------------------------------------------------------"
-        + "--------------\nFinal decisions\n----------------"
+        + "--------------\nAvailable\n----------------"
+        + "----------------------------------------------------------------"
+    )
+    for requirement in requirements:
+        print("requirement: " + str(requirement))
+        if requirement in available:
+            for computer in available[requirement]:
+                print("\tcomputer_id: " + str(computer))
+                print("\tcomputer_name: " + available[requirement][computer]["name"])
+                print("\tcomputer_link: " + urls.COMPUTER_LINK_URL + str(computer))
+        else:
+            print("\tcomputer_id: None")
+            print("\tcomputer_name: None")
+            print("\tcomputer_link: None")
+    print(
+        "------------------------------------------------------------------"
+        + "--------------\nRecommendations\n----------------"
         + "----------------------------------------------------------------"
     )
     all_reserved = True
@@ -369,11 +402,17 @@ def print_final_decision(final_choices: list, requirements: list) -> None:
             print("requirement: " + str(requirement))
             print("\tcomputer_id: " + str(final_choices[requirement][0]))
             print("\tcomputer_name: " + final_choices[requirement][1])
+            print(
+                "\tcomputer_link: "
+                + urls.COMPUTER_LINK_URL
+                + str(final_choices[requirement][0])
+            )
 
         else:
             print("requirement: " + str(requirement))
             print("\tcomputer_id: None")
             print("\tcomputer_name: None")
+            print("\tcomputer_link: None")
             all_reserved = False
 
     if all_reserved:
