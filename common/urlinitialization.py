@@ -27,10 +27,10 @@ class UrlInitialization:
         p = urllib.parse.ParseResult("https", netloc, path, *p[3:])
         # The expected behavior is this failing on improper format of IP
         try:
-            urllib.request.urlopen(p.geturl())
+            urllib.request.urlopen(p.geturl(), timeout=30)
         except Exception:
             p = urllib.parse.ParseResult("http", netloc, path, *p[3:])
-        urllib.request.urlopen(p.geturl())
+            urllib.request.urlopen(p.geturl(), timeout=30)
 
         # GLPI API URLS
         self.HOME_URL = p.geturl()

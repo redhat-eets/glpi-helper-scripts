@@ -11,42 +11,61 @@
 
 import logging
 import requests
+from common.urlinitialization import UrlInitialization
+
 
 log = logging.getLogger(__name__)
 
 
 class SessionHandler:
     def __init__(
-        self, token: str, init_url: str, del_url: str, no_verify: bool = False
+        self, token: str, urls: UrlInitialization, no_verify: bool = False
     ) -> None:
         """Initialize the session handler object
 
         Args:
             self:             self
             token (str):      the GLPI REST API token
-            init_url (str):   the initialization GLPI URL
-            del_url (str):    the deletion GLPI URL
+            urls (UrlInitialization):   the GLPI URLs
             no_verify (bool): if present, this will not verify the SSL session
                               if it fails, allowing the script to proceed
         """
         log.debug("\nInitializing the REST session:")
-        self.del_url = del_url
+        self.del_url = urls.KILL_URL
         self.session = requests.Session()
         self.session.headers.update({"Authorization": "user_token " + token})
         if no_verify:
             try:
-                self.session_token = self.session.get(url=init_url)
+                self.session_token = self.session.get(url=urls.INIT_URL)
             except requests.exceptions.SSLError:
                 self.session.verify = False
-                self.session_token = self.session.get(url=init_url)
+                self.session_token = self.session.get(url=urls.INIT_URL)
         else:
-            self.session_token = self.session.get(url=init_url)
+            self.session_token = self.session.get(url=urls.INIT_URL)
+
+        if "session_token" not in self.session_token.json():
+            print(
+                "An error occurred when initializing the REST session:",
+                self.session_token.json(),
+                "exiting...",
+                sep="\n",
+            )
+            exit()
+
         self.session.headers.update(
             {"Session-Token": self.session_token.json()["session_token"]}
         )
         log.debug(str(self.session_token) + "\n")
 
-    def __del__(self) -> None:
+    def __enter__(self) -> None:
+        """Return the session
+
+        Args:
+            self: self
+        """
+        return self.session
+
+    def __exit__(self, exception_type, exception, traceback) -> None:
         """Kill the REST session
 
         Args:

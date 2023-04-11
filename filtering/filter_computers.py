@@ -93,24 +93,18 @@ def main() -> None:
 
     urls = UrlInitialization(ip)
 
-    session_object = SessionHandler(user_token, urls.INIT_URL, urls.KILL_URL, no_verify)
-    session = session_object.session
-
     requirements = parse_list(list)
 
     reservations = get_reservations(user_token, ip, no_verify)
 
-    computers = get_computers(session, urls)
-
-    disks = get_disks(session, urls)
-
-    available, final_choices = reservable(
-        session, reservations, computers, disks, requirements
-    )
+    with SessionHandler(user_token, urls, no_verify) as session:
+        computers = get_computers(session, urls)
+        disks = get_disks(session, urls)
+        available, final_choices = reservable(
+            session, reservations, computers, disks, requirements
+        )
 
     print_final_decision(available, final_choices, requirements, urls)
-
-    del session_object
 
     print_final_help()
 

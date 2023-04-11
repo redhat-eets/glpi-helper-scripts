@@ -75,12 +75,8 @@ def main() -> None:
 
     urls = UrlInitialization(ip)
 
-    session_object = SessionHandler(user_token, urls.INIT_URL, urls.KILL_URL, no_verify)
-    session = session_object.session
-
-    print(get_reservations(session, urls))
-
-    del session_object
+    with SessionHandler(user_token, urls, no_verify) as session:
+        print(get_reservations(session, urls))
 
     if not concise:
         print_final_help()
