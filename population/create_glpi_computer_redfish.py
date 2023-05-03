@@ -57,6 +57,7 @@ def main() -> None:
         metavar="general_config",
         help="optional path to general config YAML file, "
         + "see general_config_example.yaml",
+        required=True,
     )
     parser.add_argument(
         "-i",
