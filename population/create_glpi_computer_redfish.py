@@ -55,7 +55,7 @@ def main() -> None:
         "-g",
         "--general_config",
         metavar="general_config",
-        help="optional path to general config YAML file, "
+        help="path to general config YAML file, "
         + "see general_config_example.yaml",
         required=True,
     )
