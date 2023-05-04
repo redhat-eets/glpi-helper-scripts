@@ -884,9 +884,7 @@ def set_bmc_address_field(
                 if computer["items_id"] == computer_id:
                     if computer["bmcaddressfield"]:
                         return glpi_post
-        glpi_post["bmcaddressfield"] = redfish_base_url.partition("https://")[2]
-    else:
-        glpi_post["bmcaddressfield"] = redfish_base_url.partition("https://")[2]
+    glpi_post["bmcaddressfield"] = redfish_base_url.partition("https://")[2]
 
     return glpi_post
 
