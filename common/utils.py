@@ -59,7 +59,13 @@ def check_fields(session: requests.sessions.Session, url: str) -> list:
             url + "?range=" + str(api_range) + "-" + str(api_range + api_increment)
         )
         glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
+        if (
+            glpi_fields.json()
+            and glpi_fields.json()[0] == "ERROR_RESOURCE_NOT_FOUND_NOR_COMMONDBTM"
+        ):
+            more_fields = False
+            glpi_fields_list.append(glpi_fields)
+        elif glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
             more_fields = False
         else:
             glpi_fields_list.append(glpi_fields)
@@ -372,7 +378,7 @@ def check_and_post_network_port(  # noqa: C901
     switch_dict: dict,
     urls: UrlInitialization,
     switch_info: Switches,
-):
+) -> int:
     """A helper method to check the network port field at the given API endpoint
        (URL) and post the field if it is not present.
 
