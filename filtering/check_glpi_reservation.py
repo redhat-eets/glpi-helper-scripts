@@ -65,18 +65,30 @@ def main() -> None:
         action="store_true",
         help="Use this flag if you want to not verify the SSL session if it fails",
     )
-
+    parser.add_argument(
+        "-n",
+        "--hostname",
+        type=str,
+        help="Use this flag if you want to list reservations for a specific machine",
+    )
+    parser.add_argument(
+        "-u",
+        "--user",
+        type=str,
+        help="Use this flag if you want to list reservations made by a specific user"
+    )
     args = parser.parse_args()
     user_token = args.token
     ip = args.ip
     global concise
     concise = args.yaml
     no_verify = args.no_verify
-
+    hostname = args.hostname
+    user = args.user
     urls = UrlInitialization(ip)
 
     with SessionHandler(user_token, urls, no_verify) as session:
-        print(get_reservations(session, urls))
+        print(get_reservations(session, urls, hostname))
 
     if not concise:
         print_final_help()
