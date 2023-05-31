@@ -20,20 +20,8 @@ class UrlInitialization:
             self:        self
             ip (str):    the GLPI IP address or hostname
         """
-        # Partially referenced from: https://stackoverflow.com/a/21659195
-        p = urllib.parse.urlparse(ip, "http")
-        netloc = p.netloc or p.path
-        path = p.path if p.netloc else ""
-        p = urllib.parse.ParseResult("https", netloc, path, *p[3:])
-        # The expected behavior is this failing on improper format of IP
-        try:
-            urllib.request.urlopen(p.geturl(), timeout=30)
-        except Exception:
-            p = urllib.parse.ParseResult("http", netloc, path, *p[3:])
-            urllib.request.urlopen(p.geturl(), timeout=30)
-
         # GLPI API URLS
-        self.HOME_URL = p.geturl()
+        self.HOME_URL = validate_url(ip)
 
         # Session
         self.BASE_URL = self.HOME_URL + "/apirest.php/"
@@ -101,3 +89,30 @@ class UrlInitialization:
 
         # Computer link
         self.COMPUTER_LINK_URL = self.HOME_URL + "/front/computer.form.php?id="
+
+
+def validate_url(ip: str) -> str:
+    """Initialize the URL Initialization object
+
+    Args:
+        ip (str):    a user-inputted URL that needs to be validated/formatted
+
+    Returns:
+        p.geturl() (str): the validated/formatted URL
+    """
+
+    # Partially referenced from: https://stackoverflow.com/a/21659195
+
+    p = urllib.parse.urlparse(ip, "http")
+    netloc = p.netloc or p.path
+    path = p.path if p.netloc else ""
+    p = urllib.parse.ParseResult("https", netloc, path, *p[3:])
+
+    # The expected behavior is this failing on improper format of IP
+    try:
+        urllib.request.urlopen(p.geturl(), timeout=30)
+    except Exception:
+        p = urllib.parse.ParseResult("http", netloc, path, *p[3:])
+        urllib.request.urlopen(p.geturl(), timeout=30)
+
+    return p.geturl()
