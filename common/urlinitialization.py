@@ -90,6 +90,7 @@ class UrlInitialization:
         # Computer link
         self.COMPUTER_LINK_URL = self.HOME_URL + "/front/computer.form.php?id="
 
+
 def validate_url(ip: str) -> str:
     """Validate and format a user-provided URL
 

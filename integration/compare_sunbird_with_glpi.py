@@ -2,7 +2,7 @@
 """
 |------------------------------------------------------------------------------|
 |                                                                              |
-|    Filename: check_glpi_reservation.py                                       |
+|    Filename: compare_sunbird_with_glpi.py                                    |
 |     Authors: Daniel Kostecki                                                 |
 |              Adhitya Logan                                                   |
 | Description: Compare Sunbird Inventory with GLPI Inventory                   |
