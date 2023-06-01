@@ -1,0 +1,11 @@
+---
+    # This file should contain the locations and cabinets in Sunbird 
+    # that you would like to compare to your GLPI inventory.
+    Location 1:
+    Location 2:
+        - Cabinet 1
+        - Cabinet 2
+        - Cabinet 3
+    Location 3:
+        - Cabinet 1
+  

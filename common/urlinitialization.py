@@ -90,12 +90,11 @@ class UrlInitialization:
         # Computer link
         self.COMPUTER_LINK_URL = self.HOME_URL + "/front/computer.form.php?id="
 
-
 def validate_url(ip: str) -> str:
-    """Initialize the URL Initialization object
+    """Validate and format a user-provided URL
 
     Args:
-        ip (str):    a user-inputted URL that needs to be validated/formatted
+        ip (str): a user-provided URL
 
     Returns:
         p.geturl() (str): the validated/formatted URL
