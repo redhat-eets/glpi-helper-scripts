@@ -5,7 +5,7 @@
 |    Filename: check_glpi_reservation.py                                       |
 |     Authors: Daniel Kostecki                                                 |
 |              Adhitya Logan                                                   |
-| Description: GLPI Computer REST API reservation checks.                      |
+| Description: Compare Sunbird Inventory with GLPI Inventory                   |
 |                                                                              |
 |------------------------------------------------------------------------------|
 """
