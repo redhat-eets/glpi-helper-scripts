@@ -12,7 +12,7 @@
 # Imports.
 import sys
 
-sys.path.append("..")
+sys.path.append("../..")
 import argparse
 import smtplib
 from email.message import EmailMessage
