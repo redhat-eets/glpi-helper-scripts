@@ -188,7 +188,7 @@ The `filtering/filter_reservations_by_project.py` will filter the reservations i
 ## Integrations
 
 ### integrations/compare_sunbird_with_glpi.py
-The `integrations/compare_sunbird_with_glpi.py` script gets all machines in GLPI and all machines in Sunbird located in labs specified by a user-provided YAML file. It then compares the two and returns a list of machines that are in GLPI, but not Sunbird, and vice versa. 
+The `integrations/sunbird/compare_sunbird_with_glpi.py` script compares all machines in GLPI with all machines in Sunbird located in the labs specified by a user-provided YAML file. It returns a list of machines that are in GLPI, but not Sunbird, and vice versa.
 
 Example script usage: 
 
