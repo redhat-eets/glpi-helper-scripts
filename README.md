@@ -184,3 +184,16 @@ The `filtering/filter_computers.py` script will filter computers in a GLPI insta
 
 ### filter_reservations_by_project.py
 The `filtering/filter_reservations_by_project.py` will filter the reservations in GLPI by project (JIRA tag in the comment field), returning all projects with the corresponding tag. For usage information use the help message provided by the script.
+
+## Integrations
+
+### integrations/compare_sunbird_with_glpi.py
+The `integrations/sunbird/compare_sunbird_with_glpi.py` script compares all machines in GLPI with all machines in Sunbird located in the labs specified by a user-provided YAML file. It returns a list of machines that are in GLPI, but not Sunbird, and vice versa.
+
+Example script usage: 
+
+`python3 compare_sunbird_with_glpi.py -i <GLPI URL> -t <GLPI TOKEN> -v -g <path to YAML file> -u <Sunbird USERNAME> -p <Sunbird PASSWORD> -s <Sunbird URL>`
+
+You can also email the output of this script to someone via optional flags:
+
+`python3 compare_sunbird_with_glpi.py -i <GLPI URL> -t <GLPI TOKEN> -v -g <path to YAML file> -u <Sunbird USERNAME> -p <Sunbird PASSWORD> -s <Sunbird URL> -r <RECIPIENT EMAIL> -S <SENDER EMAIL> -e <EMAIL SERVER>`
