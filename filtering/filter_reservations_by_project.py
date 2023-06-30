@@ -15,7 +15,6 @@
 import sys
 
 sys.path.append("..")
-import argparse
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization
 from common.utils import (
@@ -26,7 +25,6 @@ from common.utils import (
 )
 from common.parser import argparser
 import yaml
-from os import getenv
 
 # Suppress InsecureRequestWarning caused by REST access without
 # certificate validation.
