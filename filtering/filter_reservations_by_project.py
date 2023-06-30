@@ -24,7 +24,9 @@ from common.utils import (
     get_network_equipment,
     get_reservations,
 )
+from common.parser import argparser
 import yaml
+from os import getenv
 
 # Suppress InsecureRequestWarning caused by REST access without
 # certificate validation.
@@ -36,26 +38,9 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 def main() -> None:
     """Main function"""
     # Get the command line arguments from the user.
-    parser = argparse.ArgumentParser(
-        description="GLPI Computer reservation weighted filter."
-    )
-    parser.add_argument(
-        "-i",
-        "--ip",
-        metavar="ip",
-        type=str,
-        required=True,
-        help='the IP of the GLPI instance (example: "127.0.0.1")',
-    )
-    parser.add_argument(
-        "-t",
-        "--token",
-        metavar="user_token",
-        type=str,
-        required=True,
-        help="the user token string for authentication with GLPI",
-    )
-    parser.add_argument(
+    parser = argparser()
+    parser.parser.description="GLPI Computer reservation weighted filter."
+    parser.parser.add_argument(
         "-j",
         "--jira",
         metavar="jira_id",
@@ -63,14 +48,8 @@ def main() -> None:
         required=True,
         help="the Jira epic ID associated with the reservation",
     )
-    parser.add_argument(
-        "-v",
-        "--no_verify",
-        action="store_true",
-        help="Use this flag if you want to not verify the SSL session if it fails",
-    )
 
-    args = parser.parse_args()
+    args = parser.parser.parse_args()
     ip = args.ip
     user_token = args.token
     jira = args.jira

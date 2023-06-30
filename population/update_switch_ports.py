@@ -29,6 +29,7 @@ from common.utils import (
     check_and_post_network_port_ethernet,
 )
 from common.switches import Switches
+from os import getenv
 
 
 def main() -> None:
@@ -43,7 +44,8 @@ def main() -> None:
         "--ip",
         metavar="ip",
         type=str,
-        required=True,
+        default=getenv("GLPI_INSTANCE"),
+        required=not getenv("GLPI_INSTANCE"),
         help='the IP/URL of the GLPI instance (example: "127.0.0.1")',
     )
     parser.add_argument(
@@ -51,7 +53,8 @@ def main() -> None:
         "--token",
         metavar="user_token",
         type=str,
-        required=True,
+        default=getenv("GLPI_TOKEN"),
+        required=not getenv("GLPI_TOKEN"),
         help="the user token string for authentication with GLPI",
     )
     parser.add_argument(

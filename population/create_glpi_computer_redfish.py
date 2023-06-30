@@ -32,11 +32,12 @@ from common.utils import (
     check_fields,
 )
 from common.switches import Switches
+from common.parser import argparser
 import redfish
 import requests
 import subprocess
 import yaml
-
+from os import getenv
 # Suppress InsecureRequestWarning caused by REST access to Redfish without
 # certificate validation.
 import urllib3
@@ -47,11 +48,9 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 def main() -> None:
     """Main function"""
     # Get the command line arguments from the user.
-    parser = argparse.ArgumentParser(
-        description="GLPI Computer REST upload example. NOTE: needs to "
-        + "be run with root priviledges."
-    )
-    parser.add_argument(
+    parser = argparser()
+    parser.parser.description="GLPI Computer REST upload example. NOTE: needs to "+ "be run with root priviledges."
+    parser.parser.add_argument(
         "-g",
         "--general_config",
         metavar="general_config",
@@ -59,58 +58,42 @@ def main() -> None:
         + "see general_config_example.yaml",
         required=True,
     )
-    parser.add_argument(
-        "-i",
-        "--ip",
-        metavar="ip",
-        type=str,
-        required=True,
-        help='the IP/URL of the GLPI instance (example: "127.0.0.1")',
-    )
-    parser.add_argument(
-        "-t",
-        "--token",
-        metavar="user_token",
-        type=str,
-        required=True,
-        help="the user token string for authentication with GLPI",
-    )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-l",
         "--lab",
         action="store",
         required=True,
         help="the lab in which this server resides",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "--ipmi_ip",
         metavar="ipmi_ip",
         type=str,
         required=True,
         help="the IPMI IP address of the server",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "--ipmi_user",
         metavar="ipmi_user",
         type=str,
         required=True,
         help="the IPMI username",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "--ipmi_pass",
         metavar="ipmi_pass",
         type=str,
         required=True,
         help="the IPMI password",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "--public_ip",
         metavar="public_ip",
         type=str,
         required=True,
         help="the public IP address of the server",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-n",
         "--no_dns",
         metavar="no_dns",
@@ -118,38 +101,32 @@ def main() -> None:
         help="Use this flag if you want to use a custom string as the"
         + "name of this machine instead of using its DNS via nslookup",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-s",
         "--sku",
         action="store_true",
         help="Use this flag if you want to use the SKU of this Dell machine"
         + "instead of its serial number",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-c",
         "--switch_config",
         metavar="switch_config",
         help="optional path to switch config YAML file",
     )
-    parser.add_argument(
-        "-v",
-        "--no_verify",
-        action="store_true",
-        help="Use this flag if you want to not verify the SSL session if it fails",
-    )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-e",
         "--experiment",
         action="store_true",
         help="Use this flag if you want to append '_TEST' to the serial number",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-p",
         "--put",
         action="store_true",
         help="Use this flag if you want to only use PUT requests",
     )
-    args = parser.parse_args()
+    args = parser.parser.parse_args()
 
     # Process General Config
     with open(args.general_config, "r") as config_path:

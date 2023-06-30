@@ -14,29 +14,17 @@ import argparse
 import subprocess
 import sys
 import yaml
+from os import getenv
+
+from common.parser import argparser
 
 
 def main():
     """Main function"""
     # Get the command line arguments from the user.
-    parser = argparse.ArgumentParser(description="GLPI Computer reservation wrapper.")
-    parser.add_argument(
-        "-i",
-        "--ip",
-        metavar="ip",
-        type=str,
-        required=True,
-        help='the IP/URL of the GLPI instance (example: "127.0.0.1")',
-    )
-    parser.add_argument(
-        "-t",
-        "--token",
-        metavar="user_token",
-        type=str,
-        required=True,
-        help="the user token string for authentication with GLPI",
-    )
-    parser.add_argument(
+    parser = argparser()
+    parser.parser.description="GLPI Computer reservation wrapper."
+    parser.parser.add_argument(
         "-l",
         "--list",
         metavar="list",

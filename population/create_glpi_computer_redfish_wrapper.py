@@ -13,27 +13,22 @@
 import argparse
 import subprocess
 import sys
+from os import getenv
+from common.parser import argparser
 
 
 def main():
     """Get the command line arguments from the user."""
-    parser = argparse.ArgumentParser(description="GLPI Computer wrapper.")
-    parser.add_argument(
+    parser = argparser()
+    parser.parser.description = "GLPI Computer wrapper."
+    parser.parser.add_argument(
         "-g",
         "--general_config",
         metavar="general_config",
         help="path to general config YAML file, see general_config_example.yaml",
         required=True,
     )
-    parser.add_argument(
-        "-t",
-        "--token",
-        metavar="user_token",
-        type=str,
-        required=True,
-        help="the user token string for authentication with GLPI",
-    )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-l",
         "--list",
         metavar="list",
@@ -42,7 +37,7 @@ def main():
         help="the path to the list of machines in the format: ipmi_ip,"
         + "ipmi_user,ipmi_pass,public_ip,lab",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-n",
         "--no_dns",
         metavar="no_dns",
@@ -50,46 +45,32 @@ def main():
         help="Use this flag if you want to use a custom string as the"
         + "name of this machine instead of using its DNS via nslookup",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-s",
         "--sku",
         action="store_true",
         help="Use this flag if you want to use the SKU of this Dell machine"
         + "instead of its serial number",
     )
-    parser.add_argument(
-        "-i",
-        "--ip",
-        metavar="ip",
-        type=str,
-        required=True,
-        help='the IP of the GLPI instance (example: "127.0.0.1")',
-    )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-c",
         "--switch_config",
         metavar="switch_config",
         help="path to switch config YAML file",
     )
-    parser.add_argument(
-        "-v",
-        "--no_verify",
-        action="store_true",
-        help="Use this flag if you want to not verify the SSL session if it fails",
-    )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-e",
         "--experiment",
         action="store_true",
         help="Use this flag if you want to append '_TEST' to the serial number",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-p",
         "--put",
         action="store_true",
         help="Use this flag if you want to only use PUT requests",
     )
-    args = parser.parse_args()
+    args = parser.parser.parse_args()
     general_config = args.general_config
     user_token = args.token
     list = args.list
