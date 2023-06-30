@@ -13,20 +13,18 @@
 import sys
 
 sys.path.append("..")
-import argparse
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization
 from common.utils import check_field, check_fields, error, print_final_help
 from common.parser import argparser
 import requests
-from os import getenv
 
 
 def main() -> None:
     """Main function"""
     # Get the command line arguments from the user.
     parser = argparser()
-    parser.parser.description="GLPI Computer REST reservation check."
+    parser.parser.description = "GLPI Computer REST reservation check."
     parser.parser.add_argument(
         "-u",
         "--user",

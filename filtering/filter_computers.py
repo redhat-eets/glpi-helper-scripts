@@ -15,7 +15,6 @@
 import sys
 
 sys.path.append("..")
-import argparse
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization
 from common.utils import (
@@ -30,7 +29,6 @@ import subprocess
 from typing import Tuple
 import yaml
 import operator
-from os import getenv
 
 # Suppress InsecureRequestWarning caused by REST access without
 # certificate validation.
@@ -43,7 +41,7 @@ def main() -> None:
     """Main function"""
     # Get the command line arguments from the user.
     parser = argparser()
-    parser.parser.description="GLPI Computer reservation weighted filter."
+    parser.parser.description = "GLPI Computer reservation weighted filter."
     parser.parser.add_argument(
         "-l",
         "--list",

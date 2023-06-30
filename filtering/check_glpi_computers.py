@@ -13,7 +13,6 @@
 import sys
 
 sys.path.append("..")
-import argparse
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization
 from common.utils import print_final_help, get_computers
@@ -22,8 +21,6 @@ from common.parser import argparser
 # Suppress InsecureRequestWarning caused by REST access without
 # certificate validation.
 import urllib3
-
-from os import getenv
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -56,8 +53,6 @@ def main() -> None:
 
     if not concise:
         print_final_help()
-    
-
 
 
 # Executes main if run as a script.

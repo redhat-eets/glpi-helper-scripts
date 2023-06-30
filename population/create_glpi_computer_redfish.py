@@ -16,7 +16,6 @@
 import sys
 
 sys.path.append("..")
-import argparse
 import json
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization
@@ -37,7 +36,7 @@ import redfish
 import requests
 import subprocess
 import yaml
-from os import getenv
+
 # Suppress InsecureRequestWarning caused by REST access to Redfish without
 # certificate validation.
 import urllib3
@@ -49,13 +48,15 @@ def main() -> None:
     """Main function"""
     # Get the command line arguments from the user.
     parser = argparser()
-    parser.parser.description="GLPI Computer REST upload example. NOTE: needs to "+ "be run with root priviledges."
+    parser.parser.description = (
+        "GLPI Computer REST upload example. NOTE: needs to "
+        + "be run with root priviledges."
+    )
     parser.parser.add_argument(
         "-g",
         "--general_config",
         metavar="general_config",
-        help="path to general config YAML file, "
-        + "see general_config_example.yaml",
+        help="path to general config YAML file, " + "see general_config_example.yaml",
         required=True,
     )
     parser.parser.add_argument(
@@ -878,7 +879,7 @@ def strip_hostname(nslookup_output: list) -> str:
     for line in nslookup_output:
         if "name = " in line:
             name_index = line.index("name = ")
-            name = line[name_index + len("name = "): -1]
+            name = line[name_index + len("name = ") : -1]
             return name
 
 

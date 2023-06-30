@@ -10,10 +10,8 @@
 |------------------------------------------------------------------------------|
 """
 # Imports.
-import argparse
 import subprocess
 import sys
-from os import getenv
 from common.parser import argparser
 
 

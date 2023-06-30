@@ -13,7 +13,6 @@
 import sys
 
 sys.path.append("..")
-import argparse
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization
 from common.utils import (
@@ -25,7 +24,6 @@ from common.parser import argparser
 # Suppress InsecureRequestWarning caused by REST access without
 # certificate validation.
 import urllib3
-from os import getenv
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -34,7 +32,7 @@ def main() -> None:
     """Main function"""
     # Get the command line arguments from the user.
     parser = argparser()
-    parser.parser.description="GLPI Computer REST reservation check."
+    parser.parser.description = "GLPI Computer REST reservation check."
     parser.parser.add_argument(
         "-y",
         "--yaml",

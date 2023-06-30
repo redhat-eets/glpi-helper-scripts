@@ -4,6 +4,7 @@
 import argparse
 from os import getenv
 
+
 class argparser:
     def __init__(self) -> None:
         self.parser = argparse.ArgumentParser()
@@ -29,8 +30,10 @@ class argparser:
             "-v",
             "--no_verify",
             action="store_true",
-            help="Use this flag if you want to not verify the SSL session if it fails",
+            help="Use this flag if you want to "
+            + "not verify the SSL session if it fails",
         )
+
 
 if __name__ == "__main__":
     parser = argparser()

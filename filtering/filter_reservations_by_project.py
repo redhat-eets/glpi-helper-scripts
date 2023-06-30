@@ -39,7 +39,7 @@ def main() -> None:
     """Main function"""
     # Get the command line arguments from the user.
     parser = argparser()
-    parser.parser.description="GLPI Computer reservation weighted filter."
+    parser.parser.description = "GLPI Computer reservation weighted filter."
     parser.parser.add_argument(
         "-j",
         "--jira",

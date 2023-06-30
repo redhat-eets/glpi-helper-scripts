@@ -16,7 +16,6 @@
 import sys
 
 sys.path.append("..")
-import argparse
 import pexpect
 import requests
 from common.utils import (
@@ -38,14 +37,16 @@ from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization
 from common.switches import Switches
 from common.parser import argparser
-from os import getenv
 
 
 def main() -> None:
     """Main function"""
     # Get the command line arguments from the user.
     parser = argparser()
-    parser.parser.description="GLPI Computer REST upload example. NOTE: needs to "+ "be run with root priviledges."
+    parser.parser.description = (
+        "GLPI Computer REST upload example. NOTE: needs to "
+        + "be run with root priviledges."
+    )
     parser.parser.add_argument(
         "-rsa",
         "--rsa_path",

@@ -10,11 +10,9 @@
 |------------------------------------------------------------------------------|
 """
 # Imports.
-import argparse
 import subprocess
 import sys
 import yaml
-from os import getenv
 
 from common.parser import argparser
 
@@ -23,7 +21,7 @@ def main():
     """Main function"""
     # Get the command line arguments from the user.
     parser = argparser()
-    parser.parser.description="GLPI Computer reservation wrapper."
+    parser.parser.description = "GLPI Computer reservation wrapper."
     parser.parser.add_argument(
         "-l",
         "--list",

@@ -16,7 +16,6 @@ sys.path.append("..")
 import common.format_dicts as format_dicts
 
 # Imports.
-import argparse
 import requests
 import subprocess
 from common.utils import (
@@ -37,7 +36,6 @@ from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization
 from common.switches import Switches
 from common.parser import argparser
-from os import getenv
 
 # Suppress InsecureRequestWarning caused by REST access to Redfish without
 # certificate validation.
@@ -51,7 +49,10 @@ def main() -> None:
     """Main function"""
     # Get the command line arguments from the user.
     parser = argparser()
-    parser.parser.description="GLPI Computer REST upload example. NOTE: needs to "+ "be run with root priviledges."
+    parser.parser.description = (
+        "GLPI Computer REST upload example. NOTE: needs to "
+        + "be run with root priviledges."
+    )
     parser.parser.add_argument(
         "-g",
         "--general_config",
