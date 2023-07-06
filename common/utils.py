@@ -1246,7 +1246,7 @@ def get_reservations(
                 )
 
                 # If searching for specific user, only select
-                # reservations with that hostname.
+                # reservations with that username.
                 if user and user.lower() not in user_json["name"].lower():
                     continue
 
@@ -1286,9 +1286,11 @@ def get_reservations(
                 reservations_output += "  Ends: " + str(reservation["end"]) + "\n"
 
                 if reservation["comment"]:
-                    reservations_output += '  Comment: "' + reservation["comment"] + '"\n\n'
+                    reservations_output += (
+                        '  Comment: "' + reservation["comment"] + '"\n\n'
+                    )
                 else:
-                    reservations_output += '  Comment: N/A \n\n'
+                    reservations_output += "  Comment: N/A \n\n"
     else:
         reservations_output += "\tNo reservations.\n"
     return reservations_output
