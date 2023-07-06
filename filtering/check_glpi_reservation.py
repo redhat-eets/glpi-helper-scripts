@@ -88,7 +88,7 @@ def main() -> None:
     urls = UrlInitialization(ip)
 
     with SessionHandler(user_token, urls, no_verify) as session:
-        print(get_reservations(session, urls, hostname))
+        print(get_reservations(session, urls, hostname, user))
 
     if not concise:
         print_final_help()

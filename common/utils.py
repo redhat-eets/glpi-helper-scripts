@@ -1284,7 +1284,11 @@ def get_reservations(
                 )
                 reservations_output += "  Begins: " + str(reservation["begin"]) + "\n"
                 reservations_output += "  Ends: " + str(reservation["end"]) + "\n"
-                reservations_output += '  Comment: "' + reservation["comment"] + '"\n\n'
+
+                if reservation["comment"]:
+                    reservations_output += '  Comment: "' + reservation["comment"] + '"\n\n'
+                else:
+                    reservations_output += '  Comment: N/A \n\n'
     else:
         reservations_output += "\tNo reservations.\n"
     return reservations_output
