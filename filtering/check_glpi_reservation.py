@@ -66,7 +66,7 @@ def main() -> None:
         help="Use this flag if you want to not verify the SSL session if it fails",
     )
     parser.add_argument(
-        "-n",
+        "-H",
         "--hostname",
         type=str,
         help="Use this flag if you want to list reservations for a specific machine",
