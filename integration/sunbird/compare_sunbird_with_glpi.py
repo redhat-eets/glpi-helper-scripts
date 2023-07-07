@@ -64,7 +64,7 @@ def main() -> None:
         action="store_true",
         required=False,
         help="a flag for concise output of only the yaml, useful for "
-        + "programmatic parsing"
+        + "programmatic parsing",
     )
     parser.add_argument(
         "-v",
@@ -141,9 +141,14 @@ def main() -> None:
             glpi_machines, headers, sunbird_url, sunbird_username, sunbird_password
         )
 
-        # Compare the two dictionaries
-        sunbird_only = set(sunbird_machines.keys()) - set(glpi_machines.keys())
-        glpi_only = set(glpi_machines.keys()) - set(glpi_machines_in_sunbird.keys())
+        # Convert keys/serial numbers to upper case
+        upper_case_sunbird = map(str.upper, sunbird_machines.keys())
+        upper_case_glpi = map(str.upper, glpi_machines.keys())
+        upper_case_glpi_in_sunbird = map(str.upper, glpi_machines_in_sunbird.keys())
+
+        # Compare the two dictionaries in a case-insensitive manner
+        sunbird_only = set(upper_case_sunbird) - set(upper_case_glpi)
+        glpi_only = set(upper_case_glpi) - set(upper_case_glpi_in_sunbird)
 
         # Output the results
         sunbird_only_list = list(sunbird_only)
@@ -216,8 +221,13 @@ def get_sunbird_machines(
             auth=(username, password),
         )
         sunbird_json = sunbird_response.json()["searchResults"]["items"]
+
+        machines_with_serial = [
+            computer for computer in sunbird_json if "tiSerialNumber" in computer
+        ]
+
         sunbird_dict = {
-            computer["tiSerialNumber"]: computer for computer in sunbird_json
+            computer["tiSerialNumber"]: computer for computer in machines_with_serial
         }
         sunbird_machines.update(sunbird_dict)
     return sunbird_machines
