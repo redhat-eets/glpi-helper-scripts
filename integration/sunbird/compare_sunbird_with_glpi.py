@@ -222,6 +222,7 @@ def get_sunbird_machines(
         )
         sunbird_json = sunbird_response.json()["searchResults"]["items"]
 
+        # Only get machines with serial numbers
         machines_with_serial = [
             computer for computer in sunbird_json if "tiSerialNumber" in computer
         ]
