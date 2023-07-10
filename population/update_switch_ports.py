@@ -29,7 +29,6 @@ from common.utils import (
     check_and_post_network_port_ethernet,
 )
 from common.switches import Switches
-from os import getenv
 
 
 def main() -> None:
