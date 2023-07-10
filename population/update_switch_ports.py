@@ -36,7 +36,10 @@ def main() -> None:
     """Main function"""
     # Get the command line arguments from the user.
     parser = argparser()
-    parser.parser.description = "GLPI Switch port REST upload example. NOTE: needs to be run with root priviledges."
+    parser.parser.description = (
+        "GLPI Switch port REST upload example. "
+        + "NOTE: needs to be run with root priviledges."
+    )
     parser.parser.add_argument(
         "-c",
         "--switch_config",
