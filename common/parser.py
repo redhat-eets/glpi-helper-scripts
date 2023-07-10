@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import argparse
-from os import getenv
 import os
 
 
@@ -33,6 +32,7 @@ class argparser:
             help="Use this flag if you want to "
             + "not verify the SSL session if it fails",
         )
+
     def test_parser(self):
         ip = "1"
         user_token = "2"
@@ -42,7 +42,3 @@ class argparser:
         args = parser.parser.parse_args()
         assert args.ip == ip
         assert args.token == user_token
-
-
-
-
