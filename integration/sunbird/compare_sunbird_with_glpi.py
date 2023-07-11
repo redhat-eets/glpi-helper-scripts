@@ -142,9 +142,11 @@ def main() -> None:
         )
 
         # Convert keys/serial numbers to upper case
-        upper_case_sunbird = map(str.upper, sunbird_machines.keys())
-        upper_case_glpi = map(str.upper, glpi_machines.keys())
-        upper_case_glpi_in_sunbird = map(str.upper, glpi_machines_in_sunbird.keys())
+        upper_case_sunbird = [key.upper() for key in sunbird_machines.keys()]
+        upper_case_glpi = [key.upper() for key in glpi_machines.keys()]
+        upper_case_glpi_in_sunbird = [
+            key.upper() for key in glpi_machines_in_sunbird.keys()
+        ]
 
         # Compare the two dictionaries in a case-insensitive manner
         sunbird_only = set(upper_case_sunbird) - set(upper_case_glpi)
