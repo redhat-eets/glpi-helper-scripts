@@ -110,7 +110,7 @@ def parse_list(ip: str, user_token: str, list: str) -> None:
             print("Calling create_glpi_reservation:")
             output = subprocess.check_output(
                 [
-                    "./create_glpi_reservation",
+                    "./create_glpi_reservation.py",
                     "-i",
                     ip,
                     "-t",
