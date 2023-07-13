@@ -17,7 +17,7 @@ import sys
 
 sys.path.append("..")
 
-import argparse
+from common.parser import argparser
 import pexpect
 import requests
 from common.sessionhandler import SessionHandler
@@ -34,34 +34,19 @@ from common.switches import Switches
 def main() -> None:
     """Main function"""
     # Get the command line arguments from the user.
-    parser = argparse.ArgumentParser(
-        description="GLPI Switch port REST upload example. NOTE: needs to "
-        + "be run with root priviledges."
+    parser = argparser()
+    parser.parser.description = (
+        "GLPI Switch port REST upload example. "
+        + "NOTE: needs to be run with root priviledges."
     )
-    parser.add_argument(
-        "-i",
-        "--ip",
-        metavar="ip",
-        type=str,
-        required=True,
-        help='the IP/URL of the GLPI instance (example: "127.0.0.1")',
-    )
-    parser.add_argument(
-        "-t",
-        "--token",
-        metavar="user_token",
-        type=str,
-        required=True,
-        help="the user token string for authentication with GLPI",
-    )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-c",
         "--switch_config",
         metavar="switch_config",
         required=True,
         help="optional path to switch config YAML file",
     )
-    args = parser.parse_args()
+    args = parser.parser.parse_args()
 
     user_token = args.token
     ip = args.ip
@@ -136,11 +121,11 @@ def post_to_glpi(
                     logical_number = switch_port.split()[-1]
                     print(switch_port)
                     if (
-                        switch_port[0: len(switch_port) - len(logical_number) - 1]
+                        switch_port[0 : len(switch_port) - len(logical_number) - 1]
                         in switch_dict[switch_ip][3]
                     ):
                         speed = switch_dict[switch_ip][3][
-                            switch_port[0: len(switch_port) - len(logical_number) - 1]
+                            switch_port[0 : len(switch_port) - len(logical_number) - 1]
                         ]
                     else:
                         speed = 0

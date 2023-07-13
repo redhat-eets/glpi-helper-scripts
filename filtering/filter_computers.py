@@ -15,7 +15,6 @@
 import sys
 
 sys.path.append("..")
-import argparse
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization
 from common.utils import (
@@ -24,12 +23,12 @@ from common.utils import (
     print_final_help,
     get_computers,
 )
+from common.parser import argparser
 import json
 import subprocess
 from typing import Tuple
 import yaml
 import operator
-
 
 # Suppress InsecureRequestWarning caused by REST access without
 # certificate validation.
@@ -41,26 +40,9 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 def main() -> None:
     """Main function"""
     # Get the command line arguments from the user.
-    parser = argparse.ArgumentParser(
-        description="GLPI Computer reservation weighted filter."
-    )
-    parser.add_argument(
-        "-i",
-        "--ip",
-        metavar="ip",
-        type=str,
-        required=True,
-        help='the IP of the GLPI instance (example: "127.0.0.1")',
-    )
-    parser.add_argument(
-        "-t",
-        "--token",
-        metavar="user_token",
-        type=str,
-        required=True,
-        help="the user token string for authentication with GLPI",
-    )
-    parser.add_argument(
+    parser = argparser()
+    parser.parser.description = "GLPI Computer reservation weighted filter."
+    parser.parser.add_argument(
         "-l",
         "--list",
         metavar="list",
@@ -69,7 +51,7 @@ def main() -> None:
         help="the path to the yaml file of machine resource requirements: "
         + "core_count,bytes_of_RAM,minimum_disk_space",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-a",
         "--all",
         default=False,
@@ -78,14 +60,8 @@ def main() -> None:
         help="a flag to request output of all reservable machines per "
         + "requirement, bypassing the weighted filtering.",
     )
-    parser.add_argument(
-        "-v",
-        "--no_verify",
-        action="store_true",
-        help="Use this flag if you want to not verify the SSL session if it fails",
-    )
 
-    args = parser.parse_args()
+    args = parser.parser.parse_args()
     ip = args.ip
     user_token = args.token
     list = args.list

@@ -16,7 +16,6 @@
 import sys
 
 sys.path.append("..")
-import argparse
 import pexpect
 import requests
 from common.utils import (
@@ -37,32 +36,18 @@ import common.format_dicts as format_dicts
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization
 from common.switches import Switches
+from common.parser import argparser
 
 
 def main() -> None:
     """Main function"""
     # Get the command line arguments from the user.
-    parser = argparse.ArgumentParser(
-        description="GLPI Computer REST upload example. NOTE: needs to "
+    parser = argparser()
+    parser.parser.description = (
+        "GLPI Computer REST upload example. NOTE: needs to "
         + "be run with root priviledges."
     )
-    parser.add_argument(
-        "-i",
-        "--ip",
-        metavar="ip",
-        type=str,
-        required=True,
-        help='the IP/URL of the GLPI instance (example: "127.0.0.1")',
-    )
-    parser.add_argument(
-        "-t",
-        "--token",
-        metavar="user_token",
-        type=str,
-        required=True,
-        help="the user token string for authentication with GLPI",
-    )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-rsa",
         "--rsa_path",
         metavar="rsa_key_path",
@@ -70,7 +55,7 @@ def main() -> None:
         required=False,
         help="the path to the rsa key for ssh into the CoreOS node",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-userver",
         "--username_server",
         metavar="server_username",
@@ -78,7 +63,7 @@ def main() -> None:
         required=True,
         help="the username of the CoreOS node",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-ipserver",
         "--ip_server",
         metavar="server_ip",
@@ -86,31 +71,25 @@ def main() -> None:
         required=True,
         help="the ip of the CoreOS node",
     )
-    parser.add_argument(
-        "-v",
-        "--no_verify",
-        action="store_true",
-        help="Use this flag if you want to not verify the SSL session if it fails",
-    )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-c",
         "--switch_config",
         metavar="switch_config",
         help="optional path to switch config YAML file",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-e",
         "--experiment",
         action="store_true",
         help="Use this flag if you want to append '_TEST' to the serial number",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-p",
         "--put",
         action="store_true",
         help="Use this flag if you want to only use PUT requests",
     )
-    args = parser.parse_args()
+    args = parser.parser.parse_args()
 
     user_token = args.token
     rsa_key = args.rsa_path
