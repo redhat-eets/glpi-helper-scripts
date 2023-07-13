@@ -42,18 +42,30 @@ def main() -> None:
         help="a flag for concise output of only the yaml, useful for "
         + "programmatic parsing",
     )
-
+    parser.parser.add_argument(
+        "-H",
+        "--hostname",
+        type=str,
+        help="Use this flag if you want to list reservations for a specific machine",
+    )
+    parser.parser.add_argument(
+        "-u",
+        "--user",
+        type=str,
+        help="Use this flag if you want to list reservations made by a specific user"
+    )
     args = parser.parser.parse_args()
     user_token = args.token
     ip = args.ip
     global concise
     concise = args.yaml
     no_verify = args.no_verify
-
+    hostname = args.hostname
+    user = args.user
     urls = UrlInitialization(ip)
 
     with SessionHandler(user_token, urls, no_verify) as session:
-        print(get_reservations(session, urls))
+        print(get_reservations(session, urls, hostname, user))
 
     if not concise:
         print_final_help()
