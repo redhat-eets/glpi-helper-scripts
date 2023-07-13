@@ -1210,13 +1210,18 @@ def get_network_equipment(
 
 
 def get_reservations(
-    session: requests.sessions.Session, urls: UrlInitialization
+    session: requests.sessions.Session,
+    urls: UrlInitialization,
+    hostname: str = None,
+    user: str = None,
 ) -> str:
     """Method for printing all reservation_split to stdout
 
     Args:
         session (Session object):        the requests session object
         urls (UrlInitialization object): the URL object
+        hostname (str):                  Name of computer to search for
+        user (str):                      Name of user to search for
 
     Returns:
         list: reservations from GLPI
@@ -1239,10 +1244,12 @@ def get_reservations(
                 user_json = check_field_without_range(
                     session, (urls.USER_URL + str(reservation["users_id"]))
                 )
-                # computer_json = check_field_without_range(
-                #    session,
-                #    (urls.COMPUTER_URL + str(reservation_item_json["items_id"])),
-                # )
+
+                # If searching for specific user, only select
+                # reservations with that username.
+                if user and user.lower() not in user_json["name"].lower():
+                    continue
+
                 item_json = check_field_without_range(
                     session,
                     urls.BASE_URL
@@ -1250,6 +1257,12 @@ def get_reservations(
                     + "/"
                     + str(reservation_item_json["items_id"]),
                 )
+
+                # If searching for specific hostname, only select
+                # reservations with that hostname.
+                if hostname and hostname != item_json["name"]:
+                    continue
+
                 reservations_output += (
                     "Reservation " + str(reservation["id"]) + ":" + "\n"
                 )
@@ -1271,7 +1284,13 @@ def get_reservations(
                 )
                 reservations_output += "  Begins: " + str(reservation["begin"]) + "\n"
                 reservations_output += "  Ends: " + str(reservation["end"]) + "\n"
-                reservations_output += '  Comment: "' + reservation["comment"] + '"\n\n'
+
+                if reservation["comment"]:
+                    reservations_output += (
+                        '  Comment: "' + reservation["comment"] + '"\n\n'
+                    )
+                else:
+                    reservations_output += "  Comment: N/A \n\n"
     else:
         reservations_output += "\tNo reservations.\n"
     return reservations_output
