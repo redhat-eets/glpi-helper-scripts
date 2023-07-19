@@ -127,6 +127,12 @@ def main() -> None:
         action="store_true",
         help="Use this flag if you want to only use PUT requests",
     )
+    parser.parser.add_argument(
+        "-o",
+        "--overwrite",
+        action="store_true",
+        help="Use this flag if you want to overwrite existing names"
+    )
     args = parser.parser.parse_args()
 
     # Process General Config
@@ -154,6 +160,8 @@ def main() -> None:
     TEST = args.experiment
     global PUT
     PUT = args.put
+    global OVERWRITE
+    OVERWRITE = args.overwrite
 
     urls = UrlInitialization(ip)
     Switches(switch_config)
@@ -583,6 +591,8 @@ def post_to_glpi(  # noqa: C901
                 PUT = True
                 COMPUTER_ID = glpi_computer["id"]
                 comment = glpi_computer["comment"]
+                if glpi_computer["name"] != glpi_post["name"] and OVERWRITE != True:
+                    glpi_post["name"] = glpi_computer["name"]
                 break
 
     # Add BMC Address to the Computer

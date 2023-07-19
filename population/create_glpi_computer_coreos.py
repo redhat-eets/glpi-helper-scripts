@@ -89,6 +89,12 @@ def main() -> None:
         action="store_true",
         help="Use this flag if you want to only use PUT requests",
     )
+    parser.parser.add_argument(
+        "-o",
+        "--overwrite",
+        action="store_true",
+        help="Use this flag if you want to overwrite existing names"
+    )
     args = parser.parser.parse_args()
 
     user_token = args.token
@@ -102,6 +108,8 @@ def main() -> None:
     TEST = args.experiment
     global PUT
     PUT = args.put
+    global OVERWRITE
+    OVERWRITE = args.overwrite
 
     urls = UrlInitialization(ip)
     switch_info = Switches(switch_config)
@@ -282,6 +290,8 @@ def post_to_glpi(  # noqa: C901
                 global COMPUTER_ID
                 PUT = True
                 COMPUTER_ID = glpi_computer["id"]
+                if glpi_computer["name"] != glpi_post["name"] and OVERWRITE != True:
+                    glpi_post["name"] = glpi_computer["name"]
                 break
 
     # If the PUT flag is set then PUT the data to GLPI to modify the existing
