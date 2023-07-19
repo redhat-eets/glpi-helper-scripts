@@ -91,7 +91,7 @@ def main() -> None:
         "-o",
         "--overwrite",
         action="store_true",
-        help="Use this flag if you want to overwrite existing names"
+        help="Use this flag if you want to overwrite existing names",
     )
     args = parser.parser.parse_args()
 
@@ -112,7 +112,7 @@ def main() -> None:
     PUT = args.put
     global COMPUTER_ID
     COMPUTER_ID = args.computer_id
-    global OVERWRITE 
+    global OVERWRITE
     OVERWRITE = args.overwrite
 
     urls = UrlInitialization(ip)
@@ -274,10 +274,9 @@ def post_to_glpi(  # noqa: C901
                 global COMPUTER_ID
                 PUT = True
                 COMPUTER_ID = glpi_computer["id"]
-                if glpi_computer["name"] != glpi_post["name"] and OVERWRITE != True:
+                if glpi_computer["name"] != glpi_post["name"] and not OVERWRITE:
                     glpi_post["name"] = glpi_computer["name"]
                 break
-            
 
     # If the PUT flag is set then PUT the data to GLPI to modify the existing
     # machine, otherwise POST it to create a new machine.
