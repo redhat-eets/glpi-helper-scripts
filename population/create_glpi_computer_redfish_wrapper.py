@@ -72,7 +72,7 @@ def main():
         "-o",
         "--overwrite",
         action="store_true",
-        help="Use this flag if want to overwrite existing names"
+        help="Use this flag if want to overwrite existing names",
     )
     args = parser.parser.parse_args()
     general_config = args.general_config
@@ -97,7 +97,7 @@ def main():
         no_verify,
         put,
         test,
-        overwrite
+        overwrite,
     )
 
 
@@ -112,7 +112,7 @@ def parse_list(
     no_verify: bool,
     put: bool,
     experiment: bool,
-    overwrite: bool
+    overwrite: bool,
 ):
     """Method to create a REST session, getting the session_token and updating
     headers accrodingly. Return the session for further use.
@@ -132,6 +132,8 @@ def parse_list(
         put (bool): If present, this will make the script only do PUT requests to GLPI
         experiment (bool): If present, this will append '_TEST' to the serial number of
                            the device
+        overwrite (bool): If present, flagged to overwrite existing names with the
+                          default hostname
     """
     print("Parsing machine file\n")
     machine_list = ""
