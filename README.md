@@ -192,7 +192,7 @@ The `integrations/sunbird/compare_sunbird_with_glpi.py` script compares all mach
 
 Example script usage: 
 
-`python3 compare_sunbird_with_glpi.py -i <GLPI URL> -t <GLPI TOKEN> -v -g <path to YAML file> -u <Sunbird USERNAME> -p <Sunbird PASSWORD> -s <Sunbird URL>`
+`python3 compare_sunbird_with_glpi.py -i <GLPI URL> -t <GLPI API TOKEN> -v -g <path to YAML file> -u <Sunbird USERNAME> -p <Sunbird PASSWORD> -s <Sunbird URL>`
 
 You can also email the output of this script to someone via optional flags:
 
