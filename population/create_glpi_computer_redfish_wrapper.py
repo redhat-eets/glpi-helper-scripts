@@ -68,6 +68,12 @@ def main():
         action="store_true",
         help="Use this flag if you want to only use PUT requests",
     )
+    parser.parser.add_argument(
+        "-o",
+        "--overwrite",
+        action="store_true",
+        help="Use this flag if want to overwrite existing names"
+    )
     args = parser.parser.parse_args()
     general_config = args.general_config
     user_token = args.token
@@ -79,6 +85,7 @@ def main():
     no_verify = args.no_verify
     put = args.put
     test = args.experiment
+    overwrite = args.overwrite
     parse_list(
         general_config,
         user_token,
@@ -90,6 +97,7 @@ def main():
         no_verify,
         put,
         test,
+        overwrite
     )
 
 
@@ -104,6 +112,7 @@ def parse_list(
     no_verify: bool,
     put: bool,
     experiment: bool,
+    overwrite: bool
 ):
     """Method to create a REST session, getting the session_token and updating
     headers accrodingly. Return the session for further use.
@@ -169,6 +178,8 @@ def parse_list(
                     command.extend(["-p"])
                 if experiment:
                     command.extend(["-e"])
+                if overwrite:
+                    command.extend(["-o"])
                 output = subprocess.check_output(command)
                 print(output.decode("utf-8"))
                 print("\n")

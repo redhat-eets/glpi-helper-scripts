@@ -160,8 +160,7 @@ def main() -> None:
     TEST = args.experiment
     global PUT
     PUT = args.put
-    global OVERWRITE
-    OVERWRITE = args.overwrite
+    overwrite = args.overwrite
 
     urls = UrlInitialization(ip)
     Switches(switch_config)
@@ -242,6 +241,7 @@ def main() -> None:
             port_list,
             sku,
             urls,
+            overwrite
         )
 
     print_final_help()
@@ -499,6 +499,7 @@ def post_to_glpi(  # noqa: C901
     networks_dict: list,
     sku: bool,
     urls: UrlInitialization,
+    overwrite: bool
 ) -> None:
     """A method to post the JSON created to GLPI. This method calls numerous helper
        functions which create different parts of the JSON required, get fields from
@@ -516,6 +517,7 @@ def post_to_glpi(  # noqa: C901
         networks_dict (list): Information about network ports in system
         sku (bool): Determines if SKU should be used instead of Serial Number
         urls (common.urlinitialization.UrlInitialization): GLPI API URL's
+        overwrite (bool): flagged to overwrite existing names
     """
     if sku and "dell" in system_json["Manufacturer"].lower() and "SKU" in system_json:
         serial_number = system_json["SKU"]
@@ -591,7 +593,7 @@ def post_to_glpi(  # noqa: C901
                 PUT = True
                 COMPUTER_ID = glpi_computer["id"]
                 comment = glpi_computer["comment"]
-                if glpi_computer["name"] != glpi_post["name"] and not OVERWRITE:
+                if glpi_computer["name"] != glpi_post["name"] and not overwrite:
                     glpi_post["name"] = glpi_computer["name"]
                 break
 
