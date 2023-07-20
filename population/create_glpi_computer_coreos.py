@@ -114,7 +114,9 @@ def main() -> None:
     switch_info = Switches(switch_config)
 
     with SessionHandler(user_token, urls, no_verify) as session:
-        post_to_glpi(session, rsa_key, server_username, server_ip, urls, switch_info, overwrite)
+        post_to_glpi(
+            session, rsa_key, server_username, server_ip, urls, switch_info, overwrite
+        )
 
     print_final_help()
 
@@ -128,7 +130,7 @@ def post_to_glpi(  # noqa: C901
     server_ip: str,
     urls: UrlInitialization,
     switch_info: Switches,
-    overwrite: bool
+    overwrite: bool,
 ) -> None:
     """A method to post the JSON created to GLPI. This method calls numerous helper
        functions which create different parts of the JSON required, get fields from
