@@ -87,6 +87,12 @@ def main() -> None:
         default="",
         help="the id of the computer",
     )
+    parser.parser.add_argument(
+        "-o",
+        "--overwrite",
+        action="store_true",
+        help="Use this flag if you want to overwrite existing names",
+    )
     args = parser.parser.parse_args()
 
     with open(args.general_config, "r") as config_path:
@@ -106,17 +112,19 @@ def main() -> None:
     PUT = args.put
     global COMPUTER_ID
     COMPUTER_ID = args.computer_id
+    overwrite = args.overwrite
 
     urls = UrlInitialization(ip)
     switch_info = Switches(switch_config)
     with SessionHandler(user_token, urls, no_verify) as session:
-        post_to_glpi(session, urls, switch_info)
+        post_to_glpi(session, urls, switch_info, overwrite)
 
     print_final_help()
 
 
 def post_to_glpi(  # noqa: C901
-    session: requests.sessions.Session, urls: UrlInitialization, switch_info: Switches
+    session: requests.sessions.Session, urls: UrlInitialization, switch_info: Switches,
+    overwrite: bool
 ) -> None:
     """A method to post the JSON created to GLPI. This method calls numerous helper
        functions which create different parts of the JSON required, get fields from
@@ -126,6 +134,7 @@ def post_to_glpi(  # noqa: C901
         session (Session object): The requests session object
         urls (UrlInitialization object): the URL object
         switch_info (Switches object): Contains information about lab switches
+        overwrite (boolean): flagged to overwrite existing names
     """
     print("Getting local machine information\n")
     # Get the hostnamectl output as an example, splitting on newlines.
@@ -266,12 +275,15 @@ def post_to_glpi(  # noqa: C901
                 global COMPUTER_ID
                 PUT = True
                 COMPUTER_ID = glpi_computer["id"]
+                if glpi_computer["name"] != glpi_post["name"] and not overwrite:
+                    glpi_post["name"] = glpi_computer["name"]
                 break
 
     # If the PUT flag is set then PUT the data to GLPI to modify the existing
     # machine, otherwise POST it to create a new machine.
     print("Sending JSON to GLPI server:")
     if PUT:
+
         computer_response = session.put(
             url=urls.COMPUTER_URL + str(COMPUTER_ID), json={"input": glpi_post}
         )

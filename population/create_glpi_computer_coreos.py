@@ -89,6 +89,12 @@ def main() -> None:
         action="store_true",
         help="Use this flag if you want to only use PUT requests",
     )
+    parser.parser.add_argument(
+        "-o",
+        "--overwrite",
+        action="store_true",
+        help="Use this flag if you want to overwrite existing names",
+    )
     args = parser.parser.parse_args()
 
     user_token = args.token
@@ -102,12 +108,15 @@ def main() -> None:
     TEST = args.experiment
     global PUT
     PUT = args.put
+    overwrite = args.overwrite
 
     urls = UrlInitialization(ip)
     switch_info = Switches(switch_config)
 
     with SessionHandler(user_token, urls, no_verify) as session:
-        post_to_glpi(session, rsa_key, server_username, server_ip, urls, switch_info)
+        post_to_glpi(
+            session, rsa_key, server_username, server_ip, urls, switch_info, overwrite
+        )
 
     print_final_help()
 
@@ -121,6 +130,7 @@ def post_to_glpi(  # noqa: C901
     server_ip: str,
     urls: UrlInitialization,
     switch_info: Switches,
+    overwrite: bool,
 ) -> None:
     """A method to post the JSON created to GLPI. This method calls numerous helper
        functions which create different parts of the JSON required, get fields from
@@ -133,6 +143,7 @@ def post_to_glpi(  # noqa: C901
         server_ip (str): The ip of the CoreOS node
         urls (UrlInitialization object): the URL object
         switch_info (Switches object): Contains information about lab switches
+        overwrite (bool): Flagged to overwrite existing names
     """
     print("Getting machine information\n")
     ssh_command = "ssh -o StrictHostKeyChecking=no "
@@ -282,6 +293,8 @@ def post_to_glpi(  # noqa: C901
                 global COMPUTER_ID
                 PUT = True
                 COMPUTER_ID = glpi_computer["id"]
+                if glpi_computer["name"] != glpi_post["name"] and not overwrite:
+                    glpi_post["name"] = glpi_computer["name"]
                 break
 
     # If the PUT flag is set then PUT the data to GLPI to modify the existing
