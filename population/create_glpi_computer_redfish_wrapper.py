@@ -74,6 +74,20 @@ def main():
         action="store_true",
         help="Use this flag if want to overwrite existing names",
     )
+    parser.add_argument(
+        "-U", "--sunbird_username", type=str, help="Username of Sunbird account"
+    )
+    parser.add_argument(
+        "-P", "--sunbird_password", type=str, help="Password of Sunbird account"
+    )
+    parser.add_argument("-S", "--sunbird_url", type=str, help="URL of Sunbird instance")
+    parser.add_argument(
+        "-C",
+        "--sunbird_config",
+        metavar="general_config",
+        help="path to sunbird config YAML file, see "
+        + "integration/sunbird/example_sunbird.yml",
+    )
     args = parser.parser.parse_args()
     general_config = args.general_config
     user_token = args.token
@@ -86,6 +100,10 @@ def main():
     put = args.put
     test = args.experiment
     overwrite = args.overwrite
+    sunbird_username = args.sunbird_username
+    sunbird_password = args.sunbird_password
+    sunbird_url = args.sunbird_url
+    sunbird_config = args.sunbird_config
     parse_list(
         general_config,
         user_token,
@@ -98,6 +116,10 @@ def main():
         put,
         test,
         overwrite,
+        sunbird_username,
+        sunbird_password,
+        sunbird_url,
+        sunbird_config
     )
 
 
@@ -113,6 +135,10 @@ def parse_list(
     put: bool,
     experiment: bool,
     overwrite: bool,
+    sunbird_username: str,
+    sunbird_password: str,
+    sunbird_url: str,
+    sunbird_config: str
 ):
     """Method to create a REST session, getting the session_token and updating
     headers accrodingly. Return the session for further use.
@@ -134,6 +160,10 @@ def parse_list(
                            the device
         overwrite (bool): If present, flagged to overwrite existing names with the
                           default hostname
+        sunbird_username (str): Sunbird username
+        sunbird_password (str): Sunbird password
+        sunbird_url (str): Sunbird URL
+        sunbird_config (str): The path to the YAML for the sunbird config
     """
     print("Parsing machine file\n")
     machine_list = ""
@@ -182,6 +212,14 @@ def parse_list(
                     command.extend(["-e"])
                 if overwrite:
                     command.extend(["-o"])
+                if sunbird_username:
+                    command.extend(["-U", sunbird_username])
+                if sunbird_password:
+                    command.extend(["-P", sunbird_password])
+                if sunbird_url:
+                    command.extend(["-S", sunbird_url])
+                if sunbird_config:
+                    command.extend(["-C", sunbird_config])
                 output = subprocess.check_output(command)
                 print(output.decode("utf-8"))
                 print("\n")
