@@ -173,6 +173,7 @@ def main() -> None:
         username=ipmi_username,
         password=ipmi_password,
         default_prefix="/redfish/v1",
+        timeout=5,
     )
 
     REDFISH_OBJ.login(auth="session")
@@ -241,7 +242,7 @@ def main() -> None:
             port_list,
             sku,
             urls,
-            overwrite
+            overwrite,
         )
 
     print_final_help()
@@ -499,7 +500,7 @@ def post_to_glpi(  # noqa: C901
     networks_dict: list,
     sku: bool,
     urls: UrlInitialization,
-    overwrite: bool
+    overwrite: bool,
 ) -> None:
     """A method to post the JSON created to GLPI. This method calls numerous helper
        functions which create different parts of the JSON required, get fields from
