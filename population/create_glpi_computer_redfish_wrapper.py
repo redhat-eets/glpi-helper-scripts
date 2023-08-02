@@ -12,6 +12,8 @@
 # Imports.
 import subprocess
 import sys
+
+sys.path.append("..")
 from common.parser import argparser
 
 
@@ -144,6 +146,7 @@ def parse_list(
     except FileNotFoundError:
         sys.exit("can't open %s" % (machine_list))
 
+    error_messages = []
     for line in machine_list:
         if line[0] != "#":
             split_line = line.split(",")
@@ -182,12 +185,34 @@ def parse_list(
                     command.extend(["-e"])
                 if overwrite:
                     command.extend(["-o"])
-                output = subprocess.check_output(command)
-                print(output.decode("utf-8"))
+                try:
+                    output = subprocess.check_output(command, stderr=subprocess.STDOUT)
+                    print(output.decode("utf-8"))
+                    print("\n")
+                except subprocess.CalledProcessError as e:
+                    # Capture the error message and add it to the list
+                    full_error = e.output.decode().strip()
+                    print("Error:", full_error.splitlines()[-1])
+                    error_messages.append((split_line[0].strip(), full_error.splitlines()[-1]))
                 print("\n")
             else:
                 print("Line formatting incorrect, length is not 5:\n\t")
                 print(split_line)
+    if error_messages:
+        max_message_length = max(len(message[1]) for message in error_messages)
+        max_bmc_ip = max(len(message[0]) for message in error_messages)
+        table_width = max(max_message_length + max_bmc_ip + 9, 54)
+        print(table_width, max_bmc_ip, max_message_length)
+        print("\nErrors:")
+        print("+" + "-" * table_width + "+")
+        print(f"| {'BMC IP':^{max_bmc_ip + 2}} | {'Error Message':^{max_message_length + 2}} |")
+        print("+" + "-" * table_width + "+")
+        for error in error_messages:
+            print(f"| {error[0]:^{max_bmc_ip + 2}} | {error[1]:^{max_message_length + 2}} |")
+        print("+" + "-" * table_width + "+")
+    else:
+        print("No errors detected!")
+        print("\n")
 
     return
 

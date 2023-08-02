@@ -173,6 +173,7 @@ def main() -> None:
         username=ipmi_username,
         password=ipmi_password,
         default_prefix="/redfish/v1",
+        timeout = 5,
     )
 
     REDFISH_OBJ.login(auth="session")
