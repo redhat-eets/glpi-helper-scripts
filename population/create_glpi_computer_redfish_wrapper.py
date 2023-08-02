@@ -193,7 +193,9 @@ def parse_list(
                     # Capture the error message and add it to the list
                     full_error = e.output.decode().strip()
                     print("Error:", full_error.splitlines()[-1])
-                    error_messages.append((split_line[0].strip(), full_error.splitlines()[-1]))
+                    error_messages.append(
+                        (split_line[0].strip(), full_error.splitlines()[-1])
+                    )
                 print("\n")
             else:
                 print("Line formatting incorrect, length is not 5:\n\t")
@@ -205,10 +207,14 @@ def parse_list(
         print(table_width, max_bmc_ip, max_message_length)
         print("\nErrors:")
         print("+" + "-" * table_width + "+")
-        print(f"| {'BMC IP':^{max_bmc_ip + 2}} | {'Error Message':^{max_message_length + 2}} |")
+        print(
+            f"| {'BMC IP':^{max_bmc_ip + 2}} | {'Error Message':^{max_message_length + 2}} |"
+        )
         print("+" + "-" * table_width + "+")
         for error in error_messages:
-            print(f"| {error[0]:^{max_bmc_ip + 2}} | {error[1]:^{max_message_length + 2}} |")
+            print(
+                f"| {error[0]:^{max_bmc_ip + 2}} | {error[1]:^{max_message_length + 2}} |"
+            )
         print("+" + "-" * table_width + "+")
     else:
         print("No errors detected!")
