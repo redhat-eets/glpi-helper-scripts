@@ -123,8 +123,10 @@ def main() -> None:
 
 
 def post_to_glpi(  # noqa: C901
-    session: requests.sessions.Session, urls: UrlInitialization, switch_info: Switches,
-    overwrite: bool
+    session: requests.sessions.Session,
+    urls: UrlInitialization,
+    switch_info: Switches,
+    overwrite: bool,
 ) -> None:
     """A method to post the JSON created to GLPI. This method calls numerous helper
        functions which create different parts of the JSON required, get fields from
@@ -283,7 +285,6 @@ def post_to_glpi(  # noqa: C901
     # machine, otherwise POST it to create a new machine.
     print("Sending JSON to GLPI server:")
     if PUT:
-
         computer_response = session.put(
             url=urls.COMPUTER_URL + str(COMPUTER_ID), json={"input": glpi_post}
         )
