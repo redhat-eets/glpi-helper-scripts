@@ -278,7 +278,7 @@ def update_redfish_system_uri(
         REDFISH_SIMPLE_STORAGE_URI = REDFISH_SYSTEM_URI + "/SimpleStorage"  # May 503
         global REDFISH_SYSTEMS_ETHERNET_INTERFACES_URI
         REDFISH_SYSTEMS_ETHERNET_INTERFACES_URI = (
-            REDFISH_SYSTEM_URI + "/1/EthernetInterfaces"
+            REDFISH_SYSTEM_URI + "/EthernetInterfaces"
         )  # May 503 (Needs TAS per manual)
         global REDFISH_MEMORY_URI
         REDFISH_MEMORY_URI = REDFISH_SYSTEM_URI + "/Memory"
@@ -447,6 +447,7 @@ def get_network(redfish_session: redfish.rest.v1.HttpClient) -> list:
     network_summary = redfish_session.get(REDFISH_NETWORK_URI)
     nic_list = []
     port_list = []
+    eth_list = []
     if "Members" in network_summary.text:
         for nic in json.loads(network_summary.text)["Members"]:
             network_interface = redfish_session.get(nic["@odata.id"])
@@ -473,11 +474,19 @@ def get_network(redfish_session: redfish.rest.v1.HttpClient) -> list:
                             if "@odata.id" in port:
                                 port_info = redfish_session.get(port["@odata.id"])
                                 port_list.append(port_info.text)
+    ethernet_summary = redfish_session.get(REDFISH_SYSTEMS_ETHERNET_INTERFACES_URI)
+    if "Members" in ethernet_summary.text:
+        for eth in json.loads(ethernet_summary.text)["Members"]:
+            ethernet_interface = redfish_session.get(eth["@odata.id"])
+            eth_list.append(ethernet_interface.text)
 
     if check_resp_redfish_api(network_summary) != 200:
         return False
     else:
-        return nic_list, port_list
+        if port_list:
+            return nic_list, port_list
+        else:
+            return nic_list, eth_list
 
 
 def post_to_glpi(  # noqa: C901
@@ -673,6 +682,10 @@ def post_to_glpi(  # noqa: C901
             json.loads(name),
         )
         try:
+            speed = json.loads(name)["SpeedMbps"]
+        except:
+            pass
+        try:
             speed = json.loads(name)["SupportedLinkCapabilities"][0]["LinkSpeedMbps"]
         except KeyError:
             speed = 0
@@ -798,7 +811,7 @@ def update_bmc_address(
     """
     # plugin_response: list of response objects. meant to be from check_fields.
     if "ERROR" in plugin_response[0].json()[0]:
-        glpi_post = add_bmc_address_to_comments(glpi_post, comment, redfish_base_url)
+        glpi_post = add_bmc_address_to_comments(glpi_post, redfish_base_url, comment)
         print(
             "The provided field endpoint is unavailable, "
             + "adding the BMC address to the comments."
@@ -1106,6 +1119,8 @@ def check_and_post_network_port(
     }
     if "AssociatedNetworkAddresses" in network:
         glpi_post["mac"] = network["AssociatedNetworkAddresses"][0]
+    elif "MACAddress" in network:
+        glpi_post["mac"] = network["MACAddress"]
     if not id_found:
         response = session.post(url=url, json={"input": glpi_post})
         id = response.json()["id"]
