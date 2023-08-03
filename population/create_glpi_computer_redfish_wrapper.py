@@ -74,14 +74,16 @@ def main():
         action="store_true",
         help="Use this flag if want to overwrite existing names",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-U", "--sunbird_username", type=str, help="Username of Sunbird account"
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-P", "--sunbird_password", type=str, help="Password of Sunbird account"
     )
-    parser.add_argument("-S", "--sunbird_url", type=str, help="URL of Sunbird instance")
-    parser.add_argument(
+    parser.parser.add_argument(
+        "-S", "--sunbird_url", type=str, help="URL of Sunbird instance"
+    )
+    parser.parser.add_argument(
         "-C",
         "--sunbird_config",
         metavar="general_config",
@@ -119,7 +121,7 @@ def main():
         sunbird_username,
         sunbird_password,
         sunbird_url,
-        sunbird_config
+        sunbird_config,
     )
 
 
@@ -138,7 +140,7 @@ def parse_list(
     sunbird_username: str,
     sunbird_password: str,
     sunbird_url: str,
-    sunbird_config: str
+    sunbird_config: str,
 ):
     """Method to create a REST session, getting the session_token and updating
     headers accrodingly. Return the session for further use.

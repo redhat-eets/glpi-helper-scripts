@@ -133,14 +133,16 @@ def main() -> None:
         action="store_true",
         help="Use this flag if you want to overwrite existing names",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-U", "--sunbird_username", type=str, help="Username of Sunbird account"
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-P", "--sunbird_password", type=str, help="Password of Sunbird account"
     )
-    parser.add_argument("-S", "--sunbird_url", type=str, help="URL of Sunbird instance")
-    parser.add_argument(
+    parser.parser.add_argument(
+        "-S", "--sunbird_url", type=str, help="URL of Sunbird instance"
+    )
+    parser.parser.add_argument(
         "-C",
         "--sunbird_config",
         metavar="general_config",
@@ -158,8 +160,11 @@ def main() -> None:
         ACCELERATOR_IDS = config_map["ACCELERATOR_IDS"]
 
     # Process Sunbird Config
-    with open(args.sunbird_config, "r") as sunbird_config_path:
-        sunbird_config = yaml.safe_load(sunbird_config_path)
+    if args.sunbird_config:
+        with open(args.sunbird_config, "r") as sunbird_config_path:
+            sunbird_config = yaml.safe_load(sunbird_config_path)
+    else:
+        sunbird_config = args.sunbird_config
 
     global LAB_CHOICE
     LAB_CHOICE = args.lab
@@ -176,7 +181,10 @@ def main() -> None:
     no_verify = args.no_verify
     sunbird_username = args.sunbird_username
     sunbird_password = args.sunbird_password
-    sunbird_url = validate_url(args.sunbird_url)
+    if args.sunbird_url:
+        sunbird_url = validate_url(args.sunbird_url)
+    else:
+        sunbird_url = args.sunbird_url
     global TEST
     TEST = args.experiment
     global PUT
@@ -669,7 +677,11 @@ def post_to_glpi(  # noqa: C901
         )
     else:
         print(
-            "To get rack locations from Sunbird, you need to provide the Sunbird URL, username, and password via the -U, -P, and -S flags. Importing without Sunbird info..."
+            (
+                "To get rack locations from Sunbird, you need to provide the "
+                "Sunbird URL, username, and password via the -U, -P, and -S flags."
+                "Importing without Sunbird info..."
+            )
         )
 
     # NOTE: The 'check_and_post' style helper methods called below (for the
@@ -945,7 +957,7 @@ def strip_hostname(nslookup_output: list) -> str:
     for line in nslookup_output:
         if "name = " in line:
             name_index = line.index("name = ")
-            name = line[name_index + len("name = ") : -1]
+            name = line[name_index + len("name = "): -1]
             return name
 
 
@@ -960,9 +972,9 @@ def add_rack_location_from_sunbird(
     sunbird_password: str,
     sunbird_config: dict,
 ) -> None:
-    """A method to check for a computer's rack location in Sunbird and post it to GLPI. 
+    """A method to check for a computer's rack location in Sunbird and post it to GLPI.
     If not all three of sunbird_username, sunbird_password, and sunbird_config are set,
-    the check will be skipped and the import will continue without Sunbird data. 
+    the check will be skipped and the import will continue without Sunbird data.
 
     Args:
         session (Session object): The requests session object
@@ -984,6 +996,8 @@ def add_rack_location_from_sunbird(
             {"name": "cmbCabinet"},
             {"name": "cmbUPosition"},
             {"name": "tiSerialNumber"},
+            {"name": "tiDataCenterName"},
+            {"name": "tiRoomName"},
         ],
         "customFieldByLabel": True,
     }
@@ -999,31 +1013,29 @@ def add_rack_location_from_sunbird(
         location_data = sunbird_json[0]
         if location_data["cmbLocation"] in sunbird_config:
             location_config = sunbird_config[location_data["cmbLocation"]]
-            
+
         else:
             location_config = None
 
         # If not explicitly provided, set the data center and room to any text before
         # the first > and after the last >. So Example > 01 > Test becomes
-        # (Example, Test). Do this if the location of the machine in Sunbird isn't 
+        # (Example, Test). Do this if the location of the machine in Sunbird isn't
         # found in the provided config file.
-        #TODO: this can be pulled from the sunbird response directly
         if location_config is None or (
             "Data Center" not in location_config and "Room" not in location_config
         ):
-            print("No Sunbird config provided, setting data center and room automatically")
-            location_parts = location_data["cmbLocation"].split(" > ")
-            data_center = location_parts[0]
-            room = location_parts[-1]
+            print(
+                "No Sunbird config provided, setting data center and room automatically"
+            )
+            data_center = location_data["tiDataCenterName"]
+            room = location_data["tiRoomName"]
         else:
             data_center = location_config.get("Data Center", None)
             room = location_config.get("Room", None)
 
-
-
         location_details = {
             "location": locations_id,
-            "full_location": location_data["cmbLocation"], # Example > 01 > Test #TODO this may be unnecessary
+            "full_location": location_data["cmbLocation"],
             "DataCenter": data_center,
             "Room": room,
             "Rack": location_data["cmbCabinet"],
@@ -1037,7 +1049,13 @@ def add_rack_location_from_sunbird(
         )
 
         rack_id = check_and_post_rack(
-            session, field=location_details, url=urls.RACK_URL, dcrooms_id=dcr_id
+            session,
+            field=location_details,
+            url=urls.RACK_URL,
+            dcrooms_id=dcr_id,
+            sunbird_url=sunbird_url,
+            sunbird_username=sunbird_username,
+            sunbird_password=sunbird_password,
         )
 
         rack_item_id = check_and_post_rack_item(
@@ -1048,8 +1066,14 @@ def add_rack_location_from_sunbird(
             item_type="Computer",
             computer_id=computer_id,
         )
-
         print(rack_item_id)
+        print(
+            (
+                f"Added computer to {location_details['DataCenter']} > "
+                f"{location_details['Room']} > {location_details['Rack']} > "
+                f"{location_details['Item_Rack']}"
+            )
+        )
 
     else:
         print("Couldn't find machine in Sunbird, moving on without location details")
@@ -1111,8 +1135,8 @@ def check_and_post_data_center(
 def check_and_post_data_center_room(
     session: requests.sessions.Session, field: dict, url: str, dc_id: int
 ) -> int:
-    """A helper method to check the data center room field at the given API endpoint (URL)
-       and post the field if it is not present.
+    """A helper method to check the data center room field at the given API endpoint
+    (URL) and post the field if it is not present.
 
     Args:
         Session (Session object): The requests session object
@@ -1145,7 +1169,7 @@ def check_and_post_data_center_room(
     id_found = False
     for glpi_fields in glpi_fields_list:
         for glpi_field in glpi_fields.json():
-            if glpi_field["name"] == str(id):
+            if glpi_field["name"] == str(id) and glpi_field["datacenters_id"] == dc_id:
                 id = glpi_field["id"]
                 id_found = True
                 print("Found existing Data Center Room, moving on...")
@@ -1167,7 +1191,13 @@ def check_and_post_data_center_room(
 
 
 def check_and_post_rack(
-    session: requests.sessions.Session, field: dict, url: str, dcrooms_id: int
+    session: requests.sessions.Session,
+    field: dict,
+    url: str,
+    dcrooms_id: int,
+    sunbird_url: str,
+    sunbird_username: str,
+    sunbird_password: str,
 ) -> int:
     """A helper method to check the rack field at the given API endpoint (URL)
        and post the field if it is not present.
@@ -1176,7 +1206,9 @@ def check_and_post_rack(
         field (dict): Contains information about the rack location
         url (str): GLPI API endpoint for the rack field
         dcrooms_id (int): the id of the relevant data center room in GLPI
-
+        sunbird_username (str): Sunbird username
+        sunbird_password (str): Sunbird password
+        sunbird_url (str): Sunbird URL
     Returns:
         id (int): ID of the rack in GLPI
     """
@@ -1202,7 +1234,7 @@ def check_and_post_rack(
     id_found = False
     for glpi_fields in glpi_fields_list:
         for glpi_field in glpi_fields.json():
-            if glpi_field["name"] == id:
+            if glpi_field["name"] == id and glpi_field["dcrooms_id"] == dcrooms_id:
                 id = glpi_field["id"]
                 id_found = True
                 print("Found existing Rack, moving on...")
@@ -1211,18 +1243,60 @@ def check_and_post_rack(
     # Create a field if one was not found and return the ID.
     if id_found is False:
         print("Creating GLPI Rack field:")
+        number_units = get_rack_units(
+            field, sunbird_url, sunbird_username, sunbird_password
+        )
         glpi_post = {
             "locations_id": field["location"],
             "name": id,
             "dcrooms_id": dcrooms_id,
-            "number_units": 42,
-            "bgcolor": "#fec95c",  # Hardcoded, otherwise the rack won't show up correctly in the UI
+            "number_units": number_units,
+            "bgcolor": "#fec95c",  # Hardcoded, otherwise the rack won't show up in UI
         }
         post_response = session.post(url=url, json={"input": glpi_post})
         print(str(post_response) + "\n")
         id = post_response.json()["id"]
 
     return id
+
+
+def get_rack_units(
+    field: dict, sunbird_url: str, sunbird_username: str, sunbird_password: str
+) -> int:
+    """Retrieve the number of units in the rack from Sunbird
+
+    Args:
+        field (dict): Contains information about the rack location
+        sunbird_username (str): Sunbird username
+        sunbird_password (str): Sunbird password
+        sunbird_url (str): Sunbird URL
+
+    Returns:
+        int: Number of units in rack
+    """
+    headers = {"Accept": "application/json", "Content-Type": "application/json"}
+    payload = {
+        "columns": [
+            {"name": "tiClass", "filter": {"eq": "Cabinet"}},
+            {"name": "cmbLocation", "filter": {"eq": field["full_location"]}},
+            {"name": "cmbCabinet", "filter": {"eq": field["Rack"]}},
+        ],
+        "selectedColumns": [{"name": "tiRUs"}],
+        "customFieldByLabel": True,
+    }
+    sunbird_response = requests.post(
+        f"{sunbird_url}/api/v2/quicksearch/items",
+        headers=headers,
+        json=payload,
+        verify=False,
+        auth=(sunbird_username, sunbird_password),
+    )
+    sunbird_json = sunbird_response.json()["searchResults"]["items"][0]
+
+    number_units = int(sunbird_json["tiRUs"])
+
+    return number_units
+
 
 def check_and_post_rack_item(
     session: requests.sessions.Session,
@@ -1233,7 +1307,7 @@ def check_and_post_rack_item(
     computer_id: int,
 ) -> int:
     """A helper method to check the rack item field at the given API endpoint (URL)
-       and post the field if it is not present. 
+       and post the field if it is not present.
 
     Args:
         Session (Session object): The requests session object
@@ -1287,8 +1361,8 @@ def check_and_post_rack_item(
             "position": field["Item_Rack"],
             "racks_id": rack_id,
             "itemtype": item_type,
-            "bgcolor": "#69ceba",  # Hardcoded, otherwise the rack won't show up correctly in the UI
-            "orientation": 0,  # Hardcoded, otherwise the rack won't show up correctly in the UI
+            "bgcolor": "#69ceba",  # Hardcoded, otherwise the rack won't show up in UI
+            "orientation": 0,  # Hardcoded, otherwise the rack won't show up in UI
         }
         post_response = session.post(url=url, json={"input": glpi_post})
         print(str(post_response) + "\n")
