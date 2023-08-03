@@ -683,8 +683,8 @@ def post_to_glpi(  # noqa: C901
         )
         try:
             speed = json.loads(name)["SpeedMbps"]
-        except:
-            speed = 0
+        except KeyError:
+            pass
         try:
             speed = json.loads(name)["SupportedLinkCapabilities"][0]["LinkSpeedMbps"]
         except KeyError:
