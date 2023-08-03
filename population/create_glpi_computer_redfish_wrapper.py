@@ -214,12 +214,17 @@ def parse_list(
                     command.extend(["-e"])
                 if overwrite:
                     command.extend(["-o"])
-                if sunbird_username:
-                    command.extend(["-U", sunbird_username])
-                if sunbird_password:
-                    command.extend(["-P", sunbird_password])
-                if sunbird_url:
-                    command.extend(["-S", sunbird_url])
+                if sunbird_username and sunbird_password and sunbird_url:
+                    command.extend(
+                        [
+                            "-U",
+                            sunbird_username,
+                            "-P",
+                            sunbird_password,
+                            "-S",
+                            sunbird_url,
+                        ]
+                    )
                 if sunbird_config:
                     command.extend(["-C", sunbird_config])
                 output = subprocess.check_output(command)
