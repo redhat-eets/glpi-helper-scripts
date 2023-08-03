@@ -23,7 +23,9 @@ class argparser:
             type=str,
             default=getenv("GLPI_TOKEN"),
             required=not getenv("GLPI_TOKEN"),
-            help="the user token string for authentication with GLPI",
+            help="the user token string for authentication with GLPI."
+            + "This is the API token generated through GLPI under remote"
+            + "access keys.",
         )
         self.parser.add_argument(
             "-v",
