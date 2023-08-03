@@ -188,7 +188,6 @@ def parse_list(
                     split_line,
                     general_config,
                     user_token,
-                    split_line,
                     ip,
                     no_dns,
                     sku,
@@ -223,10 +222,9 @@ def build_command(
     split_line: list,
     general_config: str,
     user_token: str,
-    list: str,
+    ip: str,
     no_dns: str,
     sku: bool,
-    ip: str,
     switch_config: str,
     no_verify: bool,
     put: bool,
@@ -244,12 +242,11 @@ def build_command(
         split_line (list): Information about a machine, split into a list
         general_config (str): The path to the YAML for the general config
         user_token (str): The user token string for authentication with GLPI
-        list (str): The path to the list of machines in the format: ipmi_ip,ipmi_user,
-                    ipmi_pass,public_ip,lab
+        ip (str): The IP of the GLPI instance
+
         no_dns (str): Name to use for system instead of hostname or serial number
         sku (bool): Whether or not to use the SKU instead of the serial number of the
                     system
-        ip (str): The IP of the GLPI instance
         switch_config (str): The path to the YAML for the switch config
         no_verify (bool): If present, this will not verify the SSL session if it fails,
                           allowing the script to proceed
