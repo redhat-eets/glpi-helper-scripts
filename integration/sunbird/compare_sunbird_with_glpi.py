@@ -197,7 +197,10 @@ def get_sunbird_machines(
                 {"name": "tiSubclass", "filter": {"eq": "Standard"}},
                 {"name": "tiClass", "filter": {"eq": "Device"}},
                 {"name": "cmbLocation", "filter": {"eq": location}},
-                {"name": "cmbCabinet", "filter": {"in": config_map[location]["Cabinets"]}},
+                {
+                    "name": "cmbCabinet",
+                    "filter": {"in": config_map[location]["Cabinets"]},
+                },
             ],
             "selectedColumns": [
                 {"name": "tiName"},

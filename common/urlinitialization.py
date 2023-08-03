@@ -83,7 +83,7 @@ class UrlInitialization:
         self.DCROOM_URL = self.BASE_URL + "DCRoom"
         self.RACK_URL = self.BASE_URL + "Rack"
         self.ITEM_RACK_URL = self.BASE_URL + "Item_Rack"
-        
+
         # MISC
         self.USER_URL = self.BASE_URL + "USER/"
         self.LOCATION_URL = self.BASE_URL + "Location/"
