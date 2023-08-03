@@ -184,52 +184,24 @@ def parse_list(
             split_line = line.split(",")
             if len(split_line) == 5:
                 print("Calling create_glpi_computer_redfish for line: " + line)
-                command = [
-                    "./create_glpi_computer_redfish.py",
-                    "-g",
+                command = build_command(
+                    split_line,
                     general_config,
-                    "-t",
                     user_token,
-                    "--ipmi_ip",
-                    split_line[0].strip(),
-                    "--ipmi_user",
-                    split_line[1].strip(),
-                    "--ipmi_pass",
-                    split_line[2].strip(),
-                    "--public_ip",
-                    split_line[3].strip(),
-                    "--lab",
-                    split_line[4].strip(),
-                    "-i",
+                    split_line,
                     ip,
-                ]
-                if no_dns:
-                    command.extend(["-n", no_dns])
-                if sku:
-                    command.extend(["-s"])
-                if switch_config:
-                    command.extend(["-c", switch_config])
-                if no_verify:
-                    command.extend(["-v"])
-                if put:
-                    command.extend(["-p"])
-                if experiment:
-                    command.extend(["-e"])
-                if overwrite:
-                    command.extend(["-o"])
-                if sunbird_username and sunbird_password and sunbird_url:
-                    command.extend(
-                        [
-                            "-U",
-                            sunbird_username,
-                            "-P",
-                            sunbird_password,
-                            "-S",
-                            sunbird_url,
-                        ]
-                    )
-                if sunbird_config:
-                    command.extend(["-C", sunbird_config])
+                    no_dns,
+                    sku,
+                    switch_config,
+                    no_verify,
+                    put,
+                    experiment,
+                    overwrite,
+                    sunbird_username,
+                    sunbird_password,
+                    sunbird_url,
+                    sunbird_config
+                )
                 try:
                     output = subprocess.check_output(command, stderr=subprocess.STDOUT)
                     print(output.decode("utf-8"))
@@ -245,6 +217,99 @@ def parse_list(
                 print(split_line)
     print_error_table(error_messages)
     return
+
+
+def build_command(
+    split_line: list,
+    general_config: str,
+    user_token: str,
+    list: str,
+    no_dns: str,
+    sku: bool,
+    ip: str,
+    switch_config: str,
+    no_verify: bool,
+    put: bool,
+    experiment: bool,
+    overwrite: bool,
+    sunbird_username: str,
+    sunbird_password: str,
+    sunbird_url: str,
+    sunbird_config: str,
+) -> list:
+    """Method to create a REST session, getting the session_token and updating
+    headers accrodingly. Return the session for further use.
+
+    Args:
+        split_line (list): Information about a machine, split into a list
+        general_config (str): The path to the YAML for the general config
+        user_token (str): The user token string for authentication with GLPI
+        list (str): The path to the list of machines in the format: ipmi_ip,ipmi_user,
+                    ipmi_pass,public_ip,lab
+        no_dns (str): Name to use for system instead of hostname or serial number
+        sku (bool): Whether or not to use the SKU instead of the serial number of the
+                    system
+        ip (str): The IP of the GLPI instance
+        switch_config (str): The path to the YAML for the switch config
+        no_verify (bool): If present, this will not verify the SSL session if it fails,
+                          allowing the script to proceed
+        put (bool): If present, this will make the script only do PUT requests to GLPI
+        experiment (bool): If present, this will append '_TEST' to the serial number of
+                           the device
+        overwrite (bool): If present, flagged to overwrite existing names with the
+                          default hostname
+        sunbird_username (str): Sunbird username
+        sunbird_password (str): Sunbird password
+        sunbird_url (str): Sunbird URL
+        sunbird_config (str): The path to the YAML for the sunbird config
+    """
+    command = [
+        "./create_glpi_computer_redfish.py",
+        "-g",
+        general_config,
+        "-t",
+        user_token,
+        "--ipmi_ip",
+        split_line[0].strip(),
+        "--ipmi_user",
+        split_line[1].strip(),
+        "--ipmi_pass",
+        split_line[2].strip(),
+        "--public_ip",
+        split_line[3].strip(),
+        "--lab",
+        split_line[4].strip(),
+        "-i",
+        ip,
+    ]
+    if no_dns:
+        command.extend(["-n", no_dns])
+    if sku:
+        command.extend(["-s"])
+    if switch_config:
+        command.extend(["-c", switch_config])
+    if no_verify:
+        command.extend(["-v"])
+    if put:
+        command.extend(["-p"])
+    if experiment:
+        command.extend(["-e"])
+    if overwrite:
+        command.extend(["-o"])
+    if sunbird_username and sunbird_password and sunbird_url:
+        command.extend(
+            [
+                "-U",
+                sunbird_username,
+                "-P",
+                sunbird_password,
+                "-S",
+                sunbird_url,
+            ]
+        )
+    if sunbird_config:
+        command.extend(["-C", sunbird_config])
+    return command
 
 
 def print_error_table(error_messages: dict) -> None:
