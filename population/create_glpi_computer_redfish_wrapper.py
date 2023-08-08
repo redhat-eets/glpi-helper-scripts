@@ -199,7 +199,7 @@ def parse_list(
                     sunbird_username,
                     sunbird_password,
                     sunbird_url,
-                    sunbird_config
+                    sunbird_config,
                 )
                 try:
                     output = subprocess.check_output(command, stderr=subprocess.STDOUT)

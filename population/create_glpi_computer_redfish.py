@@ -184,7 +184,7 @@ def main() -> None:
     if args.sunbird_url:
         sunbird_url = validate_url(args.sunbird_url)
     else:
-        sunbird_url = args.sunbird_url
+        sunbird_url = None
     global TEST
     TEST = args.experiment
     global PUT
@@ -660,7 +660,7 @@ def post_to_glpi(  # noqa: C901
         print(str(computer_response) + "\n")
         COMPUTER_ID = computer_response.json()["id"]
 
-    # Get Rack Location from Sunbird if relevant flags are provided
+    # Get Rack Location from Sunbird if all relevant flags are provided
     if all(
         parameter is not None
         for parameter in [sunbird_username, sunbird_password, sunbird_url]
@@ -886,6 +886,7 @@ def update_bmc_address(
         glpi_post = set_bmc_address_field(
             glpi_post, plugin_response, computer_id, redfish_base_url, put
         )
+        print("Adding BMC address to the 'BMC Address' field...")
 
     return glpi_post
 
@@ -1068,13 +1069,6 @@ def add_rack_location_from_sunbird(
             computer_id=computer_id,
         )
         print(rack_item_id)
-        print(
-            (
-                f"Added computer to {location_details['DataCenter']} > "
-                f"{location_details['Room']} > {location_details['Rack']} > "
-                f"{location_details['Item_Rack']}"
-            )
-        )
 
     else:
         print("Couldn't find machine in Sunbird, moving on without location details")
@@ -1351,7 +1345,13 @@ def check_and_post_rack_item(
             ):
                 id = glpi_field["id"]
                 id_found = True
-                print("Found existing Rack Item, moving on...")
+                print(
+                    (
+                        f"Found existing Rack Item in {field['DataCenter']} > "
+                        f"{field['Room']} > {field['Rack']} > "
+                        f"{field['Item_Rack']}, moving on..."
+                    )
+                )
                 break
 
     # Create a field if one was not found and return the ID.
@@ -1369,6 +1369,13 @@ def check_and_post_rack_item(
         print(str(post_response) + "\n")
         print(post_response.text)
         id = post_response.json()["id"]
+        print(
+            (
+                f"Added computer to {field['DataCenter']} > "
+                f"{field['Room']} > {field['Rack']} > "
+                f"{field['Item_Rack']}"
+            )
+        )
 
     return id
 
