@@ -76,24 +76,7 @@ def post_to_glpi(
     global switch_dict
 
     print("Checking GLPI Network Equipment fields:")
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    while more_fields:
-        range_url = (
-            urls.NETWORK_EQUIPMENT_URL
-            + "?range="
-            + str(api_range)
-            + "-"
-            + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
+    glpi_fields_list = check_fields(session, urls.NETWORK_EQUIPMENT_URL)
 
     print("Getting switch information\n")
     for lab in switch_info.switch_map.keys():
