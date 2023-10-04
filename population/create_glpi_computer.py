@@ -31,6 +31,7 @@ from common.utils import (
     check_and_post_network_port_ethernet,
     check_and_post_nic,
     check_and_post_nic_item,
+    check_fields,
 )
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization
@@ -250,25 +251,7 @@ def post_to_glpi(  # noqa: C901
 
     # Get the list of computers and check the serial number. If the serial
     # number matches then use a PUT to modify the cooresponding computer by ID.
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    # Fixing the issue of not getting all data without ranges.
-    while more_fields:
-        range_url = (
-            urls.COMPUTER_URL
-            + "?range="
-            + str(api_range)
-            + "-"
-            + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
+    glpi_fields_list = check_fields(session, urls.COMPUTER_URL)
 
     for glpi_fields in glpi_fields_list:
         for glpi_computer in glpi_fields.json():
@@ -535,21 +518,7 @@ def check_and_post_gpu(
     # Check if the field is present at the URL endpoint.
     print("Checking GLPI Graphics fields:")
     id = ""
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    # Fixing the issue of not getting all data without ranges.
-    while more_fields:
-        range_url = (
-            url + "?range=" + str(api_range) + "-" + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
+    glpi_fields_list = check_fields(session, url)
 
     id_found = False
     for glpi_fields in glpi_fields_list:
@@ -599,21 +568,7 @@ def check_and_post_gpu_item(
     # Check if the field is present at the URL endpoint.
     print("Checking GLPI GPU Item fields:")
     id = ""
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    # Fixing the issue of not getting all data without ranges.
-    while more_fields:
-        range_url = (
-            url + "?range=" + str(api_range) + "-" + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
+    glpi_fields_list = check_fields(session, url)
 
     id_found = False
     for glpi_fields in glpi_fields_list:
@@ -658,21 +613,7 @@ def check_and_post_generic_type(
     # Check if the field is present at the URL endpoint.
     print("Checking GLPI Generic Type fields:")
     id = ""
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    # Fixing the issue of not getting all data without ranges.
-    while more_fields:
-        range_url = (
-            url + "?range=" + str(api_range) + "-" + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
+    glpi_fields_list = check_fields(session, url)
 
     id_found = False
     for glpi_fields in glpi_fields_list:
@@ -719,21 +660,7 @@ def check_and_post_device_generic(
     # Check if the field is present at the URL endpoint.
     print("Checking GLPI Generic fields:")
     id = ""
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    # Fixing the issue of not getting all data without ranges.
-    while more_fields:
-        range_url = (
-            url + "?range=" + str(api_range) + "-" + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
+    glpi_fields_list = check_fields(session, url)
 
     id_found = False
     for glpi_fields in glpi_fields_list:
@@ -789,21 +716,7 @@ def check_and_post_device_generic_item(
     # Check if the field is present at the URL endpoint.
     print("Checking GLPI Generic Item fields:")
     id = ""
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    # Fixing the issue of not getting all data without ranges.
-    while more_fields:
-        range_url = (
-            url + "?range=" + str(api_range) + "-" + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
+    glpi_fields_list = check_fields(session, url)
 
     id_found = False
     for glpi_fields in glpi_fields_list:
