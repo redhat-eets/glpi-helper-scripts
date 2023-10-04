@@ -1070,6 +1070,7 @@ def add_rack_location_from_sunbird(
         else:
             location_details["Item_Rack"] = None
 
+        # Check for Data Center
         if location_details["DataCenter"] is None:
             print("No Data Center could be retrieved from Sunbird, moving on...")
             return
@@ -1077,16 +1078,21 @@ def add_rack_location_from_sunbird(
         dc_id = check_and_post_data_center(
             session, field=location_details, url=urls.DATACENTER_URL
         )
+
+        # Check for Data Center Room
         if location_details["Room"] is None:
             print("No Data Center Room was retrieved from Sunbird, moving on...")
             return
+
         dcr_id = check_and_post_data_center_room(
             session, field=location_details, url=urls.DCROOM_URL, dc_id=dc_id
         )
 
+        # Check for Rack
         if location_details["Rack"] is None:
             print("No cabinet could be retrieved from Sunbird, moving on...")
             return
+
         rack_id = check_and_post_rack(
             session,
             field=location_details,
@@ -1097,11 +1103,13 @@ def add_rack_location_from_sunbird(
             sunbird_password=sunbird_password,
         )
 
+        # Check for Item Rack
         if location_details["Item_Rack"] is None:
             print(
                 "No U Position was retrieved from Sunbird, computer will not be assigned to rack."
             )
             return
+
         rack_item_id = check_and_post_rack_item(
             session,
             field=location_details,
@@ -1111,6 +1119,9 @@ def add_rack_location_from_sunbird(
             computer_id=computer_id,
         )
         print(rack_item_id)
+
+    else:
+        print("Couldn't find machine in Sunbird, moving on without location details")
 
 
 def check_and_post_data_center(
