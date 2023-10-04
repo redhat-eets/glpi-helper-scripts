@@ -639,7 +639,7 @@ def post_to_glpi(  # noqa: C901
     COMPUTER_ID = None
     for glpi_fields in glpi_fields_list:
         for glpi_computer in glpi_fields.json():
-            if glpi_computer["uuid"] == uuid:
+            if glpi_computer["serial"] == serial_number:
                 global PUT
                 PUT = True
                 COMPUTER_ID = glpi_computer["id"]
