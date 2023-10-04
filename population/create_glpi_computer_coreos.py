@@ -31,6 +31,7 @@ from common.utils import (
     check_and_post_nic,
     check_and_post_nic_item,
     check_and_post_disk_item,
+    check_fields,
 )
 import common.format_dicts as format_dicts
 from common.sessionhandler import SessionHandler

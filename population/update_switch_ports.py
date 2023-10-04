@@ -27,6 +27,7 @@ from common.utils import (
     get_switch_ports,
     check_and_post_network_port,
     check_and_post_network_port_ethernet,
+    check_fields,
 )
 from common.switches import Switches
 
