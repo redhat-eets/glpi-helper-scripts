@@ -1106,7 +1106,10 @@ def add_rack_location_from_sunbird(
         # Check for Item Rack
         if location_details["Item_Rack"] is None:
             print(
-                "No U Position was retrieved from Sunbird, computer will not be assigned to rack."
+                (
+                    "No U Position was retrieved from Sunbird, "
+                    "computer will not be assigned to rack."
+                )
             )
             return
 
