@@ -1006,11 +1006,9 @@ def add_rack_location_from_sunbird(
     payload = {
         "columns": [{"name": "tiSerialNumber", "filter": {"eq": serial_number}}],
         "selectedColumns": [
-            {"name": "tiName"},
             {"name": "cmbLocation"},
             {"name": "cmbCabinet"},
             {"name": "cmbUPosition"},
-            {"name": "tiSerialNumber"},
             {"name": "tiDataCenterName"},
             {"name": "tiRoomName"},
         ],
