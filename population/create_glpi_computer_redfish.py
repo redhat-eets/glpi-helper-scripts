@@ -974,7 +974,7 @@ def strip_hostname(nslookup_output: list) -> str:
     for line in nslookup_output:
         if "name = " in line:
             name_index = line.index("name = ")
-            name = line[name_index + len("name = "): -1]
+            name = line[name_index + len("name = ") : -1]
             return name
 
 
@@ -1044,12 +1044,14 @@ def add_rack_location_from_sunbird(
             print(
                 "No Sunbird config provided, setting data center and room automatically"
             )
-            data_center = location_data["tiDataCenterName"]
+            data_center = location_data.get("tiDataCenterName", None)
             if "tiRoomName" in location_data:
                 room = location_data["tiRoomName"]
-            else:
-                # If the Room is not specified in Sunbird, use the Data Center name
+            # If the Room is not specified in Sunbird, use the Data Center name
+            elif data_center is not None:
                 room = location_data["tiDataCenterName"]
+            else:
+                room = None
         else:
             data_center = location_config.get("Data Center", None)
             room = location_config.get("Room", None)
@@ -1067,45 +1069,48 @@ def add_rack_location_from_sunbird(
             location_details["Item_Rack"] = int(location_data["cmbUPosition"])
         else:
             location_details["Item_Rack"] = None
+
+        if location_details["DataCenter"] is None:
+            print("No Data Center could be retrieved from Sunbird, moving on...")
+            return
+
         dc_id = check_and_post_data_center(
             session, field=location_details, url=urls.DATACENTER_URL
         )
+        if location_details["Room"] is None:
+            print("No Data Center Room was retrieved from Sunbird, moving on...")
+            return
         dcr_id = check_and_post_data_center_room(
             session, field=location_details, url=urls.DCROOM_URL, dc_id=dc_id
         )
 
-        if location_details["Rack"] is not None:
-            rack_id = check_and_post_rack(
-                session,
-                field=location_details,
-                url=urls.RACK_URL,
-                dcrooms_id=dcr_id,
-                sunbird_url=sunbird_url,
-                sunbird_username=sunbird_username,
-                sunbird_password=sunbird_password,
-            )
-
-            if location_details["Item_Rack"] is not None:
-                rack_item_id = check_and_post_rack_item(
-                    session,
-                    field=location_details,
-                    url=urls.ITEM_RACK_URL,
-                    rack_id=rack_id,
-                    item_type="Computer",
-                    computer_id=computer_id,
-                )
-                print(rack_item_id)
-            else:
-                print(
-                    (
-                        "No U Position was retrieved from Sunbird, "
-                        "computer will not be assigned to rack."
-                    )
-                )
-        else:
+        if location_details["Rack"] is None:
             print("No cabinet could be retrieved from Sunbird, moving on...")
-    else:
-        print("Couldn't find machine in Sunbird, moving on without location details")
+            return
+        rack_id = check_and_post_rack(
+            session,
+            field=location_details,
+            url=urls.RACK_URL,
+            dcrooms_id=dcr_id,
+            sunbird_url=sunbird_url,
+            sunbird_username=sunbird_username,
+            sunbird_password=sunbird_password,
+        )
+
+        if location_details["Item_Rack"] is None:
+            print(
+                "No U Position was retrieved from Sunbird, computer will not be assigned to rack."
+            )
+            return
+        rack_item_id = check_and_post_rack_item(
+            session,
+            field=location_details,
+            url=urls.ITEM_RACK_URL,
+            rack_id=rack_id,
+            item_type="Computer",
+            computer_id=computer_id,
+        )
+        print(rack_item_id)
 
 
 def check_and_post_data_center(
