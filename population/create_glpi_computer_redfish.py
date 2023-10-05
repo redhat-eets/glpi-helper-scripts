@@ -202,7 +202,7 @@ def main() -> None:
         username=ipmi_username,
         password=ipmi_password,
         default_prefix="/redfish/v1",
-        timeout=5,
+        timeout=20,
     )
 
     REDFISH_OBJ.login(auth="session")
@@ -626,6 +626,7 @@ def post_to_glpi(  # noqa: C901
                 COMPUTER_ID = glpi_computer["id"]
                 comment = glpi_computer["comment"]
                 if glpi_computer["name"] != glpi_post["name"] and not overwrite:
+                    print("Using pre-existing name for computer...")
                     glpi_post["name"] = glpi_computer["name"]
                 break
 
@@ -877,10 +878,10 @@ def update_bmc_address(
             + "adding the BMC address to the comments."
         )
     else:
+        print("Checking the 'BMC Address' field...")
         glpi_post = set_bmc_address_field(
             glpi_post, plugin_response, computer_id, redfish_base_url, put
         )
-        print("Adding BMC address to the 'BMC Address' field...")
 
     return glpi_post
 
@@ -935,9 +936,10 @@ def set_bmc_address_field(
             for computer in computer_group.json():
                 if computer["items_id"] == computer_id:
                     if computer["bmcaddressfield"]:
+                        print("Leaving 'BMC Address' field unchanged...")
                         return glpi_post
     glpi_post["bmcaddressfield"] = redfish_base_url.partition("https://")[2]
-
+    print("Updating BMC Address Field...")
     return glpi_post
 
 
@@ -953,7 +955,7 @@ def strip_hostname(nslookup_output: list) -> str:
     for line in nslookup_output:
         if "name = " in line:
             name_index = line.index("name = ")
-            name = line[name_index + len("name = "): -1]
+            name = line[name_index + len("name = ") : -1]
             return name
 
 
@@ -1021,8 +1023,14 @@ def add_rack_location_from_sunbird(
             print(
                 "No Sunbird config provided, setting data center and room automatically"
             )
-            data_center = location_data["tiDataCenterName"]
-            room = location_data["tiRoomName"]
+            data_center = location_data.get("tiDataCenterName", None)
+            if "tiRoomName" in location_data:
+                room = location_data["tiRoomName"]
+            # If the Room is not specified in Sunbird, use the Data Center name
+            elif data_center is not None:
+                room = location_data["tiDataCenterName"]
+            else:
+                room = None
         else:
             data_center = location_config.get("Data Center", None)
             room = location_config.get("Room", None)
@@ -1032,15 +1040,37 @@ def add_rack_location_from_sunbird(
             "full_location": location_data["cmbLocation"],
             "DataCenter": data_center,
             "Room": room,
-            "Rack": location_data["cmbCabinet"],
-            "Item_Rack": int(location_data["cmbUPosition"]),
         }
+
+        location_details["Rack"] = location_data.get("cmbCabinet", None)
+
+        if location_data["cmbUPosition"]:
+            location_details["Item_Rack"] = int(location_data["cmbUPosition"])
+        else:
+            location_details["Item_Rack"] = None
+
+        # Check for Data Center
+        if location_details["DataCenter"] is None:
+            print("No Data Center could be retrieved from Sunbird, moving on...")
+            return
+
         dc_id = check_and_post_data_center(
             session, field=location_details, url=urls.DATACENTER_URL
         )
+
+        # Check for Data Center Room
+        if location_details["Room"] is None:
+            print("No Data Center Room was retrieved from Sunbird, moving on...")
+            return
+
         dcr_id = check_and_post_data_center_room(
             session, field=location_details, url=urls.DCROOM_URL, dc_id=dc_id
         )
+
+        # Check for Rack
+        if location_details["Rack"] is None:
+            print("No cabinet could be retrieved from Sunbird, moving on...")
+            return
 
         rack_id = check_and_post_rack(
             session,
@@ -1051,6 +1081,16 @@ def add_rack_location_from_sunbird(
             sunbird_username=sunbird_username,
             sunbird_password=sunbird_password,
         )
+
+        # Check for Item Rack
+        if location_details["Item_Rack"] is None:
+            print(
+                (
+                    "No U Position was retrieved from Sunbird, "
+                    "computer will not be assigned to rack."
+                )
+            )
+            return
 
         rack_item_id = check_and_post_rack_item(
             session,
