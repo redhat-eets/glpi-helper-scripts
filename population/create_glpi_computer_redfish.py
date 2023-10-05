@@ -427,6 +427,7 @@ def get_storage(redfish_session: redfish.rest.v1.HttpClient) -> list:  # noqa: C
     if "Oem" in system_summary:
         if "Hp" in system_summary["Oem"] or "Hpe" in system_summary["Oem"]:
             hp = True
+            smart_storage_info = None
             if "Hp" in system_summary["Oem"]:
                 if "Links" in system_summary["Oem"]["Hp"]:
                     if "SmartStorage" in system_summary["Oem"]["Hp"]["Links"]:
@@ -443,32 +444,32 @@ def get_storage(redfish_session: redfish.rest.v1.HttpClient) -> list:  # noqa: C
                                 "@odata.id"
                             ]
                         )
-
-            if "Links" in smart_storage_info.dict:
-                if "ArrayControllers" in smart_storage_info.dict["Links"]:
-                    ac_info = redfish_session.get(
-                        smart_storage_info.dict["Links"]["ArrayControllers"][
-                            "@odata.id"
-                        ]
-                    )
-                    if "Members" in ac_info.dict:
-                        for ac in ac_info.dict["Members"]:
-                            ac_member_info = redfish_session.get(ac["@odata.id"])
-                            if "Links" in ac_member_info.dict:
-                                if "PhysicalDrives" in ac_member_info.dict["Links"]:
-                                    hp_drive_endpoint = redfish_session.get(
-                                        ac_member_info.dict["Links"]["PhysicalDrives"][
-                                            "@odata.id"
-                                        ]
-                                    )
-                                    if "Members" in hp_drive_endpoint.dict:
-                                        for hp_drive in hp_drive_endpoint.dict[
-                                            "Members"
-                                        ]:
-                                            hp_drive_info = redfish_session.get(
-                                                hp_drive["@odata.id"]
-                                            )
-                                            drive_list.append(hp_drive_info.text)
+            if smart_storage_info:
+                if "Links" in smart_storage_info.dict:
+                    if "ArrayControllers" in smart_storage_info.dict["Links"]:
+                        ac_info = redfish_session.get(
+                            smart_storage_info.dict["Links"]["ArrayControllers"][
+                                "@odata.id"
+                            ]
+                        )
+                        if "Members" in ac_info.dict:
+                            for ac in ac_info.dict["Members"]:
+                                ac_member_info = redfish_session.get(ac["@odata.id"])
+                                if "Links" in ac_member_info.dict:
+                                    if "PhysicalDrives" in ac_member_info.dict["Links"]:
+                                        hp_drive_endpoint = redfish_session.get(
+                                            ac_member_info.dict["Links"][
+                                                "PhysicalDrives"
+                                            ]["@odata.id"]
+                                        )
+                                        if "Members" in hp_drive_endpoint.dict:
+                                            for hp_drive in hp_drive_endpoint.dict[
+                                                "Members"
+                                            ]:
+                                                hp_drive_info = redfish_session.get(
+                                                    hp_drive["@odata.id"]
+                                                )
+                                                drive_list.append(hp_drive_info.text)
 
     if check_resp_redfish_api(storage_summary) != 200 and not hp:
         return False
