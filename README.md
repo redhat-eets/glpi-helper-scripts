@@ -124,17 +124,17 @@ This is the recommended workflow for creating reservations using the REST API. O
 username:example_user
 start:"2021-09-30 23:59:59"
 end:"2021-10-30 23:59:59"
-epic: "JIRA-0000" (optional)
-comment:~
+epic: "JIRA-0000"                  # (optional)
+comment:~                          # (optional)
 servers:
   hostname-1:
     ~
   hostname-2:
-    username:overwritten_username
-    start:"2021-10-01 23:59:59"
-    end:"2021-10-31 23:59:59"
-    epic: "JIRA-0001"
-    comment:"a comment overwriting the above global comment"
+    username:overwritten_username  # (optional) override user
+    start:"2021-10-01 23:59:59"    # (optional) override start
+    end:"2021-10-31 23:59:59"      # (optional) override end
+    epic: "JIRA-0001"              # (optional) override Jira Epic, if defined above
+    comment:"a comment"            # (optional) override comment, if defined above
 </pre>
 For usage information see the help message provided by the script.
 
