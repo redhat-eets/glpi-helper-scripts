@@ -1314,22 +1314,39 @@ def check_and_post_rack_item(
     id_found = False
     for glpi_fields in glpi_fields_list:
         for glpi_field in glpi_fields.json():
-            if (
-                glpi_field["itemtype"] == item_type
-                and glpi_field["items_id"] == computer_id
-                and glpi_field["position"] == field["Item_Rack"]
-                and glpi_field["racks_id"] == rack_id
-            ):
+            if glpi_field["items_id"] == computer_id:
                 id = glpi_field["id"]
                 id_found = True
-                print(
-                    (
-                        f"Found existing Rack Item in {field['DataCenter']} > "
-                        f"{field['Room']} > {field['Rack']} > "
-                        f"{field['Item_Rack']}, moving on..."
+                if (
+                    glpi_field["itemtype"] != item_type
+                    or glpi_field["position"] != field["Item_Rack"]
+                    or glpi_field["racks_id"] != rack_id
+                ):
+                    # Update item with changed location
+                    glpi_put = {
+                        "position": field["Item_Rack"],
+                        "racks_id": rack_id,
+                        "itemtype": item_type,
+                        "id": id
+                    }
+                    put_response = session.put(url=url, json={"input": glpi_put})
+                    print(put_response)
+                    print(
+                        (
+                            f"Changed item's rack to {field['Rack']} and/or "
+                            f"position to {field['Item_Rack']}"
+                        )
                     )
-                )
-                break
+                    break
+                else:
+                    print(
+                        (
+                            f"Found existing Rack Item in {field['DataCenter']} > "
+                            f"{field['Room']} > {field['Rack']} > "
+                            f"{field['Item_Rack']}, moving on..."
+                        )
+                    )
+                    break
 
     # Create a field if one was not found and return the ID.
     if id_found is False:
