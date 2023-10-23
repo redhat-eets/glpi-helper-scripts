@@ -1315,7 +1315,9 @@ def check_and_update_model_size(
     )
     required_units = computer_model_info.json()["required_units"]
     if required_units != field["required_units"]:
-        print(f"Modifying model size from {required_units} to {field['required_units']}")
+        print(
+            f"Modifying model size from {required_units} to {field['required_units']}"
+        )
         glpi_put = {"required_units": field["required_units"], "id": computer_model_id}
         session.put(url=urls.COMPUTER_MODEL_URL, json={"input": glpi_put})
 
