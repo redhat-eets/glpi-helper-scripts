@@ -32,6 +32,7 @@ from common.utils import (
     check_and_post_nic,
     check_and_post_nic_item,
     check_fields,
+    create_or_update_glpi_item,
 )
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization
@@ -540,12 +541,7 @@ def check_and_post_gpu(
         "devicegraphiccardmodels_id": gpu_model_id,
     }
 
-    if id_found is False:
-        post_response = session.post(url=url, json={"input": glpi_post})
-        id = post_response.json()["id"]
-    else:
-        post_response = session.put(url=url, json={"input": glpi_post})
-    print(str(post_response) + "\n")
+    id = create_or_update_glpi_item(session, url, glpi_post, id_found, id)
 
     return id
 
@@ -586,12 +582,7 @@ def check_and_post_gpu_item(
     print("Creating GLPI GPU Item field:")
     glpi_post = {"items_id": item_id, "itemtype": item, "devicegraphiccards_id": gpu_id}
 
-    if id_found is False:
-        post_response = session.post(url=url, json={"input": glpi_post})
-        id = post_response.json()["id"]
-    else:
-        post_response = session.put(url=url, json={"input": glpi_post})
-    print(str(post_response) + "\n")
+    id = create_or_update_glpi_item(session, url, glpi_post, id_found, id)
 
     return id
 
@@ -627,12 +618,7 @@ def check_and_post_generic_type(
     print("Creating GLPI Generic Type field:")
     glpi_post = {"name": type}
 
-    if id_found is False:
-        post_response = session.post(url=url, json={"input": glpi_post})
-        id = post_response.json()["id"]
-    else:
-        post_response = session.put(url=url, json={"input": glpi_post})
-    print(str(post_response) + "\n")
+    id = create_or_update_glpi_item(session, url, glpi_post, id_found, id)
 
     return id
 
@@ -682,12 +668,7 @@ def check_and_post_device_generic(
         "manufacturers_id": manufacturers_id,
     }
 
-    if id_found is False:
-        post_response = session.post(url=url, json={"input": glpi_post})
-        id = post_response.json()["id"]
-    else:
-        post_response = session.put(url=url, json={"input": glpi_post})
-    print(str(post_response) + "\n")
+    id = create_or_update_glpi_item(session, url, glpi_post, id_found, id)
 
     return id
 
@@ -738,12 +719,7 @@ def check_and_post_device_generic_item(
         "devicegenerics_id": generic_id,
     }
 
-    if id_found is False:
-        post_response = session.post(url=url, json={"input": glpi_post})
-        id = post_response.json()["id"]
-    else:
-        post_response = session.put(url=url, json={"input": glpi_post})
-    print(str(post_response) + "\n")
+    id = create_or_update_glpi_item(session, url, glpi_post, id_found, id)
 
     return id
 

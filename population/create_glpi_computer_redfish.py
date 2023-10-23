@@ -29,6 +29,7 @@ from common.utils import (
     check_and_post_nic,
     check_and_post_nic_item,
     check_fields,
+    create_or_update_glpi_item,
 )
 from common.switches import Switches
 from common.parser import argparser
@@ -1534,13 +1535,8 @@ def check_and_post_network_port(
         glpi_post["mac"] = network["AssociatedNetworkAddresses"][0]
     elif "MACAddress" in network:
         glpi_post["mac"] = network["MACAddress"]
-    if not id_found:
-        response = session.post(url=url, json={"input": glpi_post})
-        id = response.json()["id"]
-    else:
-        # 200 put code does not return id field.
-        response = session.put(url=url, json={"input": glpi_post})
-    print(str(response) + "\n")
+
+    id = create_or_update_glpi_item(session, url, glpi_post, id_found, id)
 
     return id
 

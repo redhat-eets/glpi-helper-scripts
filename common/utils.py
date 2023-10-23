@@ -300,12 +300,7 @@ def check_and_post_operating_system_item(
         "operatingsystemkernelversions_id": operating_system_kernel_version_id,
     }
 
-    if id_found is False:
-        post_response = session.post(url=url, json={"input": glpi_post})
-        id = post_response.json()["id"]
-    else:
-        post_response = session.put(url=url, json={"input": glpi_post})
-    print(str(post_response) + "\n")
+    id = create_or_update_glpi_item(session, url, glpi_post, id_found, id)
 
     return id
 
@@ -378,13 +373,7 @@ def check_and_post_network_port(  # noqa: C901
             if line[0] == "ether":
                 glpi_post["mac"] = line[1]
                 break
-    if id_found is False:
-        response = session.post(url=url, json={"input": glpi_post})
-        id = response.json()["id"]
-    else:
-        # 200 put code does not return id field.
-        response = session.put(url=url, json={"input": glpi_post})
-    print(str(response) + "\n")
+    id = create_or_update_glpi_item(session, url, glpi_post, id_found, id)
 
     # Attempt to connect the network ports.
     if "mac" in glpi_post:
@@ -458,14 +447,7 @@ def check_and_post_network_port_ethernet(
     if speed != 0:
         glpi_post["speed"] = speed
 
-    if not id_found:
-        response = session.post(url=url, json={"input": glpi_post})
-        print(response.json())
-        id = response.json()["id"]
-    else:
-        # 200 put code does not return id field.
-        response = session.put(url=url, json={"input": glpi_post})
-    print(str(response) + "\n")
+    id = create_or_update_glpi_item(session, url, glpi_post, id_found, id)
 
     return id
 
@@ -542,18 +524,9 @@ def check_and_post_network_port_network_port(  # noqa: C901
             "networkports_id_1": server_network_port_id,
             "networkports_id_2": switch_port_id,
         }
-        if not id_found:
-            response = session.post(
-                url=network_port_network_port_url, json={"input": glpi_post}
-            )
-            print(response.json())
-            id = response.json()["id"]
-        else:
-            # 200 put code does not return id field.
-            response = session.put(
-                url=network_port_network_port_url, json={"input": glpi_post}
-            )
-        print(str(response) + "\n")
+        id = create_or_update_glpi_item(
+            session, network_port_network_port_url, glpi_post, id_found, id
+        )
 
         return id
     else:
@@ -619,12 +592,7 @@ def check_and_post_device_memory(
         "devicememorytypes_id": memory_type_id,
     }
 
-    if not id_found:
-        post_response = session.post(url=url, json={"input": glpi_post})
-        id = post_response.json()["id"]
-    else:
-        post_response = session.put(url=url, json={"input": glpi_post})
-    print(str(post_response) + "\n")
+    id = create_or_update_glpi_item(session, url, glpi_post, id_found, id)
 
     return id
 
@@ -785,12 +753,7 @@ def check_and_post_disk_item(
     }
     if partition is not None:
         glpi_post["mountpoint"] = partition
-    if not id_found:
-        post_response = session.post(url=url, json={"input": glpi_post})
-        print(str(post_response) + "\n")
-    else:
-        post_response = session.put(url=url, json={"input": glpi_post})
-        print(str(post_response) + "\n")
+    id = create_or_update_glpi_item(session, url, glpi_post, id_found, id)
 
     return
 
@@ -850,12 +813,7 @@ def check_and_post_nic(
         "devicenetworkcardmodels_id": nic_model_id,
     }
 
-    if not id_found:
-        post_response = session.post(url=url, json={"input": glpi_post})
-        id = post_response.json()["id"]
-    else:
-        post_response = session.put(url=url, json={"input": glpi_post})
-    print(str(post_response) + "\n")
+    id = create_or_update_glpi_item(session, url, glpi_post, id_found, id)
 
     return id
 
@@ -910,12 +868,7 @@ def check_and_post_nic_item(
         "mac": mac,
     }
 
-    if not id_found:
-        post_response = session.post(url=url, json={"input": glpi_post})
-        id = post_response.json()["id"]
-    else:
-        post_response = session.put(url=url, json={"input": glpi_post})
-    print(str(post_response) + "\n")
+    id = create_or_update_glpi_item(session, url, glpi_post, id_found, id)
 
     return id
 
@@ -1111,6 +1064,31 @@ def get_switch_ports(lab: str, switch: str, switch_info: Switches) -> dict:
     child.sendline("exit")
 
     return switch_output_dict
+
+
+def create_or_update_glpi_item(
+    session: Session, url: str, glpi_post: dict, id_found: bool, id: int
+) -> int:
+    """Creates or updates a GLPI Item field based on the id_found flag.
+
+    Args:
+        session (Session object): The requests session object
+        url (str): GLPI API endpoint for the operating system item field
+        glpi_post (dict): Dictionary containing the GLPI OS Item field data to post or update
+        id_found (bool): Flag indicating if the ID was found or not
+        id (int): The current ID value
+
+    Returns:
+        id (int): ID of the created or updated operating system item in GLPI
+    """
+    if id_found is False:
+        post_response = session.post(url=url, json={"input": glpi_post})
+        id = post_response.json()["id"]
+    else:
+        post_response = session.put(url=url, json={"input": glpi_post})
+    print(str(post_response) + "\n")
+
+    return id
 
 
 def error(message):
