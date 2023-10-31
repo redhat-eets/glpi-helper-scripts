@@ -88,6 +88,7 @@ class UrlInitialization:
         self.USER_URL = self.BASE_URL + "USER/"
         self.LOCATION_URL = self.BASE_URL + "Location/"
         self.BMC_URL = self.BASE_URL + "PluginFieldsComputerbmcaddres/"
+        self.GROUP_URL = self.BASE_URL + "Group/"
 
         # Redfish API URLS (Supermicro rev 1.0a)
         self.REDFISH_SYSTEM_GENERIC = "/redfish/v1/Systems"
