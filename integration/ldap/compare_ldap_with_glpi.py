@@ -26,7 +26,8 @@ def main():
         "-c",
         "--ldap_config",
         metavar="ldap_config",
-        help="path to LDAP config YAML file, see integration/ldap/general_ldap_example.yaml",
+        help=("path to LDAP config YAML file," 
+              "see integration/ldap/general_ldap_example.yaml"),
         required=True,
     )
     parser.parser.add_argument(
@@ -69,7 +70,7 @@ def gather_ldap_users(group_map: dict, ldap_server: str, base_dn: str) -> dict:
 
     Args:
         group_map (dict): User-defined dictionary w/ ldap groups to search
-        ldap_server (str): Specifies the ldap server to search (ex: ldaps://ldap.company.com)
+        ldap_server (str): Specifies the ldap server to search 
         base_dn (str): Base to use in the ldap query (ex: 'company')
 
     Returns:
@@ -144,7 +145,7 @@ def parse_ldap(result: str, group_map: dict) -> dict:
 def sync_ldap_with_glpi(
     session: requests.sessions.Session, urls: UrlInitialization, group_map: dict
 ) -> None:
-    """Make sure GLPI users are added to the same groups that they are associated with in GLPI
+    """Sync GLPI groups with LDAP groups
 
     Args:
         session (requests.sessions.Session): The requests session object
