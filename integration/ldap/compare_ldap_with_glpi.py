@@ -26,7 +26,7 @@ def main():
         "-c",
         "--ldap_config",
         metavar="ldap_config",
-        help=("path to LDAP config YAML file," 
+        help=("path to LDAP config YAML file,"
               "see integration/ldap/general_ldap_example.yaml"),
         required=True,
     )
