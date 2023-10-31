@@ -1,0 +1,5 @@
+---
+Group 1: # Name of group in GLPI
+  ldap: group1-users # Name of group in LDAP
+Group 1 > Group 2:
+  ldap: group2-users
