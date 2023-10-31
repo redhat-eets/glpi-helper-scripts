@@ -70,7 +70,7 @@ def gather_ldap_users(group_map: dict, ldap_server: str, base_dn: str) -> dict:
 
     Args:
         group_map (dict): User-defined dictionary w/ ldap groups to search
-        ldap_server (str): Specifies the ldap server to search 
+        ldap_server (str): Specifies the ldap server to search
         base_dn (str): Base to use in the ldap query (ex: 'company')
 
     Returns:
