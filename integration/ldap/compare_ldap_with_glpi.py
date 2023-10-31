@@ -4,6 +4,7 @@ import re
 
 import yaml
 import requests
+
 sys.path.append("../..")
 
 # Suppress InsecureRequestWarning caused by REST access to Redfish without
@@ -16,6 +17,7 @@ from common.urlinitialization import UrlInitialization
 from common.utils import check_fields, print_final_help
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 
 def main():
 
@@ -61,6 +63,7 @@ def main():
 
     print_final_help()
 
+
 def gather_ldap_users(group_map: dict, ldap_server: str, base_dn: str) -> dict:
     """Use ldapsearch to get all users from the specified LDAP groups
 
@@ -82,11 +85,21 @@ def gather_ldap_users(group_map: dict, ldap_server: str, base_dn: str) -> dict:
     ldap_attributes = ["owner", "uniqueMember"]
 
     cmd = [
-        'ldapsearch', '-LLL', '-H', ldap_server, '-x',
-        '-D', ldap_username, '-w', ldap_password,
-        '-b', ldap_search_base, ldap_search_filter] +ldap_attributes
-    
-    result = subprocess.check_output(cmd).decode('utf-8')
+        "ldapsearch",
+        "-LLL",
+        "-H",
+        ldap_server,
+        "-x",
+        "-D",
+        ldap_username,
+        "-w",
+        ldap_password,
+        "-b",
+        ldap_search_base,
+        ldap_search_filter,
+    ] + ldap_attributes
+
+    result = subprocess.check_output(cmd).decode("utf-8")
 
     if result:
         group_map = parse_ldap(result, group_map)
@@ -94,6 +107,7 @@ def gather_ldap_users(group_map: dict, ldap_server: str, base_dn: str) -> dict:
         print("No results found.")
 
     return group_map
+
 
 def parse_ldap(result: str, group_map: dict) -> dict:
     """Organizes LDAP response and modifies group map accordingly
@@ -104,30 +118,32 @@ def parse_ldap(result: str, group_map: dict) -> dict:
     Returns:
         dict: Group map with users for each group
     """
-    groups = result.strip().split('\n\n')
-    
-    # Regular expression patterns for matching lines
-    dn_pattern = re.compile(r'^dn:\s*cn=([^,]+)', re.MULTILINE)
-    owner_pattern = re.compile(r'^owner:\s*uid=([^,]+)', re.MULTILINE)
-    member_pattern = re.compile(r'^uniqueMember:\s*uid=([^,]+)', re.MULTILINE)
+    groups = result.strip().split("\n\n")
 
+    # Regular expression patterns for matching lines
+    dn_pattern = re.compile(r"^dn:\s*cn=([^,]+)", re.MULTILINE)
+    owner_pattern = re.compile(r"^owner:\s*uid=([^,]+)", re.MULTILINE)
+    member_pattern = re.compile(r"^uniqueMember:\s*uid=([^,]+)", re.MULTILINE)
 
     for group in groups:
-            dn_match = dn_pattern.search(group)
-            if dn_match:
-                # Extract the distinguished name
-                dn = dn_match.group(1)
-                for mapping_name, mapping_info in group_map.items():
-                    if mapping_info["ldap"] == dn:
-                        # Find all owners and members for this group
-                        owners = owner_pattern.findall(group)
-                        members = member_pattern.findall(group)
-                        # Store the results in the group_map
-                        group_map[mapping_name]['users'] = list(set(owners + members))
+        dn_match = dn_pattern.search(group)
+        if dn_match:
+            # Extract the distinguished name
+            dn = dn_match.group(1)
+            for mapping_name, mapping_info in group_map.items():
+                if mapping_info["ldap"] == dn:
+                    # Find all owners and members for this group
+                    owners = owner_pattern.findall(group)
+                    members = member_pattern.findall(group)
+                    # Store the results in the group_map
+                    group_map[mapping_name]["users"] = list(set(owners + members))
 
     return group_map
 
-def sync_ldap_with_glpi(session: requests.sessions.Session, urls: UrlInitialization, group_map: dict) -> None:
+
+def sync_ldap_with_glpi(
+    session: requests.sessions.Session, urls: UrlInitialization, group_map: dict
+) -> None:
     """Make sure GLPI users are added to the same groups that they are associated with in GLPI
 
     Args:
@@ -139,15 +155,18 @@ def sync_ldap_with_glpi(session: requests.sessions.Session, urls: UrlInitializat
     group_response_list = check_fields(session, urls.GROUP_URL)
     for group_response in group_response_list:
         for group in group_response.json():
-            users_in_group = get_users_in_group(session, urls, str(group['id']))
-            
+            users_in_group = get_users_in_group(session, urls, str(group["id"]))
+
             if group["completename"] in group_map:
                 # add group names to comments
                 update_group_comments(session, urls.GROUP_URL, group, group_map)
 
-                add_missing_users_to_group(session, urls.BASE_URL, group, users_in_group, group_map, all_users)
+                add_missing_users_to_group(
+                    session, urls.BASE_URL, group, users_in_group, group_map, all_users
+                )
 
-def get_all_users(session: requests.sessions.Session, user_url: str)-> list:
+
+def get_all_users(session: requests.sessions.Session, user_url: str) -> list:
     """Gets all users in GLPI
 
     Args:
@@ -164,7 +183,10 @@ def get_all_users(session: requests.sessions.Session, user_url: str)-> list:
             all_users.append(user_in_list)
     return all_users
 
-def get_users_in_group(session: requests.sessions.Session, urls:UrlInitialization, group_id: str) -> list:
+
+def get_users_in_group(
+    session: requests.sessions.Session, urls: UrlInitialization, group_id: str
+) -> list:
     """Get all GLPI users in a specific GLPI group
 
     Args:
@@ -176,14 +198,19 @@ def get_users_in_group(session: requests.sessions.Session, urls:UrlInitializatio
         list: Contains all GLPI users in the specified group
     """
     users_in_group = []
-    users_response_list = check_fields(session, f"{urls.GROUP_URL}{group_id}/Group_User")
+    users_response_list = check_fields(
+        session, f"{urls.GROUP_URL}{group_id}/Group_User"
+    )
     for user_response in users_response_list:
         for user in user_response.json():
             user_info = session.get(f"{urls.USER_URL}{str(user['users_id'])}")
             users_in_group.append(user_info.json()["name"])
     return users_in_group
 
-def update_group_comments(session: requests.sessions.Session, group_url: str, group: dict, group_map: dict) -> None:
+
+def update_group_comments(
+    session: requests.sessions.Session, group_url: str, group: dict, group_map: dict
+) -> None:
     """Add LDAP group to the comments field of the GLPI group
 
     Args:
@@ -193,21 +220,24 @@ def update_group_comments(session: requests.sessions.Session, group_url: str, gr
         group_map (dict): User-defined dictionary w/ ldap groups to search
     """
     if group["comment"] is None or "Rover" not in group["comment"]:
-        comment_post = {
-            "comment": f"Rover: {group_map[group['completename']]['ldap']}"
-        }
+        comment_post = {"comment": f"Rover: {group_map[group['completename']]['ldap']}"}
         if group["comment"] is not None:
             comment_post["comment"] += f"\n{group['comment']}"
-        print(
-            f"Adding '{group_map[group['completename']]['ldap']}' to group comment"
-        )
+        print(f"Adding '{group_map[group['completename']]['ldap']}' to group comment")
         session.put(
             group_url + str(group["id"]),
             json={"input": comment_post},
-                    )
+        )
 
 
-def add_missing_users_to_group(session: requests.sessions.Session, base_url: str, group: dict, users_in_group: list, group_map: dict, all_users: list) -> None:
+def add_missing_users_to_group(
+    session: requests.sessions.Session,
+    base_url: str,
+    group: dict,
+    users_in_group: list,
+    group_map: dict,
+    all_users: list,
+) -> None:
     """Add users to GLPI groups if they aren't already associated
 
     Args:
@@ -219,15 +249,20 @@ def add_missing_users_to_group(session: requests.sessions.Session, base_url: str
         all_users (list): All GLPI users
     """
     if "users" in group_map[group["completename"]]:
-        users_to_add = list(set(group_map[group["completename"]]["users"]) - set(users_in_group))
+        users_to_add = list(
+            set(group_map[group["completename"]]["users"]) - set(users_in_group)
+        )
         for user in all_users:
             if user["name"] in users_to_add:
-                print(f"Adding {user['name']} to {group['completename']}: {group['id']}")
+                print(
+                    f"Adding {user['name']} to {group['completename']}: {group['id']}"
+                )
                 glpi_post = {
                     "groups_id": group["id"],
                     "users_id": user["id"],
                 }
                 session.post(base_url + "Group_User", json={"input": glpi_post})
+
 
 # Executes main if run as a script.
 if __name__ == "__main__":
