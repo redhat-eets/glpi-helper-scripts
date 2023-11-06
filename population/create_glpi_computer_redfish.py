@@ -1137,12 +1137,9 @@ def check_and_post_data_center(
                 break
 
     # Create a field if one was not found and return the ID.
-    if id_found is False:
-        print("Creating GLPI Data Center field:")
-        glpi_post = {"locations_id": field["location"], "name": id}
-        post_response = session.post(url=url, json={"input": glpi_post})
-        print(str(post_response) + "\n")
-        id = post_response.json()["id"]
+    glpi_post = {"locations_id": field["location"], "name": id}
+    print("Created/Updated GLPI Data Center field")
+    id = create_or_update_glpi_item(session, url, glpi_post, id_found, id)
 
     return id
 
@@ -1177,16 +1174,13 @@ def check_and_post_data_center_room(
                 break
 
     # Create a field if one was not found and return the ID.
-    if id_found is False:
-        print("Creating GLPI Data Center Room field:")
-        glpi_post = {
-            "locations_id": field["location"],
-            "name": id,
-            "datacenters_id": dc_id,
-        }
-        post_response = session.post(url=url, json={"input": glpi_post})
-        print(str(post_response) + "\n")
-        id = post_response.json()["id"]
+    glpi_post = {
+        "locations_id": field["location"],
+        "name": id,
+        "datacenters_id": dc_id,
+    }
+    id = create_or_update_glpi_item(session, url, glpi_post, id_found, id)
+    print("Created/Updated GLPI Data Center Room field")
 
     return id
 
@@ -1228,21 +1222,17 @@ def check_and_post_rack(
                 break
 
     # Create a field if one was not found and return the ID.
-    if id_found is False:
-        print("Creating GLPI Rack field:")
-        number_units = get_rack_units(
-            field, sunbird_url, sunbird_username, sunbird_password
-        )
-        glpi_post = {
-            "locations_id": field["location"],
-            "name": id,
-            "dcrooms_id": dcrooms_id,
-            "number_units": number_units,
-            "bgcolor": "#fec95c",  # Hardcoded, otherwise the rack won't show up in UI
-        }
-        post_response = session.post(url=url, json={"input": glpi_post})
-        print(str(post_response) + "\n")
-        id = post_response.json()["id"]
+    number_units = get_rack_units(
+        field, sunbird_url, sunbird_username, sunbird_password
+    )
+    glpi_post = {
+        "locations_id": field["location"],
+        "name": id,
+        "dcrooms_id": dcrooms_id,
+        "number_units": number_units,
+        "bgcolor": "#fec95c",  # Hardcoded, otherwise the rack won't show up in UI
+    }
+    id = create_or_update_glpi_item(session, url, glpi_post, id_found, id)
 
     return id
 
@@ -1333,27 +1323,24 @@ def check_and_post_rack_item(
                 break
 
     # Create a field if one was not found and return the ID.
-    if id_found is False:
-        print("Creating GLPI Rack Item field:")
-        glpi_post = {
-            "items_id": computer_id,
-            "position": field["Item_Rack"],
-            "racks_id": rack_id,
-            "itemtype": item_type,
-            "bgcolor": "#69ceba",  # Hardcoded, otherwise the rack won't show up in UI
-            "orientation": 0,  # Hardcoded, otherwise the rack won't show up in UI
-        }
-        post_response = session.post(url=url, json={"input": glpi_post})
-        print(str(post_response) + "\n")
-        print(post_response.text)
-        id = post_response.json()["id"]
-        print(
-            (
-                f"Added computer to {field['DataCenter']} > "
-                f"{field['Room']} > {field['Rack']} > "
-                f"{field['Item_Rack']}"
-            )
+    glpi_post = {
+        "items_id": computer_id,
+        "position": field["Item_Rack"],
+        "racks_id": rack_id,
+        "itemtype": item_type,
+        "bgcolor": "#69ceba",  # Hardcoded, otherwise the rack won't show up in UI
+        "orientation": 0,  # Hardcoded, otherwise the rack won't show up in UI
+    }
+
+    id = create_or_update_glpi_item(session, url, glpi_post, id_found, id)
+    print("Created/Updated GLPI Rack Item field")
+    print(
+        (
+            f"Added computer to {field['DataCenter']} > "
+            f"{field['Room']} > {field['Rack']} > "
+            f"{field['Item_Rack']}"
         )
+    )
 
     return id
 

@@ -114,13 +114,9 @@ def check_and_post(session: requests.sessions.Session, field: str, url: str) -> 
                 break
 
     # Create a field if one was not found and return the ID.
-    if id_found is False:
-        print("Creating GLPI field:")
-        glpi_post = {"name": field}
-        post_response = session.post(url=url, json={"input": glpi_post})
-        print(str(post_response) + "\n")
-        id = post_response.json()["id"]
-
+    glpi_post = {"name": field}
+    id = create_or_update_glpi_item(session, url, glpi_post, id_found, id)
+    print("Created/Updated GLPI field")
     return id
 
 
@@ -1067,7 +1063,7 @@ def get_switch_ports(lab: str, switch: str, switch_info: Switches) -> dict:
 
 
 def create_or_update_glpi_item(
-    session: Session, url: str, glpi_post: dict, id_found: bool, id: int
+    session: requests.sessions.Session, url: str, glpi_post: dict, id_found: bool, id: int
 ) -> int:
     """Creates or updates a GLPI Item field based on the id_found flag.
 
