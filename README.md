@@ -189,7 +189,7 @@ The `filtering/filter_reservations_by_project.py` will filter the reservations i
 
 ## Integrations
 
-### integrations/compare_sunbird_with_glpi.py
+### integrations/sunbird/compare_sunbird_with_glpi.py
 The `integrations/sunbird/compare_sunbird_with_glpi.py` script compares all machines in GLPI with all machines in Sunbird located in the labs specified by a user-provided YAML file. It returns a list of machines that are in GLPI, but not Sunbird, and vice versa.
 
 Example script usage: 
@@ -199,3 +199,9 @@ Example script usage:
 You can also email the output of this script to someone via optional flags:
 
 `python3 compare_sunbird_with_glpi.py -i <GLPI URL> -t <GLPI API TOKEN> -v -g <path to YAML file> -u <Sunbird USERNAME> -p <Sunbird PASSWORD> -s <Sunbird URL> -r <RECIPIENT EMAIL> -S <SENDER EMAIL> -e <EMAIL SERVER>`
+
+### integrations/ldap/compare_ldap_with_glpi.py
+The `integrations/ldap/compare_ldap_with_glpi.py` script compares the LDAP groups specified in a user-provided YAML file to the groups in GLPI. It then adds any missing users to the relevant GLPI group. There is an example YAML file in the `integrations/ldap` folder. The script assumes that you have the `ldapsearch` CLI tool installed. You can install it with `dnf install openldap-clients`
+
+Example script usage:
+`python3 compare_ldap_with_glpi.py -i <GLPI URL> -t <GLPI API TOKEN> -v -c <path to YAML file> -l <LDAP server> -b <Base DN>`
