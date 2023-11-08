@@ -845,7 +845,7 @@ def post_to_glpi(  # noqa: C901
             urls.DISK_ITEM_URL,
             COMPUTER_ID,
             "Computer",
-            disk_id["SerialNumber"],
+            disk_id.get("SerialNumber"),
             size,
         )
 
@@ -997,6 +997,7 @@ def add_rack_location_from_sunbird(
             {"name": "cmbUPosition"},
             {"name": "tiDataCenterName"},
             {"name": "tiRoomName"},
+            {"name": "tiRUs"},
         ],
         "customFieldByLabel": True,
     }
@@ -1052,6 +1053,11 @@ def add_rack_location_from_sunbird(
         else:
             location_details["Item_Rack"] = None
 
+        # Get size of asset, otherwise default to 1 RU
+        if "tiRUs" in location_data:
+            location_details["required_units"] = int(location_data["tiRUs"])
+        else:
+            location_details["required_units"] = 1
         # Check for Data Center
         if location_details["DataCenter"] is None:
             print("No Data Center could be retrieved from Sunbird, moving on...")
@@ -1094,6 +1100,10 @@ def add_rack_location_from_sunbird(
                 )
             )
             return
+
+        check_and_update_model_size(
+            session, field=location_details, urls=urls, computer_id=computer_id
+        )
 
         rack_item_id = check_and_post_rack_item(
             session,
@@ -1252,6 +1262,34 @@ def get_rack_units(
     number_units = int(sunbird_json["tiRUs"])
 
     return number_units
+
+
+def check_and_update_model_size(
+    session: requests.sessions.Session,
+    field: dict,
+    urls: UrlInitialization,
+    computer_id: int,
+) -> None:
+    """Update a computer model's size if it doesn't match information from Sunbird
+
+    Args:
+        Session (Session object): The requests session object
+        field (dict): Contains information about the rack location
+        urls (common.urlinitialization.UrlInitialization): GLPI API URL's
+        computer_id (int): ID of the computer associated with the rack item
+    """
+    computer_info = session.get(url=urls.COMPUTER_URL + f"/{computer_id}")
+    computer_model_id = computer_info.json()["computermodels_id"]
+    computer_model_info = session.get(
+        url=urls.COMPUTER_MODEL_URL + f"/{computer_model_id}"
+    )
+    required_units = computer_model_info.json()["required_units"]
+    if required_units != field["required_units"]:
+        print(
+            f"Modifying model size from {required_units} to {field['required_units']}"
+        )
+        glpi_put = {"required_units": field["required_units"], "id": computer_model_id}
+        session.put(url=urls.COMPUTER_MODEL_URL, json={"input": glpi_put})
 
 
 def check_and_post_rack_item(
