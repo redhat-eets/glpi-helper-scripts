@@ -30,7 +30,7 @@ from common.utils import (
     check_and_post_nic_item,
     check_fields,
     create_or_update_glpi_item,
-    check_for_existing_item,
+    check_field,
 )
 from common.switches import Switches
 from common.parser import argparser
@@ -1125,16 +1125,12 @@ def check_and_post_data_center(
     """
     print("Checking GLPI Data Center fields:")
     # Check if the field is present at the URL endpoint.
-    glpi_fields_list = check_fields(session, url)
-
-    id_found, id = check_for_existing_item(
-        glpi_fields_list, search_criteria={"name": field["DataCenter"]}
-    )
+    id = check_field(session, url, search_criteria={"name": field["DataCenter"]})
 
     # Create a field if one was not found and return the ID.
     glpi_post = {"locations_id": field["location"], "name": field["DataCenter"]}
     print("Created/Updated GLPI Data Center field")
-    id = create_or_update_glpi_item(session, url, glpi_post, id_found, id)
+    id = create_or_update_glpi_item(session, url, glpi_post, id)
 
     return id
 
@@ -1156,10 +1152,9 @@ def check_and_post_data_center_room(
     """
     print("Checking Data Center Room fields:")
     # Check if the field is present at the URL endpoint.
-    glpi_fields_list = check_fields(session, url)
-
-    id_found, id = check_for_existing_item(
-        glpi_fields_list,
+    id = check_field(
+        session,
+        url,
         search_criteria={"name": str(field["Room"]), "datacenters_id": dc_id},
     )
 
@@ -1169,7 +1164,7 @@ def check_and_post_data_center_room(
         "name": field["Room"],
         "datacenters_id": dc_id,
     }
-    id = create_or_update_glpi_item(session, url, glpi_post, id_found, id)
+    id = create_or_update_glpi_item(session, url, glpi_post, id)
     print("Created/Updated GLPI Data Center Room field")
 
     return id
@@ -1199,10 +1194,9 @@ def check_and_post_rack(
     """
     print("Checking GLPI Rack fields:")
     # Check if the field is present at the URL endpoint.
-    glpi_fields_list = check_fields(session, url)
-
-    id_found, id = check_for_existing_item(
-        glpi_fields_list,
+    id = check_field(
+        session,
+        url,
         search_criteria={"name": field["Rack"], "dcrooms_id": dcrooms_id},
     )
 
@@ -1217,7 +1211,7 @@ def check_and_post_rack(
         "number_units": number_units,
         "bgcolor": "#fec95c",  # Hardcoded, otherwise the rack won't show up in UI
     }
-    id = create_or_update_glpi_item(session, url, glpi_post, id_found, id)
+    id = create_or_update_glpi_item(session, url, glpi_post, id)
 
     return id
 
@@ -1284,10 +1278,9 @@ def check_and_post_rack_item(
     """
     print("Checking GLPI Rack Item fields:")
     # Check if the field is present at the URL endpoint.
-    glpi_fields_list = check_fields(session, url)
-
-    id_found, id = check_for_existing_item(
-        glpi_fields_list,
+    id = check_field(
+        session,
+        url,
         search_criteria={
             "itemtype": item_type,
             "items_id": computer_id,
@@ -1306,7 +1299,7 @@ def check_and_post_rack_item(
         "orientation": 0,  # Hardcoded, otherwise the rack won't show up in UI
     }
 
-    id = create_or_update_glpi_item(session, url, glpi_post, id_found, id)
+    id = create_or_update_glpi_item(session, url, glpi_post, id)
     print("Created/Updated GLPI Rack Item field")
     print(
         (
@@ -1346,14 +1339,10 @@ def check_and_post_processor(
             search_criteria = field["Model"]
         else:
             search_criteria = field["ProcessorId"]["VendorId"]
-        glpi_fields_list = check_fields(session, url)
-
-        id_found, id = check_for_existing_item(
-            glpi_fields_list, search_criteria={"designation": search_criteria}
-        )
+        id = check_field(session, url, search_criteria={"designation": search_criteria})
 
         # Create a field if one was not found and return the ID.
-        if not id_found:
+        if id is None:
             # Get the manufacturer or create it (NOTE: This may create duplicates
             # with slight variation)
             manufacturers_id = check_and_post(
@@ -1463,10 +1452,9 @@ def check_and_post_network_port(
     """
     # Check if the field is present at the URL endpoint.
     print("Checking GLPI Network Port fields:")
-    glpi_fields_list = check_fields(session, url)
-
-    id_found, id = check_for_existing_item(
-        glpi_fields_list,
+    id = check_field(
+        session,
+        url,
         search_criteria={
             "items_id": item_id,
             "itemtype": item_type,
@@ -1489,7 +1477,7 @@ def check_and_post_network_port(
     elif "MACAddress" in network:
         glpi_post["mac"] = network["MACAddress"]
 
-    id = create_or_update_glpi_item(session, url, glpi_post, id_found, id)
+    id = create_or_update_glpi_item(session, url, glpi_post, id)
 
     return id
 

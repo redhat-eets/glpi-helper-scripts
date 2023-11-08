@@ -132,11 +132,11 @@ def create_reservations(
     """
     print("Creating reservation:\n")
 
-    user_id = check_field(session, username, urls.USER_URL)
+    user_id = check_field(session, urls.USER_URL, {"name": username})
     if user_id is None:
         error("User " + username + " is not present.")
 
-    computer_id = check_field(session, hostname, urls.COMPUTER_URL)
+    computer_id = check_field(session, urls.COMPUTER_URL, {"name": hostname})
     if computer_id is None:
         error("Computer " + hostname + " is not present.")
 
@@ -187,10 +187,8 @@ def check_reservation_item(
     """
     # Check if the field is present at the URL endpoint.
     print("Checking GLPI Reservation fields:")
-
-    glpi_fields_list = check_fields(session, url)
-    id_found, id = check_for_existing_item(
-        glpi_fields_list, search_criteria={"items_id": item_id, "itemtype": item_type}
+    id = check_field(
+        session, url, search_criteria={"items_id": item_id, "itemtype": item_type}
     )
     return id
 
