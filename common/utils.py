@@ -29,7 +29,7 @@ def check_field(
     Args:
         session (Session object): The requests session object
         url (str):                The url to get the fields
-        search_criteria (dict): A dictionary of criteria to match against the GLPI fields.
+        search_criteria (dict):   A dictionary of criteria to match w/ GLPI fields.
 
     Returns:
         (str): The field ID if found, None otherwise
@@ -998,7 +998,7 @@ def create_or_update_glpi_item(
     Args:
         session (Session object): The requests session object
         url (str): GLPI API endpoint for the operating system item field
-        glpi_post (dict): Dictionary containing the GLPI OS Item field data to post or update
+        glpi_post (dict): Dictionary containing the GLPI data to post or update
         id (int): The current ID value
 
     Returns:

@@ -20,10 +20,8 @@ from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization
 from common.utils import (
     check_field,
-    check_fields,
     error,
     print_final_help,
-    check_for_existing_item,
 )
 
 
