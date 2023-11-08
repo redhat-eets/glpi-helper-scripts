@@ -13,11 +13,18 @@
 import sys
 
 sys.path.append("..")
+import requests
+
+from common.parser import argparser
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization
-from common.utils import check_field, check_fields, error, print_final_help
-from common.parser import argparser
-import requests
+from common.utils import (
+    check_field,
+    check_fields,
+    error,
+    print_final_help,
+    check_for_existing_item,
+)
 
 
 def main() -> None:
@@ -182,15 +189,10 @@ def check_reservation_item(
     print("Checking GLPI Reservation fields:")
 
     glpi_fields_list = check_fields(session, url)
-
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if (
-                glpi_field["items_id"] == item_id
-                and glpi_field["itemtype"] == item_type
-            ):
-                return glpi_field["id"]
-    return None
+    id_found, id = check_for_existing_item(
+        glpi_fields_list, search_criteria={"items_id": item_id, "itemtype": item_type}
+    )
+    return id
 
 
 def post_reservation(
