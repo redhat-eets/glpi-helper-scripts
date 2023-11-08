@@ -33,7 +33,7 @@ from common.utils import (
     check_and_post_nic_item,
     check_fields,
     create_or_update_glpi_item,
-    check_for_existing_item
+    check_for_existing_item,
 )
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization
@@ -521,7 +521,14 @@ def check_and_post_gpu(
     print("Checking GLPI Graphics fields:")
     glpi_fields_list = check_fields(session, url)
 
-    id_found, id = check_for_existing_item(glpi_fields_list, search_criteria={"designation": name, "manufacturers_id": manufacturers_id, "devicegraphiccardmodels_id": gpu_model_id})
+    id_found, id = check_for_existing_item(
+        glpi_fields_list,
+        search_criteria={
+            "designation": name,
+            "manufacturers_id": manufacturers_id,
+            "devicegraphiccardmodels_id": gpu_model_id,
+        },
+    )
 
     # Create a field if one was not found and return the ID.
     print("Creating GLPI GPU field:")
@@ -555,7 +562,14 @@ def check_and_post_gpu_item(
     print("Checking GLPI GPU Item fields:")
     glpi_fields_list = check_fields(session, url)
 
-    id_found, id = check_for_existing_item(glpi_fields_list, search_criteria={"items_id": item_id, "itemtype": item, "devicegraphiccards_id": gpu_id})
+    id_found, id = check_for_existing_item(
+        glpi_fields_list,
+        search_criteria={
+            "items_id": item_id,
+            "itemtype": item,
+            "devicegraphiccards_id": gpu_id,
+        },
+    )
 
     # Create a field if one was not found and return the ID.
     print("Creating GLPI GPU Item field:")
@@ -584,7 +598,9 @@ def check_and_post_generic_type(
     print("Checking GLPI Generic Type fields:")
     glpi_fields_list = check_fields(session, url)
 
-    id_found, id = check_for_existing_item(glpi_fields_list, search_criteria={"name": type})
+    id_found, id = check_for_existing_item(
+        glpi_fields_list, search_criteria={"name": type}
+    )
 
     # Create a field if one was not found and return the ID.
     print("Creating GLPI Generic Type field:")
@@ -619,7 +635,14 @@ def check_and_post_device_generic(
     print("Checking GLPI Generic fields:")
     glpi_fields_list = check_fields(session, url)
 
-    id_found, id = check_for_existing_item(glpi_fields_list, search_criteria={"designation": device, "devicegenerictypes_id": type_id, "manufacturers_id": manufacturers_id})
+    id_found, id = check_for_existing_item(
+        glpi_fields_list,
+        search_criteria={
+            "designation": device,
+            "devicegenerictypes_id": type_id,
+            "manufacturers_id": manufacturers_id,
+        },
+    )
 
     # Create a field if one was not found and return the ID.
     print("Creating GLPI Generic field:")
@@ -659,7 +682,14 @@ def check_and_post_device_generic_item(
     print("Checking GLPI Generic Item fields:")
     glpi_fields_list = check_fields(session, url)
 
-    id_found, id = check_for_existing_item(glpi_fields_list, search_criteria={"items_id": item_id, "itemtype": item_type, "devicegenerics_id": generic_id})
+    id_found, id = check_for_existing_item(
+        glpi_fields_list,
+        search_criteria={
+            "items_id": item_id,
+            "itemtype": item_type,
+            "devicegenerics_id": generic_id,
+        },
+    )
 
     # Create a field if one was not found and return the ID.
     print("Creating GLPI Generic field:")
