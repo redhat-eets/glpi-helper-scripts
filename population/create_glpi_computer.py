@@ -493,8 +493,8 @@ def post_to_glpi(  # noqa: C901
             urls.MANUFACTURER_URL,
             {"name": accelerator_dict[accelerator]["manufacturer"]},
         )
-        type_id = check_and_post_generic_type(
-            session, "Processing accelerators", urls.DEVICE_GENERIC_TYPE_URL
+        type_id = check_and_post(
+            session, urls.DEVICE_GENERIC_TYPE_URL, {"name": "Processing accelerators"}
         )
         generic_id = check_and_post_device_generic(
             session,
@@ -556,33 +556,6 @@ def check_and_post_gpu(
         "manufacturers_id": manufacturers_id,
         "devicegraphiccardmodels_id": gpu_model_id,
     }
-
-    id = create_or_update_glpi_item(session, url, glpi_post, id)
-
-    return id
-
-
-def check_and_post_generic_type(
-    session: requests.sessions.Session, type: str, url: str
-) -> int:
-    """A helper method to check the generic type field at the given API endpoint (URL)
-       and post the field if it is not present.
-
-    Args:
-        session (Session object): The requests session object
-        type (str): Type of device
-        url (str): GLPI API endpoint of the generic type
-
-    Returns:
-        id (int): ID of the generic type in GLPI
-    """
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI Generic Type fields:")
-    id = check_field(session, url, search_criteria={"name": type})
-
-    # Create a field if one was not found and return the ID.
-    print("Creating GLPI Generic Type field:")
-    glpi_post = {"name": type}
 
     id = create_or_update_glpi_item(session, url, glpi_post, id)
 
