@@ -740,15 +740,21 @@ def post_to_glpi(  # noqa: C901
     switch_dict = {}
     logical_number = 0
     for name in networks_dict:
-        network_port_id = check_and_post_network_port(
-            session,
-            urls.NETWORK_PORT_URL,
-            COMPUTER_ID,
-            "Computer",
-            logical_number,
-            json.loads(name)["Id"],
-            "NetworkPortEthernet",
-            json.loads(name),
+        search_criteria = {
+            "items_id": COMPUTER_ID,
+            "itemtype": "Computer",
+            "logical_number": logical_number,
+            "name": json.loads(name)["Id"],
+            "instantiation_type": "NetworkPortEthernet",
+        }
+
+        if "AssociatedNetworkAddresses" in json.loads(name):
+            search_criteria["mac"] = json.loads(name)["AssociatedNetworkAddresses"][0]
+        elif "MACAddress" in json.loads(name):
+            search_criteria["mac"] = json.loads(name)["MACAddress"]
+
+        network_port_id = check_and_post(
+            session, urls.NETWORK_PORT_URL, search_criteria
         )
         try:
             speed = json.loads(name)["SpeedMbps"]
@@ -1301,65 +1307,6 @@ def check_and_post_processor_item(
             print(str(post_response) + "\n")
 
         return
-
-
-def check_and_post_network_port(
-    session: requests.sessions.Session,
-    url: str,
-    item_id: int,
-    item_type: str,
-    port_number: int,
-    name: str,
-    instantiation_type: str,
-    network: dict,
-) -> int:
-    """A helper method to check the network port field at the given API endpoint
-    (URL) and post the field if it is not present.
-
-    Args:
-        session (Session object): The requests session object
-        url (str): GLPI API endpoint for network ports
-        item_id (int): ID of the computer that the network port is associated with
-        item_type (str): Type of item associated with the network port, usually
-                         "Computer"
-        port_number (int): Port number, usually iterated outside of function
-        name (str): Name of the Port
-        instantiation_type (str): Name of the GLPI field, usually NetworkPortEthernet
-        network (dict): Contains more information abot the network port
-
-    Returns:
-        id (int): GLPI ID of network port
-    """
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI Network Port fields:")
-    id = check_field(
-        session,
-        url,
-        search_criteria={
-            "items_id": item_id,
-            "itemtype": item_type,
-            "logical_number": port_number,
-            "name": name,
-            "instantiation_type": instantiation_type,
-        },
-    )
-
-    # Create a field if one was not found and return the ID.
-    glpi_post = {
-        "items_id": item_id,
-        "itemtype": item_type,
-        "logical_number": port_number,
-        "name": name,
-        "instantiation_type": instantiation_type,
-    }
-    if "AssociatedNetworkAddresses" in network:
-        glpi_post["mac"] = network["AssociatedNetworkAddresses"][0]
-    elif "MACAddress" in network:
-        glpi_post["mac"] = network["MACAddress"]
-
-    id = create_or_update_glpi_item(session, url, glpi_post, id)
-
-    return id
 
 
 # Executes main if run as a script.
