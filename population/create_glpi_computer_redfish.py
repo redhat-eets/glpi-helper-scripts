@@ -1071,8 +1071,13 @@ def add_rack_location_from_sunbird(
             print("No Data Center could be retrieved from Sunbird, moving on...")
             return
 
-        dc_id = check_and_post_data_center(
-            session, field=location_details, url=urls.DATACENTER_URL
+        dc_id = check_and_post(
+            session,
+            urls.DATACENTER_URL,
+            {
+                "locations_id": location_details["location"],
+                "name": location_details["DataCenter"],
+            },
         )
 
         # Check for Data Center Room
@@ -1142,32 +1147,6 @@ def add_rack_location_from_sunbird(
 
     else:
         print("Couldn't find machine in Sunbird, moving on without location details")
-
-
-def check_and_post_data_center(
-    session: requests.sessions.Session, field: dict, url: str
-) -> int:
-    """A helper method to check the data center field at the given API endpoint (URL)
-       and post the field if it is not present.
-
-    Args:
-        Session (Session object): The requests session object
-        field (dict): Contains information about the rack location
-        url (str): GLPI API endpoint for the data center field
-
-    Returns:
-        id (int): ID of the data center in GLPI
-    """
-    print("Checking GLPI Data Center fields:")
-    # Check if the field is present at the URL endpoint.
-    id = check_field(session, url, search_criteria={"name": field["DataCenter"]})
-
-    # Create a field if one was not found and return the ID.
-    glpi_post = {"locations_id": field["location"], "name": field["DataCenter"]}
-    print("Created/Updated GLPI Data Center field")
-    id = create_or_update_glpi_item(session, url, glpi_post, id)
-
-    return id
 
 
 def get_rack_units(
