@@ -393,44 +393,6 @@ def check_and_post_network_port(  # noqa: C901
     return id
 
 
-def check_and_post_network_port_ethernet(
-    session: requests.sessions.Session,
-    url: str,
-    network_port_id: int,
-    speed: str,
-    nic: str,
-) -> int:
-    """A helper method to check the network port ethernet field at the given API
-       endpoint (URL) and post the field if it is not present.
-
-    Args:
-        session (Session object): The requests session object
-        url (str): GLPI API endpoint for network port ethernet field
-        network_port_id (int): ID of the network port that the ethernet is associated
-                               with
-        speed (str): Speed that the port is capable of
-        nic (str): ID of the network card that the ethernet field is associated with
-
-    Returns:
-        id (int): GLPI ID of network port ethernet
-    """
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI Network Port Ethernet fields:")
-
-    id = check_field(session, url, search_criteria={"networkports_id": network_port_id})
-
-    print("Creating GLPI Network Port Ethernet field:")
-    glpi_post = {"networkports_id": network_port_id}
-    if nic is not None:
-        glpi_post["items_devicenetworkcards_id"] = nic
-    if speed != 0:
-        glpi_post["speed"] = speed
-
-    id = create_or_update_glpi_item(session, url, glpi_post, id)
-
-    return id
-
-
 def check_and_post_network_port_network_port(  # noqa: C901
     session: requests.sessions.Session,
     server_network_port_id: int,

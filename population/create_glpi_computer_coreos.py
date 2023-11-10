@@ -25,7 +25,6 @@ from common.utils import (
     check_and_post_processor_item,
     check_and_post_operating_system_item,
     check_and_post_network_port,
-    check_and_post_network_port_ethernet,
     check_and_post_device_memory_item,
     check_fields,
 )
@@ -401,8 +400,14 @@ def post_to_glpi(  # noqa: C901
         if name in nic_ids:
             nic_id = nic_ids[name]
 
-        check_and_post_network_port_ethernet(
-            session, urls.NETWORK_PORT_ETHERNET_URL, network_port_id, speed, nic_id
+        check_and_post(
+            session,
+            urls.NETWORK_PORT_ETHERNET_URL,
+            {
+                "networkports_id": network_port_id,
+                "items_devicenetworkcards_id": nic_id,
+                "speed": speed,
+            },
         )
         logical_number += 1
 

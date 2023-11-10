@@ -23,7 +23,6 @@ from common.utils import (
     print_final_help,
     check_and_post,
     check_and_post_device_memory_item,
-    check_and_post_network_port_ethernet,
     check_fields,
     create_or_update_glpi_item,
     check_field,
@@ -764,8 +763,14 @@ def post_to_glpi(  # noqa: C901
             nic_id = nic_ids[json.loads(name)["Id"]]
         else:
             nic_id = 0
-        check_and_post_network_port_ethernet(
-            session, urls.NETWORK_PORT_ETHERNET_URL, network_port_id, speed, nic_id
+        check_and_post(
+            session,
+            urls.NETWORK_PORT_ETHERNET_URL,
+            {
+                "networkports_id": network_port_id,
+                "items_devicenetworkcards_id": nic_id,
+                "speed": speed,
+            },
         )
         logical_number += 1
 
