@@ -339,13 +339,15 @@ def post_to_glpi(  # noqa: C901
             nic_model_id,
             urls,
         )
-        nic_item_id = check_and_post_nic_item(
+        nic_item_id = check_and_post(
             session,
             urls.DEVICE_NETWORK_CARD_ITEM_URL,
-            COMPUTER_ID,
-            "Computer",
-            nic_id,
-            nics_dict[name]["serial"],
+            {
+                "items_id": COMPUTER_ID,
+                "itemtype": "Computer",
+                "devicenetworkcards_id": nic_id,
+                "mac": nics_dict[name]["serial"],
+            },
         )
         nic_ids[name] = nic_item_id
 

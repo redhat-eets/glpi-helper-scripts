@@ -698,56 +698,6 @@ def check_and_post_nic(
     return id
 
 
-def check_and_post_nic_item(
-    session: requests.sessions.Session,
-    url: str,
-    item_id: int,
-    item: str,
-    nic_id: int,
-    mac: str,
-) -> int:
-    """A helper method to check the nic item field at the given API endpoint (URL)
-       and post the field if it is not present.
-
-    Args:
-        session (Session object): The requests session object
-        url (str): GLPI API endpoint for the NIC field
-        item_id (int): ID of the item (usually a computer) associated with the NIC item
-        item (str): Type of the item associated with the NIC item, usually "Computer"
-        nic_id (int): ID of the NIC that the item is associated
-        mac (str): MAC address of the NIC item
-
-    Returns:
-        id (int): ID of the NIC item
-
-    """
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI NIC Item fields:")
-    id = check_field(
-        session,
-        url,
-        search_criteria={
-            "items_id": item_id,
-            "itemtype": item,
-            "devicenetworkcards_id": nic_id,
-            "mac": mac,
-        },
-    )
-
-    # Create a field if one was not found and return the ID.
-    print("Creating GLPI NIC Item field:")
-    glpi_post = {
-        "items_id": item_id,
-        "itemtype": item,
-        "devicenetworkcards_id": nic_id,
-        "mac": mac,
-    }
-
-    id = create_or_update_glpi_item(session, url, glpi_post, id)
-
-    return id
-
-
 def print_final_help() -> None:
     """Print the final usage help for the user"""
     print(
