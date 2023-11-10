@@ -371,8 +371,14 @@ def post_to_glpi(  # noqa: C901
         gpu_id = check_and_post_gpu(
             session, urls.DEVICE_GRAPHICS_CARD_URL, name, vendor, gpu_model_id, urls
         )
-        gpu_item_id = check_and_post_gpu_item(
-            session, urls.DEVICE_GRAPHICS_CARD_ITEM_URL, COMPUTER_ID, "Computer", gpu_id
+        gpu_item_id = check_and_post(
+            session,
+            urls.DEVICE_GRAPHICS_CARD_ITEM_URL,
+            {
+                "items_id": COMPUTER_ID,
+                "itemtype": "Computer",
+                "devicegraphiccards_id": gpu_id,
+            },
         )
         gpu_ids[name] = gpu_item_id
 
@@ -550,42 +556,6 @@ def check_and_post_gpu(
         "manufacturers_id": manufacturers_id,
         "devicegraphiccardmodels_id": gpu_model_id,
     }
-
-    id = create_or_update_glpi_item(session, url, glpi_post, id)
-
-    return id
-
-
-def check_and_post_gpu_item(
-    session: requests.sessions.Session, url: str, item_id: int, item: str, gpu_id: int
-) -> int:
-    """A helper method to check the graphics item field at the given API endpoint (URL)
-       and post the field if it is not present.
-
-    Args:
-        session (Session object): requests.sessions.Session
-        url (str): GLPI API endpoint for the graphics card item
-        item_id (int): ID of the item (usually a computer) associated with the memory
-                       item
-        item_type (str): Type of the item associated with the memory item, usually
-                         "Computer"
-        gpu_id (int): ID of the GPU in GLPI
-    """
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI GPU Item fields:")
-    id = check_field(
-        session,
-        url,
-        search_criteria={
-            "items_id": item_id,
-            "itemtype": item,
-            "devicegraphiccards_id": gpu_id,
-        },
-    )
-
-    # Create a field if one was not found and return the ID.
-    print("Creating GLPI GPU Item field:")
-    glpi_post = {"items_id": item_id, "itemtype": item, "devicegraphiccards_id": gpu_id}
 
     id = create_or_update_glpi_item(session, url, glpi_post, id)
 
