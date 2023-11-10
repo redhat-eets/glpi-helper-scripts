@@ -496,12 +496,14 @@ def post_to_glpi(  # noqa: C901
         type_id = check_and_post(
             session, urls.DEVICE_GENERIC_TYPE_URL, {"name": "Processing accelerators"}
         )
-        generic_id = check_and_post_device_generic(
+        generic_id = check_and_post(
             session,
             urls.DEVICE_GENERIC_URL,
-            ACCELERATOR_IDS[accelerator_dict[accelerator]["device"]],
-            manufacturers_id,
-            type_id,
+            {
+                "designation": ACCELERATOR_IDS[accelerator_dict[accelerator]["device"]],
+                "devicegenerictypes_id": type_id,
+                "manufacturers_id": manufacturers_id,
+            },
         )
         check_and_post_device_generic_item(
             session, urls.DEVICE_GENERIC_ITEM_URL, COMPUTER_ID, "Computer", generic_id
@@ -555,51 +557,6 @@ def check_and_post_gpu(
         "designation": name,
         "manufacturers_id": manufacturers_id,
         "devicegraphiccardmodels_id": gpu_model_id,
-    }
-
-    id = create_or_update_glpi_item(session, url, glpi_post, id)
-
-    return id
-
-
-def check_and_post_device_generic(
-    session: requests.sessions.Session,
-    url: str,
-    device: str,
-    manufacturers_id: int,
-    type_id: int,
-) -> int:
-    """A helper method to check the generic device field at the given API endpoint
-       (URL) and post the field if it is not present.
-
-    Args:
-        session (Session object): The requests session object
-        url (str): GLPI API endpoint of the generic device
-        device (str): Name of device
-        manufacturers_id (int): ID of manufacturer in GLPI
-        type_id (int): ID of device type in GLPI
-
-    Returns:
-        id (int): ID of the generic device in GLPI
-    """
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI Generic fields:")
-    id = check_field(
-        session,
-        url,
-        search_criteria={
-            "designation": device,
-            "devicegenerictypes_id": type_id,
-            "manufacturers_id": manufacturers_id,
-        },
-    )
-
-    # Create a field if one was not found and return the ID.
-    print("Creating GLPI Generic field:")
-    glpi_post = {
-        "designation": device,
-        "devicegenerictypes_id": type_id,
-        "manufacturers_id": manufacturers_id,
     }
 
     id = create_or_update_glpi_item(session, url, glpi_post, id)
