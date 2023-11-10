@@ -798,24 +798,28 @@ def post_to_glpi(  # noqa: C901
             else:
                 total_system_memory = ""
             if "OperatingSpeedMhz" in ram:
-                memory_id = check_and_post_device_memory(
+                memory_id = check_and_post(
                     session,
                     urls.DEVICE_MEMORY_URL,
-                    ram["PartNumber"],
-                    str(ram["OperatingSpeedMhz"]),
-                    manufacturers_id,
-                    total_system_memory,
-                    memory_type_id,
+                    {
+                        "designation": ram["PartNumber"],
+                        "frequence": str(ram["OperatingSpeedMhz"]),
+                        "manufacturers_id": manufacturers_id,
+                        "size_default": total_system_memory,
+                        "devicememorytypes_id": memory_type_id,
+                    },
                 )
             elif "MaximumFrequencyMHz" in ram:  # HP field
-                memory_id = check_and_post_device_memory(
+                memory_id = check_and_post(
                     session,
                     urls.DEVICE_MEMORY_URL,
-                    ram["PartNumber"],
-                    str(ram["MaximumFrequencyMHz"]),
-                    manufacturers_id,
-                    total_system_memory,
-                    memory_type_id,
+                    {
+                        "designation": ram["PartNumber"],
+                        "frequence": str(ram["MaximumFrequencyMHz"]),
+                        "manufacturers_id": manufacturers_id,
+                        "size_default": total_system_memory,
+                        "devicememorytypes_id": memory_type_id,
+                    },
                 )
             if memory_id in memory_item_dict:
                 memory_item_dict[memory_id]["quantity"] += 1

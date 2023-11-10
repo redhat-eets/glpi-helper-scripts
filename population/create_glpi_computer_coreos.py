@@ -410,14 +410,16 @@ def post_to_glpi(  # noqa: C901
         manufacturers_id = check_and_post(
             session, urls.MANUFACTURER_URL, {"name": "Unspecified"}
         )
-        memory_id = check_and_post_device_memory(
+        memory_id = check_and_post(
             session,
             urls.DEVICE_MEMORY_URL,
-            "Unspecified",
-            "Unspecified",
-            manufacturers_id,
-            ram_dict["MemTotal:"],
-            memory_type_id,
+            {
+                "designation": "Unspecified",
+                "frequence": "Unspecified",
+                "manufacturers_id": manufacturers_id,
+                "size_default": ram_dict["MemTotal:"],
+                "devicememorytypes_id": memory_type_id,
+            },
         )
 
         # Create Memory Items.

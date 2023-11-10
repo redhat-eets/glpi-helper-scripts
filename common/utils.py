@@ -490,59 +490,6 @@ def check_and_post_network_port_network_port(  # noqa: C901
         return
 
 
-def check_and_post_device_memory(
-    session: requests.sessions.Session,
-    url: str,
-    designation: str,
-    frequency: str,
-    manufacturers_id: int,
-    size: int,
-    memory_type_id: int,
-) -> int:
-    """A helper method to check the device memory field at the given API endpoint
-       (URL) and post the field if it is not present.
-
-    Args:
-        session (Session object): The requests session object
-        url (str): GLPI API endpoint for the memory field
-        designation (str): Name of memory device
-        frequency (int): Frequency of memory device, usually in MHz
-        manufacturers_id (int): ID of the memory manufacturer
-        size (int): Capacity of the memory device
-        memory_type_id (int): ID of the type of memory device
-
-    Returns:
-        id (int): ID of the memory device in GLPI
-    """
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI Memory fields:")
-    id = check_field(
-        session,
-        url,
-        search_criteria={
-            "designation": designation,
-            "frequence": frequency,
-            "manufacturers_id": manufacturers_id,
-            "size_default": size,
-            "devicememorytypes_id": memory_type_id,
-        },
-    )
-
-    # Create a field if one was not found and return the ID.
-    print("Creating GLPI Memory field:")
-    glpi_post = {
-        "designation": designation,
-        "frequence": frequency,
-        "manufacturers_id": manufacturers_id,
-        "size_default": size,
-        "devicememorytypes_id": memory_type_id,
-    }
-
-    id = create_or_update_glpi_item(session, url, glpi_post, id)
-
-    return id
-
-
 def check_and_post_device_memory_item(
     session: requests.sessions.Session,
     url: str,

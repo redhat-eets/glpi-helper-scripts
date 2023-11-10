@@ -442,14 +442,16 @@ def post_to_glpi(  # noqa: C901
                 urls.MANUFACTURER_URL,
                 {"name": ram_dict[memory]["Manufacturer"]},
             )
-            memory_id = check_and_post_device_memory(
+            memory_id = check_and_post(
                 session,
                 urls.DEVICE_MEMORY_URL,
-                ram_dict[memory]["Part Number"],
-                ram_dict[memory]["Speed"].split()[0],
-                manufacturers_id,
-                ram_size,
-                memory_type_id,
+                {
+                    "designation": ram_dict[memory]["Part Number"],
+                    "frequence": ram_dict[memory]["Speed"].split()[0],
+                    "manufacturers_id": manufacturers_id,
+                    "size_default": ram_size,
+                    "devicememorytypes_id": memory_type_id,
+                },
             )
             if memory_id in memory_item_dict:
                 memory_item_dict[memory_id]["quantity"] += 1
