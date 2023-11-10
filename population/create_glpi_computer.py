@@ -214,22 +214,28 @@ def post_to_glpi(  # noqa: C901
     # NOTE: Different helper functions exist because of different syntax,
     #       field names, and formatting in the API.
     computer_type_id = check_and_post(
-        session, hostnamectl_dict["Chassis"].capitalize(), urls.COMPUTER_TYPE_URL
+        session,
+        urls.COMPUTER_TYPE_URL,
+        {"name": hostnamectl_dict["Chassis"].capitalize()},
     )
-    manufacturers_id = check_and_post(session, computer_type, urls.MANUFACTURER_URL)
-    computer_model_id = check_and_post(session, computer_model, urls.COMPUTER_MODEL_URL)
+    manufacturers_id = check_and_post(
+        session, urls.MANUFACTURER_URL, {"name": computer_type}
+    )
+    computer_model_id = check_and_post(
+        session, urls.COMPUTER_MODEL_URL, {"name": computer_model}
+    )
     processors_id = check_and_post_processor(session, cpu_dict, urls.CPU_URL, urls)
     operating_system_id = check_and_post(
-        session, os_dict["NAME"], urls.OPERATING_SYSTEM_URL
+        session, urls.OPERATING_SYSTEM_URL, {"name": os_dict["NAME"]}
     )
     operating_system_version_id = check_and_post(
-        session, os_dict["VERSION"], urls.OPERATING_SYSTEM_VERSION_URL
+        session, urls.OPERATING_SYSTEM_VERSION_URL, {"name": os_dict["VERSION"]}
     )
     operating_system_architecture_id = check_and_post(
-        session, architecture, urls.OPERATING_SYSTEM_ARCHITECTURE_URL
+        session, urls.OPERATING_SYSTEM_ARCHITECTURE_URL, {"name": architecture}
     )
     operating_system_kernel_version_id = check_and_post(
-        session, kernel, urls.OPERATING_SYSTEM_KERNEL_VERSION_URL
+        session, urls.OPERATING_SYSTEM_KERNEL_VERSION_URL, {"name": kernel}
     )
 
     # The final dictionary for the machine JSON to post.
@@ -315,7 +321,9 @@ def post_to_glpi(  # noqa: C901
         nic_model_id = 0
         if "product" in nics_dict[name]:
             nic_model_id = check_and_post(
-                session, nics_dict[name]["product"], urls.DEVICE_NETWORK_CARD_MODEL_URL
+                session,
+                urls.DEVICE_NETWORK_CARD_MODEL_URL,
+                {"name": nics_dict[name]["product"]},
             )
 
         vendor = 0
@@ -351,7 +359,9 @@ def post_to_glpi(  # noqa: C901
         gpu_model_id = 0
         if "product" in gpus_dict[name]:
             gpu_model_id = check_and_post(
-                session, gpus_dict[name]["product"], urls.DEVICE_GRAPHICS_CARD_MODEL_URL
+                session,
+                urls.DEVICE_GRAPHICS_CARD_MODEL_URL,
+                {"name": gpus_dict[name]["product"]},
             )
 
         vendor = 0
@@ -419,10 +429,12 @@ def post_to_glpi(  # noqa: C901
             else:
                 ram_size = int(ram_dict[memory]["Size"].split()[0])
             memory_type_id = check_and_post(
-                session, ram_dict[memory]["Type"], urls.DEVICE_MEMORY_TYPE_URL
+                session, urls.DEVICE_MEMORY_TYPE_URL, {"name": ram_dict[memory]["Type"]}
             )
             manufacturers_id = check_and_post(
-                session, ram_dict[memory]["Manufacturer"], urls.MANUFACTURER_URL
+                session,
+                urls.MANUFACTURER_URL,
+                {"name": ram_dict[memory]["Manufacturer"]},
             )
             memory_id = check_and_post_device_memory(
                 session,
@@ -472,8 +484,8 @@ def post_to_glpi(  # noqa: C901
     for accelerator in accelerator_dict:
         manufacturers_id = check_and_post(
             session,
-            accelerator_dict[accelerator]["manufacturer"],
             urls.MANUFACTURER_URL,
+            {"name": accelerator_dict[accelerator]["manufacturer"]},
         )
         type_id = check_and_post_generic_type(
             session, "Processing accelerators", urls.DEVICE_GENERIC_TYPE_URL
@@ -516,7 +528,9 @@ def check_and_post_gpu(
     """
     manufacturers_id = vendor
     if vendor:
-        manufacturers_id = check_and_post(session, vendor, urls.MANUFACTURER_URL)
+        manufacturers_id = check_and_post(
+            session, urls.MANUFACTURER_URL, {"name": vendor}
+        )
     # Check if the field is present at the URL endpoint.
     print("Checking GLPI Graphics fields:")
     id = check_field(

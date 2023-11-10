@@ -587,16 +587,18 @@ def post_to_glpi(  # noqa: C901
     #
     # NOTE: Different helper functions exist because of different syntax,
     #       field names, and formatting in the API.
-    computer_type_id = check_and_post(session, "Server", urls.COMPUTER_TYPE_URL)
+    computer_type_id = check_and_post(
+        session, urls.COMPUTER_TYPE_URL, {"name": "Server"}
+    )
 
     manufacturers_id = check_and_post(
-        session, system_json["Manufacturer"], urls.MANUFACTURER_URL
+        session, urls.MANUFACTURER_URL, {"name": system_json["Manufacturer"]}
     )
     computer_model_id = check_and_post(
-        session, system_json["Model"], urls.COMPUTER_MODEL_URL
+        session, urls.COMPUTER_MODEL_URL, {"name": system_json["Model"]}
     )
     processors_id = check_and_post_processor(session, cpu_list, urls.CPU_URL, urls)
-    locations_id = check_and_post(session, LAB_CHOICE, urls.LOCATION_URL)
+    locations_id = check_and_post(session, urls.LOCATION_URL, {"name": LAB_CHOICE})
 
     # The final dictionary for the machine JSON to post.
     glpi_post = {}
@@ -698,7 +700,9 @@ def post_to_glpi(  # noqa: C901
         nic_model_id = 0
         if "Model" in name:
             nic_model_id = check_and_post(
-                session, json.loads(name)["Model"], urls.DEVICE_NETWORK_CARD_MODEL_URL
+                session,
+                urls.DEVICE_NETWORK_CARD_MODEL_URL,
+                {"name": json.loads(name)["Model"]},
             )
 
         vendor = 0
@@ -772,18 +776,20 @@ def post_to_glpi(  # noqa: C901
         ):
             if "MemoryDeviceType" in ram:
                 memory_type_id = check_and_post(
-                    session, ram["MemoryDeviceType"], urls.DEVICE_MEMORY_TYPE_URL
+                    session,
+                    urls.DEVICE_MEMORY_TYPE_URL,
+                    {"name": ram["MemoryDeviceType"]},
                 )
             elif "DIMMType" in ram:  # HP field
                 memory_type_id = check_and_post(
-                    session, ram["DIMMType"], urls.DEVICE_MEMORY_TYPE_URL
+                    session, urls.DEVICE_MEMORY_TYPE_URL, {"name": ram["DIMMType"]}
                 )
             else:
                 memory_type_id = check_and_post(
-                    session, "Unspecified", urls.DEVICE_MEMORY_TYPE_URL
+                    session, urls.DEVICE_MEMORY_TYPE_URL, {"name": "Unspecified"}
                 )
             manufacturers_id = check_and_post(
-                session, ram["Manufacturer"].strip(), urls.MANUFACTURER_URL
+                session, urls.MANUFACTURER_URL, {"name": ram["Manufacturer"].strip()}
             )
             if "TotalSystemMemoryGiB" in system_json["MemorySummary"]:
                 total_system_memory = (
@@ -1346,7 +1352,7 @@ def check_and_post_processor(
             # Get the manufacturer or create it (NOTE: This may create duplicates
             # with slight variation)
             manufacturers_id = check_and_post(
-                session, field["Manufacturer"], urls.MANUFACTURER_URL
+                session, urls.MANUFACTURER_URL, {"name": field["Manufacturer"]}
             )
             print("Creating GLPI CPU field:")
             glpi_post = {

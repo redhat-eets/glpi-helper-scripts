@@ -91,23 +91,25 @@ def check_field_without_range(session: requests.sessions.Session, url: str) -> l
     return glpi_fields.json()
 
 
-def check_and_post(session: requests.sessions.Session, field: str, url: str) -> int:
+def check_and_post(
+    session: requests.sessions.Session, url: str, post_information: dict
+) -> int:
     """A helper method to check the field at the given API endpoint (URL) and post
        the field if it is not present.
 
     Args:
         Session (Session object): The requests session object
-        field (str): The component to be populated
         url (str): The url of the component to be populated
-
+        post_information (dict): Dictionary containing the desired state of the glpi item.
+            ex: {"glpi_field_name": glpi_field_value}
     Returns:
         id (int): the id of the field.
     """
     print("Checking GLPI fields:")
     # Check if the field is present at the URL endpoint.
-    id = check_field(session, url, search_criteria={"name": field})
+    id = check_field(session, url, search_criteria=post_information)
     # Create a field if one was not found and return the ID.
-    glpi_post = {"name": field}
+    glpi_post = post_information
     id = create_or_update_glpi_item(session, url, glpi_post, id)
     print("Created/Updated GLPI field")
     return id
@@ -138,7 +140,7 @@ def check_and_post_processor(
         # Get the manufacturer or create it (NOTE: This may create duplicates
         # with slight variation)
         manufacturers_id = check_and_post(
-            session, field["Vendor ID"], urls.MANUFACTURER_URL
+            session, urls.MANUFACTURER_URL, {"name": field["Vendor ID"]}
         )
         print("Creating GLPI CPU field:")
         glpi_post = {
@@ -719,7 +721,9 @@ def check_and_post_nic(
     """
     manufacturers_id = vendor
     if vendor:
-        manufacturers_id = check_and_post(session, vendor, urls.MANUFACTURER_URL)
+        manufacturers_id = check_and_post(
+            session, urls.MANUFACTURER_URL, {"name": vendor}
+        )
     # Check if the field is present at the URL endpoint.
     print("Checking GLPI NIC fields:")
     id = check_field(
