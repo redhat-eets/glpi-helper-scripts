@@ -111,12 +111,12 @@ def check_and_post(
             via either a PUT or POST request, after it's combined with
             additional_information.
         additional_information (dict): Dictionary containing fields that
-            shouldn't be used to check, but should be sent in the POST and PUT requests.
-            For example, when using check_and_post() for racks, you would pass
+            shouldn't be used to check GLPI, but should be sent in the POST and PUT
+            requests. For example, when using check_and_post() for racks, you would pass
             the background color under "additional_information". If a rack's name, ID,
             and location were all the same, but its color was different, a new rack
             should NOT be created, as that isn't a characteristic that helps identify a
-            unique rack.
+            unique rack. Instead, the existing rack should be updated in place.
 
     Returns:
         id (int): the id of the field.

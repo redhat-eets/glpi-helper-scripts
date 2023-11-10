@@ -1023,9 +1023,9 @@ def add_rack_location_from_sunbird(
     )
     sunbird_json = sunbird_response.json()["searchResults"]["items"]
     if sunbird_json:
-        location_data = sunbird_json[0]
-        if location_data["cmbLocation"] in sunbird_config:
-            location_config = sunbird_config[location_data["cmbLocation"]]
+        sunbird_location_data = sunbird_json[0]
+        if sunbird_location_data["cmbLocation"] in sunbird_config:
+            location_config = sunbird_config[sunbird_location_data["cmbLocation"]]
 
         else:
             location_config = None
@@ -1040,12 +1040,12 @@ def add_rack_location_from_sunbird(
             print(
                 "No Sunbird config provided, setting data center and room automatically"
             )
-            data_center = location_data.get("tiDataCenterName", None)
-            if "tiRoomName" in location_data:
-                room = location_data["tiRoomName"]
+            data_center = sunbird_location_data.get("tiDataCenterName", None)
+            if "tiRoomName" in sunbird_location_data:
+                room = sunbird_location_data["tiRoomName"]
             # If the Room is not specified in Sunbird, use the Data Center name
             elif data_center is not None:
-                room = location_data["tiDataCenterName"]
+                room = sunbird_location_data["tiDataCenterName"]
             else:
                 room = None
         else:
@@ -1054,15 +1054,15 @@ def add_rack_location_from_sunbird(
 
         location_details = {
             "location": locations_id,
-            "full_location": location_data["cmbLocation"],
+            "full_location": sunbird_location_data["cmbLocation"],
             "DataCenter": data_center,
             "Room": room,
         }
 
-        location_details["Rack"] = location_data.get("cmbCabinet", None)
+        location_details["Rack"] = sunbird_location_data.get("cmbCabinet", None)
 
-        if location_data["cmbUPosition"]:
-            location_details["Item_Rack"] = int(location_data["cmbUPosition"])
+        if sunbird_location_data["cmbUPosition"]:
+            location_details["Item_Rack"] = int(sunbird_location_data["cmbUPosition"])
         else:
             location_details["Item_Rack"] = None
 
@@ -1109,15 +1109,27 @@ def add_rack_location_from_sunbird(
             )
             return
 
-        rack_item_id = check_and_post_rack_item(
+        check_and_post(
             session,
-            field=location_details,
-            url=urls.ITEM_RACK_URL,
-            rack_id=rack_id,
-            item_type="Computer",
-            computer_id=computer_id,
+            urls.ITEM_RACK_URL,
+            {
+                "itemtype": "Computer",
+                "items_id": computer_id,
+                "position": location_details["Item_Rack"],
+                "racks_id": rack_id,
+            },
+            {
+                "bgcolor": "#69ceba",  # Hardcoded, otherwise the rack won't show in UI
+                "orientation": 0,  # Hardcoded, otherwise the rack won't show in UI
+            },
         )
-        print(rack_item_id)
+        print(
+            (
+                f"Added computer to {location_details['DataCenter']} > "
+                f"{location_details['Room']} > {location_details['Rack']} > "
+                f"{location_details['Item_Rack']}"
+            )
+        )
 
     else:
         print("Couldn't find machine in Sunbird, moving on without location details")
@@ -1266,64 +1278,6 @@ def get_rack_units(
     number_units = int(sunbird_json["tiRUs"])
 
     return number_units
-
-
-def check_and_post_rack_item(
-    session: requests.sessions.Session,
-    field: dict,
-    url: str,
-    rack_id: int,
-    item_type: str,
-    computer_id: int,
-) -> int:
-    """A helper method to check the rack item field at the given API endpoint (URL)
-       and post the field if it is not present.
-
-    Args:
-        Session (Session object): The requests session object
-        field (dict): Contains information about the rack location
-        url (str): GLPI API endpoint for the rack item field
-        rack_id (int): the id of the relavant rack in GLPI
-        item_type (str): Type of item associated with rack item, usually "Computer"
-        computer_id (int): ID of the computer associated with the rack item
-
-    Returns:
-        id (int): ID of the rack item in GLPI
-    """
-    print("Checking GLPI Rack Item fields:")
-    # Check if the field is present at the URL endpoint.
-    id = check_field(
-        session,
-        url,
-        search_criteria={
-            "itemtype": item_type,
-            "items_id": computer_id,
-            "position": field["Item_Rack"],
-            "racks_id": rack_id,
-        },
-    )
-
-    # Create a field if one was not found and return the ID.
-    glpi_post = {
-        "items_id": computer_id,
-        "position": field["Item_Rack"],
-        "racks_id": rack_id,
-        "itemtype": item_type,
-        "bgcolor": "#69ceba",  # Hardcoded, otherwise the rack won't show up in UI
-        "orientation": 0,  # Hardcoded, otherwise the rack won't show up in UI
-    }
-
-    id = create_or_update_glpi_item(session, url, glpi_post, id)
-    print("Created/Updated GLPI Rack Item field")
-    print(
-        (
-            f"Added computer to {field['DataCenter']} > "
-            f"{field['Room']} > {field['Rack']} > "
-            f"{field['Item_Rack']}"
-        )
-    )
-
-    return id
 
 
 def check_and_post_processor(
