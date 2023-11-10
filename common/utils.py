@@ -641,63 +641,6 @@ def check_and_post_disk_item(
     return
 
 
-def check_and_post_nic(
-    session: requests.sessions.Session,
-    url: str,
-    name: str,
-    bandwidth: str,
-    vendor: str,
-    nic_model_id: int,
-    urls: UrlInitialization,
-) -> int:
-    """A helper method to check the nic field at the given API endpoint (URL) and
-       post the field if it is not present.
-
-    Args:
-        session (Session object): The requests session object
-        url (str): GLPI API endpoint for the NIC field
-        name (str): Name of NIC
-        bandwidth (str): bandwidth of NIC
-        vendor (str): Company that manufactured NIC
-        nic_model_id (int): ID of NIC model
-        urls (UrlInitialization object): the URL object
-
-
-    Returns:
-        id (int): ID of NIC in GLPI
-    """
-    manufacturers_id = vendor
-    if vendor:
-        manufacturers_id = check_and_post(
-            session, urls.MANUFACTURER_URL, {"name": vendor}
-        )
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI NIC fields:")
-    id = check_field(
-        session,
-        url,
-        search_criteria={
-            "designation": name,
-            "bandwidth": bandwidth,
-            "manufacturers_id": manufacturers_id,
-            "devicenetworkcardmodels_id": nic_model_id,
-        },
-    )
-
-    # Create a field if one was not found and return the ID.
-    print("Creating GLPI NIC field:")
-    glpi_post = {
-        "designation": name,
-        "bandwidth": bandwidth,
-        "manufacturers_id": manufacturers_id,
-        "devicenetworkcardmodels_id": nic_model_id,
-    }
-
-    id = create_or_update_glpi_item(session, url, glpi_post, id)
-
-    return id
-
-
 def print_final_help() -> None:
     """Print the final usage help for the user"""
     print(

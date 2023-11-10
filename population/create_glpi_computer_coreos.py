@@ -26,10 +26,7 @@ from common.utils import (
     check_and_post_operating_system_item,
     check_and_post_network_port,
     check_and_post_network_port_ethernet,
-    check_and_post_device_memory,
     check_and_post_device_memory_item,
-    check_and_post_nic,
-    check_and_post_nic_item,
     check_and_post_disk_item,
     check_fields,
 )
@@ -344,14 +341,20 @@ def post_to_glpi(  # noqa: C901
         if "vendor" in nics_dict[name]:
             vendor = nics_dict[name]["vendor"]
 
-        nic_id = check_and_post_nic(
+        manufacturers_id = vendor
+        if vendor:
+            manufacturers_id = check_and_post(
+                session, urls.MANUFACTURER_URL, {"name": vendor}
+            )
+        nic_id = check_and_post(
             session,
             urls.DEVICE_NETWORK_CARD_URL,
-            name,
-            bandwidth,
-            vendor,
-            nic_model_id,
-            urls,
+            {
+                "designation": name,
+                "bandwidth": bandwidth,
+                "manufacturers_id": manufacturers_id,
+                "devicenetworkcardmodels_id": nic_model_id,
+            },
         )
         nic_item_id = check_and_post(
             session,
