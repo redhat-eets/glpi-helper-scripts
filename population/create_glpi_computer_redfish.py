@@ -1080,7 +1080,7 @@ def add_rack_location_from_sunbird(
             print("No Data Center Room was retrieved from Sunbird, moving on...")
             return
 
-        dcr_id = check_and_post_data_center_room(
+        dcrooms_id = check_and_post_data_center_room(
             session, field=location_details, url=urls.DCROOM_URL, dc_id=dc_id
         )
 
@@ -1089,14 +1089,17 @@ def add_rack_location_from_sunbird(
             print("No cabinet could be retrieved from Sunbird, moving on...")
             return
 
-        rack_id = check_and_post_rack(
+        number_units = get_rack_units(
+            location_details, sunbird_url, sunbird_username, sunbird_password
+        )
+        rack_id = check_and_post(
             session,
-            field=location_details,
-            url=urls.RACK_URL,
-            dcrooms_id=dcr_id,
-            sunbird_url=sunbird_url,
-            sunbird_username=sunbird_username,
-            sunbird_password=sunbird_password,
+            urls.RACK_URL,
+            {"name": location_details["Rack"], "dcrooms_id": dcrooms_id},
+            {
+                "number_units": number_units,
+                "bgcolor": "#fec95c",  # Hardcoded, otherwise the rack won't show in UI
+            },
         )
 
         # Check for Item Rack
@@ -1192,52 +1195,6 @@ def check_and_post_data_center_room(
     }
     id = create_or_update_glpi_item(session, url, glpi_post, id)
     print("Created/Updated GLPI Data Center Room field")
-
-    return id
-
-
-def check_and_post_rack(
-    session: requests.sessions.Session,
-    field: dict,
-    url: str,
-    dcrooms_id: int,
-    sunbird_url: str,
-    sunbird_username: str,
-    sunbird_password: str,
-) -> int:
-    """A helper method to check the rack field at the given API endpoint (URL)
-       and post the field if it is not present.
-    Args:
-        Session (Session object): The requests session object
-        field (dict): Contains information about the rack location
-        url (str): GLPI API endpoint for the rack field
-        dcrooms_id (int): the id of the relevant data center room in GLPI
-        sunbird_username (str): Sunbird username
-        sunbird_password (str): Sunbird password
-        sunbird_url (str): Sunbird URL
-    Returns:
-        id (int): ID of the rack in GLPI
-    """
-    print("Checking GLPI Rack fields:")
-    # Check if the field is present at the URL endpoint.
-    id = check_field(
-        session,
-        url,
-        search_criteria={"name": field["Rack"], "dcrooms_id": dcrooms_id},
-    )
-
-    # Create a field if one was not found and return the ID.
-    number_units = get_rack_units(
-        field, sunbird_url, sunbird_username, sunbird_password
-    )
-    glpi_post = {
-        "locations_id": field["location"],
-        "name": field["Rack"],
-        "dcrooms_id": dcrooms_id,
-        "number_units": number_units,
-        "bgcolor": "#fec95c",  # Hardcoded, otherwise the rack won't show up in UI
-    }
-    id = create_or_update_glpi_item(session, url, glpi_post, id)
 
     return id
 
