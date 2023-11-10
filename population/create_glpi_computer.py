@@ -505,8 +505,14 @@ def post_to_glpi(  # noqa: C901
                 "manufacturers_id": manufacturers_id,
             },
         )
-        check_and_post_device_generic_item(
-            session, urls.DEVICE_GENERIC_ITEM_URL, COMPUTER_ID, "Computer", generic_id
+        check_and_post(
+            session,
+            urls.DEVICE_GENERIC_ITEM_URL,
+            {
+                "items_id": COMPUTER_ID,
+                "itemtype": "Computer",
+                "devicegenerics_id": generic_id,
+            },
         )
 
     return
@@ -557,52 +563,6 @@ def check_and_post_gpu(
         "designation": name,
         "manufacturers_id": manufacturers_id,
         "devicegraphiccardmodels_id": gpu_model_id,
-    }
-
-    id = create_or_update_glpi_item(session, url, glpi_post, id)
-
-    return id
-
-
-def check_and_post_device_generic_item(
-    session: requests.sessions.Session,
-    url: str,
-    item_id: int,
-    item_type: int,
-    generic_id: int,
-) -> int:
-    """A helper method to check the generic device item field at the given API endpoint
-       (URL) and post the field if it is not present.
-
-    Args:
-        session (Session object): The requests session object
-        url (str): GLPI API endpoint of the generic device item
-        item_id (int): ID of the item (usually a computer) associated with the disk item
-        item_type (str): Type of the item associated with the disk item, usually
-                         "Computer"
-        generic_id (int): ID of device in GLPI
-
-    Returns:
-        id (int): ID of the generic device in GLPI
-    """
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI Generic Item fields:")
-    id = check_field(
-        session,
-        url,
-        search_criteria={
-            "items_id": item_id,
-            "itemtype": item_type,
-            "devicegenerics_id": generic_id,
-        },
-    )
-
-    # Create a field if one was not found and return the ID.
-    print("Creating GLPI Generic field:")
-    glpi_post = {
-        "items_id": item_id,
-        "itemtype": item_type,
-        "devicegenerics_id": generic_id,
     }
 
     id = create_or_update_glpi_item(session, url, glpi_post, id)
