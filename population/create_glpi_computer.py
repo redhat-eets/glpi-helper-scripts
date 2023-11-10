@@ -24,13 +24,11 @@ from common.utils import (
     check_and_post_processor,
     check_and_post_processor_item,
     check_and_post_operating_system_item,
-    check_and_post_device_memory,
     check_and_post_device_memory_item,
     check_and_post_disk_item,
     check_and_post_network_port,
     check_and_post_network_port_ethernet,
     check_and_post_nic,
-    check_and_post_nic_item,
     check_fields,
     create_or_update_glpi_item,
     check_field,
@@ -370,8 +368,20 @@ def post_to_glpi(  # noqa: C901
         if "vendor" in gpus_dict[name]:
             vendor = gpus_dict[name]["vendor"]
 
-        gpu_id = check_and_post_gpu(
-            session, urls.DEVICE_GRAPHICS_CARD_URL, name, vendor, gpu_model_id, urls
+        manufacturers_id = vendor
+        if vendor:
+            manufacturers_id = check_and_post(
+                session, urls.MANUFACTURER_URL, {"name": vendor}
+            )
+
+        gpu_id = check_and_post(
+            session,
+            urls.DEVICE_GRAPHICS_CARD_URL,
+            {
+                "designation": name,
+                "manufacturers_id": manufacturers_id,
+                "devicegraphiccardmodels_id": gpu_model_id,
+            },
         )
         gpu_item_id = check_and_post(
             session,
@@ -520,58 +530,6 @@ def post_to_glpi(  # noqa: C901
         )
 
     return
-
-
-def check_and_post_gpu(
-    session: requests.sessions.Session,
-    url: str,
-    name: str,
-    vendor: str,
-    gpu_model_id: int,
-    urls: UrlInitialization,
-) -> int:
-    """A helper method to check the graphics field at the given API endpoint (URL) and
-       post the field if it is not present.
-
-    Args:
-        session (Session object): The requests session object
-        url (str): GLPI API endpoint of the graphics card device
-        name (str): Model name of the GPU
-        vendor (str): Manufacturer of the GPU
-        gpu_model_id (str): ID of the GPU model in GLPI
-        urls (UrlInitialization object): the URL object
-
-    Returns:
-        id (int): ID of the GPU in GLPI
-    """
-    manufacturers_id = vendor
-    if vendor:
-        manufacturers_id = check_and_post(
-            session, urls.MANUFACTURER_URL, {"name": vendor}
-        )
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI Graphics fields:")
-    id = check_field(
-        session,
-        url,
-        search_criteria={
-            "designation": name,
-            "manufacturers_id": manufacturers_id,
-            "devicegraphiccardmodels_id": gpu_model_id,
-        },
-    )
-
-    # Create a field if one was not found and return the ID.
-    print("Creating GLPI GPU field:")
-    glpi_post = {
-        "designation": name,
-        "manufacturers_id": manufacturers_id,
-        "devicegraphiccardmodels_id": gpu_model_id,
-    }
-
-    id = create_or_update_glpi_item(session, url, glpi_post, id)
-
-    return id
 
 
 # Executes main if run as a script.
