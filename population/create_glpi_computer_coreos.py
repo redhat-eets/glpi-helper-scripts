@@ -27,7 +27,6 @@ from common.utils import (
     check_and_post_network_port,
     check_and_post_network_port_ethernet,
     check_and_post_device_memory_item,
-    check_and_post_disk_item,
     check_fields,
 )
 import common.format_dicts as format_dicts
@@ -455,8 +454,15 @@ def post_to_glpi(  # noqa: C901
         else:
             size = float(disk_dict[disk_id]["Size"][:-1])
 
-        check_and_post_disk_item(
-            session, urls.DISK_ITEM_URL, COMPUTER_ID, "Computer", disk_id, size
+        check_and_post(
+            session,
+            urls.DISK_ITEM_URL,
+            {
+                "items_id": COMPUTER_ID,
+                "itemtype": "Computer",
+                "name": disk_id,
+                "totalsize": size,
+            },
         )
 
     return

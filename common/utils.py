@@ -92,7 +92,10 @@ def check_field_without_range(session: requests.sessions.Session, url: str) -> l
 
 
 def check_and_post(
-    session: requests.sessions.Session, url: str, post_information: dict
+    session: requests.sessions.Session,
+    url: str,
+    search_criteria: dict,
+    additional_information: dict = {},
 ) -> int:
     """A helper method to check the field at the given API endpoint (URL) and post
        the field if it is not present.
@@ -100,16 +103,29 @@ def check_and_post(
     Args:
         Session (Session object): The requests session object
         url (str): The url of the component to be populated
-        post_information (dict): Dictionary containing the desired state of the glpi item.
-            ex: {"glpi_field_name": glpi_field_value}
+        search_criteria (dict): Dictionary containing the desired state of the GLPI
+            item. It should contain fields to use when checking GLPI for pre-existing
+            items. For example: {"name": "glpi_field_value"} will check GLPI for
+            existing items named "glpi_field_value". The same dictionary
+            ({"name": "glpi_field_value"}) will be used to import this item into GLPI,
+            via either a PUT or POST request, after it's combined with
+            additional_information.
+        additional_information (dict): Dictionary containing fields that
+            shouldn't be used to check, but should be sent in the POST and PUT requests.
+            For example, when using check_and_post() for racks, you would pass
+            the background color under "additional_information". If a rack's name, ID,
+            and location were all the same, but its color was different, a new rack
+            should NOT be created, as that isn't a characteristic that helps identify a
+            unique rack.
+
     Returns:
         id (int): the id of the field.
     """
     print("Checking GLPI fields:")
     # Check if the field is present at the URL endpoint.
-    id = check_field(session, url, search_criteria=post_information)
+    id = check_field(session, url, search_criteria)
     # Create a field if one was not found and return the ID.
-    glpi_post = post_information
+    glpi_post = search_criteria.update(additional_information)
     id = create_or_update_glpi_item(session, url, glpi_post, id)
     print("Created/Updated GLPI field")
     return id
@@ -592,52 +608,6 @@ def check_and_remove_unspecified_device_memory_item(
                 removed = session.delete(url + str(glpi_field["id"]))
                 print(str(removed) + "\n")
                 break
-    return
-
-
-def check_and_post_disk_item(
-    session: requests.sessions.Session,
-    url: str,
-    item_id: int,
-    item_type: str,
-    disk_name: str,
-    size: int,
-    partition: str = None,
-) -> None:
-    """A helper method to check the disk item field at the given API endpoint (URL)
-       and post the field if it is not present.
-
-    Args:
-        session (Session object): The requests session object
-        url (str): GLPI API endpoint for the disk item field
-        item_id (int): ID of the item (usually a computer) associated with the disk
-                       item
-        item_type (str): Type of the item associated with the disk item, usually
-                         "Computer"
-        disk_name (str): Name of disk item
-        size (int): Capacity of disk item in MB
-        partition (str): Mountpoint of the disk item
-    """
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI Disk Item fields:")
-    id = check_field(
-        session,
-        url,
-        search_criteria={"items_id": item_id, "itemtype": item_type, "name": disk_name},
-    )
-
-    # Create a field if one was not found and return the ID.
-    print("Creating GLPI Disk Item field:")
-    glpi_post = {
-        "items_id": item_id,
-        "itemtype": item_type,
-        "name": disk_name,
-        "totalsize": size,
-    }
-    if partition is not None:
-        glpi_post["mountpoint"] = partition
-    id = create_or_update_glpi_item(session, url, glpi_post, id)
-
     return
 
 

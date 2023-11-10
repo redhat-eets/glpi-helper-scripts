@@ -25,7 +25,6 @@ from common.utils import (
     check_and_post_processor_item,
     check_and_post_operating_system_item,
     check_and_post_device_memory_item,
-    check_and_post_disk_item,
     check_and_post_network_port,
     check_and_post_network_port_ethernet,
     check_fields,
@@ -494,14 +493,16 @@ def post_to_glpi(  # noqa: C901
         else:
             size = float(disk_dict[disk_id]["Size"][:-2])
 
-        check_and_post_disk_item(
+        check_and_post(
             session,
             urls.DISK_ITEM_URL,
-            COMPUTER_ID,
-            "Computer",
-            disk_id,
-            size,
-            disk_dict[disk_id]["Part"],
+            {
+                "items_id": COMPUTER_ID,
+                "itemtype": "Computer",
+                "name": disk_id,
+                "totalsize": size,
+                "mountpoint": disk_dict[disk_id]["Part"],
+            },
         )
 
     for accelerator in accelerator_dict:

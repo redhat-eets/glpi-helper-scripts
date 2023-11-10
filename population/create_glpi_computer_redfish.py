@@ -23,7 +23,6 @@ from common.utils import (
     print_final_help,
     check_and_post,
     check_and_post_device_memory_item,
-    check_and_post_disk_item,
     check_and_post_network_port_ethernet,
     check_fields,
     create_or_update_glpi_item,
@@ -853,13 +852,15 @@ def post_to_glpi(  # noqa: C901
             size = round(float(disk_id["CapacityBytes"]) / 1000000)
         elif "CapacityMiB" in disk_id:
             size = disk_id["CapacityMiB"]
-        check_and_post_disk_item(
+        check_and_post(
             session,
             urls.DISK_ITEM_URL,
-            COMPUTER_ID,
-            "Computer",
-            disk_id["SerialNumber"],
-            size,
+            {
+                "items_id": COMPUTER_ID,
+                "itemtype": "Computer",
+                "name": disk_id["SerialNumber"],
+                "totalsize": size,
+            },
         )
 
     return
