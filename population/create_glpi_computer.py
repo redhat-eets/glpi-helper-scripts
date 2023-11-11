@@ -23,7 +23,6 @@ from common.utils import (
     check_and_post,
     check_and_post_processor,
     check_and_post_processor_item,
-    check_and_post_operating_system_item,
     check_and_post_device_memory_item,
     check_and_post_network_port,
     check_fields,
@@ -293,15 +292,20 @@ def post_to_glpi(  # noqa: C901
         int(cpu_dict["Socket(s)"]),
     )
 
-    operating_system_id = check_and_post_operating_system_item(
+    # check and post operating system item
+    check_and_post(
         session,
         urls.OPERATING_SYSTEM_ITEM_URL,
-        operating_system_id,
-        operating_system_version_id,
-        operating_system_architecture_id,
-        operating_system_kernel_version_id,
-        COMPUTER_ID,
-        "Computer",
+        {
+            "items_id": COMPUTER_ID,
+            "itemtype": "Computer",
+            "operatingsystems_id": operating_system_id,
+        },
+        {
+            "operatingsystemversions_id": operating_system_version_id,
+            "operatingsystemarchitectures_id": operating_system_architecture_id,
+            "operatingsystemkernelversions_id": operating_system_kernel_version_id,
+        },
     )
 
     # Create network devices.
