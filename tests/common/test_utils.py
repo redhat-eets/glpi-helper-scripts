@@ -11,17 +11,11 @@ from common.utils import (  # noqa: F401
     check_and_post,
     check_and_post_processor,
     check_and_post_processor_item,
-    check_and_post_operating_system_item,
     check_and_post_network_port,
-    check_and_post_network_port_ethernet,
     check_and_post_network_port_network_port,
-    check_and_post_device_memory,
     check_and_post_device_memory_item,
     get_unspecified_device_memory,
     check_and_remove_unspecified_device_memory_item,
-    check_and_post_disk_item,
-    check_and_post_nic,
-    check_and_post_nic_item,
     print_final_help,
     get_computers,
     get_network_equipment,
@@ -62,27 +56,12 @@ def test_check_and_post_processor_item():
 
 
 @mark.skip("Not written")
-def test_check_and_post_operating_system_item():
-    pass
-
-
-@mark.skip("Not written")
 def test_check_and_post_network_port():
     pass
 
 
 @mark.skip("Not written")
-def test_check_and_post_network_port_ethernet():
-    pass
-
-
-@mark.skip("Not written")
 def test_check_and_post_network_port_network_port():
-    pass
-
-
-@mark.skip("Not written")
-def test_check_and_post_device_memory():
     pass
 
 
@@ -98,21 +77,6 @@ def test_get_unspecified_device_memory():
 
 @mark.skip("Not written")
 def test_check_and_remove_unspecified_device_memory_item():
-    pass
-
-
-@mark.skip("Not written")
-def test_check_and_post_disk_item():
-    pass
-
-
-@mark.skip("Not written")
-def test_check_and_post_nic():
-    pass
-
-
-@mark.skip("Not written")
-def test_check_and_post_nic_item():
     pass
 
 
