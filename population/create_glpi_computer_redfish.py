@@ -24,7 +24,6 @@ from common.utils import (
     check_and_post,
     check_and_post_device_memory_item,
     check_fields,
-    create_or_update_glpi_item,
     check_field,
 )
 from common.switches import Switches
