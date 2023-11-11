@@ -121,13 +121,12 @@ def check_and_post(
     Returns:
         id (int): the id of the field.
     """
-    print("Checking GLPI fields:")
+    print(f"Checking GLPI fields for {url}:")
     # Check if the field is present at the URL endpoint.
     id = check_field(session, url, search_criteria)
     # Create a field if one was not found and return the ID.
     glpi_post = search_criteria.update(additional_information)
     id = create_or_update_glpi_item(session, url, glpi_post, id)
-    print("Created/Updated GLPI field")
     return id
 
 
@@ -234,67 +233,6 @@ def check_and_post_processor_item(
         print(str(post_response) + "\n")
 
     return
-
-
-def check_and_post_operating_system_item(
-    session: requests.sessions.Session,
-    url: str,
-    operating_system_id: int,
-    operating_system_version_id: int,
-    operating_system_architecture_id: int,
-    operating_system_kernel_version_id: int,
-    item_id: int,
-    item_type: str,
-) -> int:
-    """A helper method to check the operating system item field at the given API
-       endpoint (URL) and post the field if it is not present. Takes in the session,
-       field, and API url. Return the id of the field. NOTE: Operating systems have
-       been moved to a different object than descibed (Item_OperatingSystem).
-       This is undocumented except for issue 3334 on the glpi-project GitHub.
-
-    Args:
-        session (Session object): The requests session object
-        url (str): GLPI API endpoint for the operating system item field
-        operating_system_id (int): ID of the operating system in GLPI
-        operating_system_version_id (int): ID of the operating system version in GLPI
-        operating_system_architecture_id (int): ID of the operating system architecture
-                                                in GLPI
-        operating_system_kernel_version_id (int): ID of the operating system kernel
-                                                  version in GLPI
-        item_id (int): ID of the item (usually a computer) associated with the
-                       operating system item
-        item_type (str): Type of the item associated with the operating system item,
-                         usually "Computer"
-
-    Returns:
-        id (int): ID of the operating system item in GLPI
-    """
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI OS fields:")
-    id = check_field(
-        session,
-        url,
-        search_criteria={
-            "items_id": item_id,
-            "itemtype": item_type,
-            "operatingsystems_id": operating_system_id,
-        },
-    )
-
-    # Create a field if one was not found and return the ID.
-    print("Creating GLPI OS Item field:")
-    glpi_post = {
-        "items_id": item_id,
-        "itemtype": item_type,
-        "operatingsystems_id": operating_system_id,
-        "operatingsystemversions_id": operating_system_version_id,
-        "operatingsystemarchitectures_id": operating_system_architecture_id,
-        "operatingsystemkernelversions_id": operating_system_kernel_version_id,
-    }
-
-    id = create_or_update_glpi_item(session, url, glpi_post, id)
-
-    return id
 
 
 def check_and_post_network_port(  # noqa: C901
@@ -783,8 +721,10 @@ def create_or_update_glpi_item(
     if id is None:
         post_response = session.post(url=url, json={"input": glpi_post})
         id = post_response.json()["id"]
+        print(f"Created item at {url}")
     else:
         post_response = session.put(url=url, json={"input": glpi_post})
+        print(f"Updated item at {url}")
     print(str(post_response) + "\n")
 
     return id
