@@ -19,7 +19,19 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 
 ## What does this work aim to accomplish?
 This work does not exist in a vacuum, and the authors are aware of both first and third party agents, inventory gathering tools, and plugins that integrate with GLPI. However, in our lab configurations change often, machines are reallocated, and there may be restrictions on third-party software being installed. For these reasons, we chose to implement this scripting to fit our needs. For this reason the reader should also consult prior work before choosing to use this tooling.
-  
+
+## Prerequisites
+A current version of Python is recommended to run the scripts. As of writing the minimum version to avoid warnings would be 3.7. However, the scripting has been successfully run up to version 3.11. The same is true of pip, which should be a current version (23.0 as of writing, but this should be upgraded in the following steps).
+
+Running the script from a python3 virtual environment is recommended (note that the Python version of your venv can differ from the default Python path, if desired). Install the required python modules as follows, demonstrated for Python 3.11:
+
+```
+python3.11 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
 ## Importing machine(s) into GLPI
 The `population/create...`  scripts handle creating a computer and updating fields in a GLPI deployment. For more specific usage information use the help message provided by the scripts.
 
