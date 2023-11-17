@@ -13,11 +13,16 @@
 import sys
 
 sys.path.append("..")
+import requests
+
+from common.parser import argparser
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization
-from common.utils import check_field, check_fields, error, print_final_help
-from common.parser import argparser
-import requests
+from common.utils import (
+    check_field,
+    error,
+    print_final_help,
+)
 
 
 def main() -> None:
@@ -125,11 +130,11 @@ def create_reservations(
     """
     print("Creating reservation:\n")
 
-    user_id = check_field(session, username, urls.USER_URL)
+    user_id = check_field(session, urls.USER_URL, {"name": username})
     if user_id is None:
         error("User " + username + " is not present.")
 
-    computer_id = check_field(session, hostname, urls.COMPUTER_URL)
+    computer_id = check_field(session, urls.COMPUTER_URL, {"name": hostname})
     if computer_id is None:
         error("Computer " + hostname + " is not present.")
 
@@ -180,17 +185,10 @@ def check_reservation_item(
     """
     # Check if the field is present at the URL endpoint.
     print("Checking GLPI Reservation fields:")
-
-    glpi_fields_list = check_fields(session, url)
-
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if (
-                glpi_field["items_id"] == item_id
-                and glpi_field["itemtype"] == item_type
-            ):
-                return glpi_field["id"]
-    return None
+    id = check_field(
+        session, url, search_criteria={"items_id": item_id, "itemtype": item_type}
+    )
+    return id
 
 
 def post_reservation(

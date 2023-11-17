@@ -32,6 +32,8 @@ from common.utils import (
     check_and_post_nic,
     check_and_post_nic_item,
     check_fields,
+    create_or_update_glpi_item,
+    check_field,
 )
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization
@@ -517,20 +519,15 @@ def check_and_post_gpu(
         manufacturers_id = check_and_post(session, vendor, urls.MANUFACTURER_URL)
     # Check if the field is present at the URL endpoint.
     print("Checking GLPI Graphics fields:")
-    id = ""
-    glpi_fields_list = check_fields(session, url)
-
-    id_found = False
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if (
-                glpi_field["designation"] == name
-                and glpi_field["manufacturers_id"] == manufacturers_id
-                and glpi_field["devicegraphiccardmodels_id"] == gpu_model_id
-            ):
-                id = glpi_field["id"]
-                id_found = True
-                break
+    id = check_field(
+        session,
+        url,
+        search_criteria={
+            "designation": name,
+            "manufacturers_id": manufacturers_id,
+            "devicegraphiccardmodels_id": gpu_model_id,
+        },
+    )
 
     # Create a field if one was not found and return the ID.
     print("Creating GLPI GPU field:")
@@ -540,12 +537,7 @@ def check_and_post_gpu(
         "devicegraphiccardmodels_id": gpu_model_id,
     }
 
-    if id_found is False:
-        post_response = session.post(url=url, json={"input": glpi_post})
-        id = post_response.json()["id"]
-    else:
-        post_response = session.put(url=url, json={"input": glpi_post})
-    print(str(post_response) + "\n")
+    id = create_or_update_glpi_item(session, url, glpi_post, id)
 
     return id
 
@@ -567,31 +559,21 @@ def check_and_post_gpu_item(
     """
     # Check if the field is present at the URL endpoint.
     print("Checking GLPI GPU Item fields:")
-    id = ""
-    glpi_fields_list = check_fields(session, url)
-
-    id_found = False
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if (
-                glpi_field["items_id"] == item_id
-                and glpi_field["itemtype"] == item
-                and glpi_field["devicegraphiccards_id"] == gpu_id
-            ):
-                id = glpi_field["id"]
-                id_found = True
-                break
+    id = check_field(
+        session,
+        url,
+        search_criteria={
+            "items_id": item_id,
+            "itemtype": item,
+            "devicegraphiccards_id": gpu_id,
+        },
+    )
 
     # Create a field if one was not found and return the ID.
     print("Creating GLPI GPU Item field:")
     glpi_post = {"items_id": item_id, "itemtype": item, "devicegraphiccards_id": gpu_id}
 
-    if id_found is False:
-        post_response = session.post(url=url, json={"input": glpi_post})
-        id = post_response.json()["id"]
-    else:
-        post_response = session.put(url=url, json={"input": glpi_post})
-    print(str(post_response) + "\n")
+    id = create_or_update_glpi_item(session, url, glpi_post, id)
 
     return id
 
@@ -612,27 +594,13 @@ def check_and_post_generic_type(
     """
     # Check if the field is present at the URL endpoint.
     print("Checking GLPI Generic Type fields:")
-    id = ""
-    glpi_fields_list = check_fields(session, url)
-
-    id_found = False
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if glpi_field["name"] == type:
-                id = glpi_field["id"]
-                id_found = True
-                break
+    id = check_field(session, url, search_criteria={"name": type})
 
     # Create a field if one was not found and return the ID.
     print("Creating GLPI Generic Type field:")
     glpi_post = {"name": type}
 
-    if id_found is False:
-        post_response = session.post(url=url, json={"input": glpi_post})
-        id = post_response.json()["id"]
-    else:
-        post_response = session.put(url=url, json={"input": glpi_post})
-    print(str(post_response) + "\n")
+    id = create_or_update_glpi_item(session, url, glpi_post, id)
 
     return id
 
@@ -659,20 +627,15 @@ def check_and_post_device_generic(
     """
     # Check if the field is present at the URL endpoint.
     print("Checking GLPI Generic fields:")
-    id = ""
-    glpi_fields_list = check_fields(session, url)
-
-    id_found = False
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if (
-                glpi_field["designation"] == device
-                and glpi_field["devicegenerictypes_id"] == type_id
-                and glpi_field["manufacturers_id"] == manufacturers_id
-            ):
-                id = glpi_field["id"]
-                id_found = True
-                break
+    id = check_field(
+        session,
+        url,
+        search_criteria={
+            "designation": device,
+            "devicegenerictypes_id": type_id,
+            "manufacturers_id": manufacturers_id,
+        },
+    )
 
     # Create a field if one was not found and return the ID.
     print("Creating GLPI Generic field:")
@@ -682,12 +645,7 @@ def check_and_post_device_generic(
         "manufacturers_id": manufacturers_id,
     }
 
-    if id_found is False:
-        post_response = session.post(url=url, json={"input": glpi_post})
-        id = post_response.json()["id"]
-    else:
-        post_response = session.put(url=url, json={"input": glpi_post})
-    print(str(post_response) + "\n")
+    id = create_or_update_glpi_item(session, url, glpi_post, id)
 
     return id
 
@@ -715,20 +673,15 @@ def check_and_post_device_generic_item(
     """
     # Check if the field is present at the URL endpoint.
     print("Checking GLPI Generic Item fields:")
-    id = ""
-    glpi_fields_list = check_fields(session, url)
-
-    id_found = False
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if (
-                glpi_field["items_id"] == item_id
-                and glpi_field["itemtype"] == item_type
-                and glpi_field["devicegenerics_id"] == generic_id
-            ):
-                id = glpi_field["id"]
-                id_found = True
-                break
+    id = check_field(
+        session,
+        url,
+        search_criteria={
+            "items_id": item_id,
+            "itemtype": item_type,
+            "devicegenerics_id": generic_id,
+        },
+    )
 
     # Create a field if one was not found and return the ID.
     print("Creating GLPI Generic field:")
@@ -738,12 +691,7 @@ def check_and_post_device_generic_item(
         "devicegenerics_id": generic_id,
     }
 
-    if id_found is False:
-        post_response = session.post(url=url, json={"input": glpi_post})
-        id = post_response.json()["id"]
-    else:
-        post_response = session.put(url=url, json={"input": glpi_post})
-    print(str(post_response) + "\n")
+    id = create_or_update_glpi_item(session, url, glpi_post, id)
 
     return id
 

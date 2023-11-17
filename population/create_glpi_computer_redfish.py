@@ -29,6 +29,8 @@ from common.utils import (
     check_and_post_nic,
     check_and_post_nic_item,
     check_fields,
+    create_or_update_glpi_item,
+    check_field,
 )
 from common.switches import Switches
 from common.parser import argparser
@@ -1133,25 +1135,12 @@ def check_and_post_data_center(
     """
     print("Checking GLPI Data Center fields:")
     # Check if the field is present at the URL endpoint.
-    id = field["DataCenter"]
-    glpi_fields_list = check_fields(session, url)
-
-    id_found = False
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if glpi_field["name"] == id:
-                id = glpi_field["id"]
-                id_found = True
-                print("Found existing Data Center, moving on...")
-                break
+    id = check_field(session, url, search_criteria={"name": field["DataCenter"]})
 
     # Create a field if one was not found and return the ID.
-    if id_found is False:
-        print("Creating GLPI Data Center field:")
-        glpi_post = {"locations_id": field["location"], "name": id}
-        post_response = session.post(url=url, json={"input": glpi_post})
-        print(str(post_response) + "\n")
-        id = post_response.json()["id"]
+    glpi_post = {"locations_id": field["location"], "name": field["DataCenter"]}
+    print("Created/Updated GLPI Data Center field")
+    id = create_or_update_glpi_item(session, url, glpi_post, id)
 
     return id
 
@@ -1173,29 +1162,20 @@ def check_and_post_data_center_room(
     """
     print("Checking Data Center Room fields:")
     # Check if the field is present at the URL endpoint.
-    id = field["Room"]
-    glpi_fields_list = check_fields(session, url)
-
-    id_found = False
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if glpi_field["name"] == str(id) and glpi_field["datacenters_id"] == dc_id:
-                id = glpi_field["id"]
-                id_found = True
-                print("Found existing Data Center Room, moving on...")
-                break
+    id = check_field(
+        session,
+        url,
+        search_criteria={"name": str(field["Room"]), "datacenters_id": dc_id},
+    )
 
     # Create a field if one was not found and return the ID.
-    if id_found is False:
-        print("Creating GLPI Data Center Room field:")
-        glpi_post = {
-            "locations_id": field["location"],
-            "name": id,
-            "datacenters_id": dc_id,
-        }
-        post_response = session.post(url=url, json={"input": glpi_post})
-        print(str(post_response) + "\n")
-        id = post_response.json()["id"]
+    glpi_post = {
+        "locations_id": field["location"],
+        "name": field["Room"],
+        "datacenters_id": dc_id,
+    }
+    id = create_or_update_glpi_item(session, url, glpi_post, id)
+    print("Created/Updated GLPI Data Center Room field")
 
     return id
 
@@ -1224,34 +1204,24 @@ def check_and_post_rack(
     """
     print("Checking GLPI Rack fields:")
     # Check if the field is present at the URL endpoint.
-    id = field["Rack"]
-    glpi_fields_list = check_fields(session, url)
-
-    id_found = False
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if glpi_field["name"] == id and glpi_field["dcrooms_id"] == dcrooms_id:
-                id = glpi_field["id"]
-                id_found = True
-                print("Found existing Rack, moving on...")
-                break
+    id = check_field(
+        session,
+        url,
+        search_criteria={"name": field["Rack"], "dcrooms_id": dcrooms_id},
+    )
 
     # Create a field if one was not found and return the ID.
-    if id_found is False:
-        print("Creating GLPI Rack field:")
-        number_units = get_rack_units(
-            field, sunbird_url, sunbird_username, sunbird_password
-        )
-        glpi_post = {
-            "locations_id": field["location"],
-            "name": id,
-            "dcrooms_id": dcrooms_id,
-            "number_units": number_units,
-            "bgcolor": "#fec95c",  # Hardcoded, otherwise the rack won't show up in UI
-        }
-        post_response = session.post(url=url, json={"input": glpi_post})
-        print(str(post_response) + "\n")
-        id = post_response.json()["id"]
+    number_units = get_rack_units(
+        field, sunbird_url, sunbird_username, sunbird_password
+    )
+    glpi_post = {
+        "locations_id": field["location"],
+        "name": field["Rack"],
+        "dcrooms_id": dcrooms_id,
+        "number_units": number_units,
+        "bgcolor": "#fec95c",  # Hardcoded, otherwise the rack won't show up in UI
+    }
+    id = create_or_update_glpi_item(session, url, glpi_post, id)
 
     return id
 
@@ -1346,68 +1316,36 @@ def check_and_post_rack_item(
     """
     print("Checking GLPI Rack Item fields:")
     # Check if the field is present at the URL endpoint.
-    id = field["Item_Rack"]
-    glpi_fields_list = check_fields(session, url)
-
-    id_found = False
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if glpi_field["items_id"] == computer_id:
-                id = glpi_field["id"]
-                id_found = True
-                if (
-                    glpi_field["itemtype"] != item_type
-                    or glpi_field["position"] != field["Item_Rack"]
-                    or glpi_field["racks_id"] != rack_id
-                ):
-                    # Update item with changed location
-                    glpi_put = {
-                        "position": field["Item_Rack"],
-                        "racks_id": rack_id,
-                        "itemtype": item_type,
-                        "id": id,
-                    }
-                    put_response = session.put(url=url, json={"input": glpi_put})
-                    print(put_response)
-                    print(
-                        (
-                            f"Changed item's rack to {field['Rack']} and/or "
-                            f"position to {field['Item_Rack']}"
-                        )
-                    )
-                    break
-                else:
-                    print(
-                        (
-                            f"Found existing Rack Item in {field['DataCenter']} > "
-                            f"{field['Room']} > {field['Rack']} > "
-                            f"{field['Item_Rack']}, moving on..."
-                        )
-                    )
-                    break
-
-    # Create a field if one was not found and return the ID.
-    if id_found is False:
-        print("Creating GLPI Rack Item field:")
-        glpi_post = {
+    id = check_field(
+        session,
+        url,
+        search_criteria={
+            "itemtype": item_type,
             "items_id": computer_id,
             "position": field["Item_Rack"],
             "racks_id": rack_id,
-            "itemtype": item_type,
-            "bgcolor": "#69ceba",  # Hardcoded, otherwise the rack won't show up in UI
-            "orientation": 0,  # Hardcoded, otherwise the rack won't show up in UI
-        }
-        post_response = session.post(url=url, json={"input": glpi_post})
-        print(str(post_response) + "\n")
-        print(post_response.text)
-        id = post_response.json()["id"]
-        print(
-            (
-                f"Added computer to {field['DataCenter']} > "
-                f"{field['Room']} > {field['Rack']} > "
-                f"{field['Item_Rack']}"
-            )
+        },
+    )
+
+    # Create a field if one was not found and return the ID.
+    glpi_post = {
+        "items_id": computer_id,
+        "position": field["Item_Rack"],
+        "racks_id": rack_id,
+        "itemtype": item_type,
+        "bgcolor": "#69ceba",  # Hardcoded, otherwise the rack won't show up in UI
+        "orientation": 0,  # Hardcoded, otherwise the rack won't show up in UI
+    }
+
+    id = create_or_update_glpi_item(session, url, glpi_post, id)
+    print("Created/Updated GLPI Rack Item field")
+    print(
+        (
+            f"Added computer to {field['DataCenter']} > "
+            f"{field['Room']} > {field['Rack']} > "
+            f"{field['Item_Rack']}"
         )
+    )
 
     return id
 
@@ -1436,21 +1374,13 @@ def check_and_post_processor(
         print("Checking GLPI CPU fields:")
         # Check if the field is present at the URL endpoint.
         if field["Model"]:
-            id = field["Model"]
+            search_criteria = field["Model"]
         else:
-            id = field["ProcessorId"]["VendorId"]
-        glpi_fields_list = check_fields(session, url)
-
-        id_found = False
-        for glpi_fields in glpi_fields_list:
-            for glpi_field in glpi_fields.json():
-                if glpi_field["designation"] == id:
-                    id = glpi_field["id"]
-                    id_found = True
-                    break
+            search_criteria = field["ProcessorId"]["VendorId"]
+        id = check_field(session, url, search_criteria={"designation": search_criteria})
 
         # Create a field if one was not found and return the ID.
-        if not id_found:
+        if id is None:
             # Get the manufacturer or create it (NOTE: This may create duplicates
             # with slight variation)
             manufacturers_id = check_and_post(
@@ -1458,7 +1388,7 @@ def check_and_post_processor(
             )
             print("Creating GLPI CPU field:")
             glpi_post = {
-                "designation": id,
+                "designation": search_criteria,
                 "nbcores_default": field["TotalCores"],
                 "nbthreads_default": field["TotalThreads"],
                 "manufacturers_id": manufacturers_id,
@@ -1560,22 +1490,17 @@ def check_and_post_network_port(
     """
     # Check if the field is present at the URL endpoint.
     print("Checking GLPI Network Port fields:")
-    id = ""
-    glpi_fields_list = check_fields(session, url)
-
-    id_found = False
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if (
-                glpi_field["items_id"] == item_id
-                and glpi_field["itemtype"] == item_type
-                and glpi_field["logical_number"] == port_number
-                and glpi_field["name"] == name
-                and glpi_field["instantiation_type"] == instantiation_type
-            ):
-                id = glpi_field["id"]
-                id_found = True
-                break
+    id = check_field(
+        session,
+        url,
+        search_criteria={
+            "items_id": item_id,
+            "itemtype": item_type,
+            "logical_number": port_number,
+            "name": name,
+            "instantiation_type": instantiation_type,
+        },
+    )
 
     # Create a field if one was not found and return the ID.
     glpi_post = {
@@ -1589,13 +1514,8 @@ def check_and_post_network_port(
         glpi_post["mac"] = network["AssociatedNetworkAddresses"][0]
     elif "MACAddress" in network:
         glpi_post["mac"] = network["MACAddress"]
-    if not id_found:
-        response = session.post(url=url, json={"input": glpi_post})
-        id = response.json()["id"]
-    else:
-        # 200 put code does not return id field.
-        response = session.put(url=url, json={"input": glpi_post})
-    print(str(response) + "\n")
+
+    id = create_or_update_glpi_item(session, url, glpi_post, id)
 
     return id
 
