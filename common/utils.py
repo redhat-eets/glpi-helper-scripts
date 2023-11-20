@@ -95,7 +95,7 @@ def check_and_post(
     session: requests.sessions.Session,
     url: str,
     search_criteria: dict,
-    additional_information: dict = {},
+    additional_information: dict = None,
 ) -> int:
     """A helper method to check the field at the given API endpoint (URL) and post
        the field if it is not present.
@@ -124,8 +124,10 @@ def check_and_post(
     print(f"Checking GLPI fields for {url}:")
     # Check if the field is present at the URL endpoint.
     id = check_field(session, url, search_criteria)
+
     # Create a field if one was not found and return the ID.
-    glpi_post = search_criteria.update(additional_information)
+    if additional_information is not None:
+        glpi_post = search_criteria.update(additional_information)
     id = create_or_update_glpi_item(session, url, glpi_post, id)
     return id
 
