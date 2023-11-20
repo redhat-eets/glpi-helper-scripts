@@ -19,7 +19,19 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 
 ## What does this work aim to accomplish?
 This work does not exist in a vacuum, and the authors are aware of both first and third party agents, inventory gathering tools, and plugins that integrate with GLPI. However, in our lab configurations change often, machines are reallocated, and there may be restrictions on third-party software being installed. For these reasons, we chose to implement this scripting to fit our needs. For this reason the reader should also consult prior work before choosing to use this tooling.
-  
+
+## Prerequisites
+A current version of Python is recommended to run the scripts. As of writing the minimum version to avoid warnings would be 3.7. However, the scripting has been successfully run up to version 3.11. The same is true of pip, which should be a current version (23.0 as of writing, but this should be upgraded in the following steps).
+
+Running the script from a python3 virtual environment is recommended (note that the Python version of your venv can differ from the default Python path, if desired). Install the required python modules as follows, demonstrated for Python 3.11:
+
+```
+python3.11 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
 ## Importing machine(s) into GLPI
 The `population/create...`  scripts handle creating a computer and updating fields in a GLPI deployment. For more specific usage information use the help message provided by the scripts.
 
@@ -189,7 +201,7 @@ The `filtering/filter_reservations_by_project.py` will filter the reservations i
 
 ## Integrations
 
-### integrations/compare_sunbird_with_glpi.py
+### integrations/sunbird/compare_sunbird_with_glpi.py
 The `integrations/sunbird/compare_sunbird_with_glpi.py` script compares all machines in GLPI with all machines in Sunbird located in the labs specified by a user-provided YAML file. It returns a list of machines that are in GLPI, but not Sunbird, and vice versa.
 
 Example script usage: 
@@ -199,3 +211,9 @@ Example script usage:
 You can also email the output of this script to someone via optional flags:
 
 `python3 compare_sunbird_with_glpi.py -i <GLPI URL> -t <GLPI API TOKEN> -v -g <path to YAML file> -u <Sunbird USERNAME> -p <Sunbird PASSWORD> -s <Sunbird URL> -r <RECIPIENT EMAIL> -S <SENDER EMAIL> -e <EMAIL SERVER>`
+
+### integrations/ldap/compare_ldap_with_glpi.py
+The `integrations/ldap/compare_ldap_with_glpi.py` script compares the LDAP groups specified in a user-provided YAML file to the groups in GLPI. It then adds any missing users to the relevant GLPI group. There is an example YAML file in the `integrations/ldap` folder. The script assumes that you have the `ldapsearch` CLI tool installed. You can install it with `dnf install openldap-clients`
+
+Example script usage:
+`python3 compare_ldap_with_glpi.py -i <GLPI URL> -t <GLPI API TOKEN> -v -c <path to YAML file> -l <LDAP server> -b <Base DN>`
