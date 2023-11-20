@@ -1082,8 +1082,8 @@ def add_rack_location_from_sunbird(
             location_details["Item_Rack"] = None
 
         # Get size of asset, otherwise default to 1 RU
-        if "tiRUs" in location_data:
-            location_details["required_units"] = int(location_data["tiRUs"])
+        if "tiRUs" in sunbird_location_data:
+            location_details["required_units"] = int(sunbird_location_data["tiRUs"])
         else:
             location_details["required_units"] = 1
         # Check for Data Center
