@@ -748,12 +748,14 @@ def post_to_glpi(  # noqa: C901
         }
 
         if "AssociatedNetworkAddresses" in json.loads(name):
-            search_criteria["mac"] = json.loads(name)["AssociatedNetworkAddresses"][0]
+            additional_information = {
+                "mac": json.loads(name)["AssociatedNetworkAddresses"][0]
+            }
         elif "MACAddress" in json.loads(name):
-            search_criteria["mac"] = json.loads(name)["MACAddress"]
+            additional_information = {"mac": json.loads(name)["MACAddress"]}
 
         network_port_id = check_and_post(
-            session, urls.NETWORK_PORT_URL, search_criteria
+            session, urls.NETWORK_PORT_URL, search_criteria, additional_information
         )
         try:
             speed = json.loads(name)["SpeedMbps"]
@@ -773,6 +775,8 @@ def post_to_glpi(  # noqa: C901
             urls.NETWORK_PORT_ETHERNET_URL,
             {
                 "networkports_id": network_port_id,
+            },
+            {
                 "items_devicenetworkcards_id": nic_id,
                 "speed": speed,
             },
@@ -1100,7 +1104,7 @@ def add_rack_location_from_sunbird(
             urls.DCROOM_URL,
             {
                 "locations_id": location_details["location"],
-                "name": location_details["Room"],
+                "name": str(location_details["Room"]),
                 "datacenters_id": dc_id,
             },
         )
