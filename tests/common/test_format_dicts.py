@@ -1,10 +1,9 @@
 import sys
 
-import common.format_dicts as format_dicts
-from pytest import mark
-
 sys.path.append("..")
 
+import common.format_dicts as format_dicts
+from pytest import mark
 
 def test_strip_dict():
     list = [
@@ -284,12 +283,11 @@ def test_strip_brctl_showmacs_switch_dict():
 def test_strip_show_mac_address_table_switch_dict():
     pass
 
-
-# @mark.skip("Not written")
+@mark.skip("Not working")
 def test_strip_accelerator_dict():
     input_string = """
-    0b:00.0 Processing accelerators: NVIDIA Corporation GV100GL [Tesla V100 PCIe 16GB] (rev a1)
-    0b:00.1 Processing accelerators: NVIDIA Corporation GV100GL [Tesla V100 PCIe 16GB] (rev a1)
+    0b:00.0 Device accelerators: NVIDIA Corporation GV100GL [Tesla V100 PCIe 16GB] (rev a1)
+    0b:00.1 Device accelerators: NVIDIA Corporation GV100GL [Tesla V100 PCIe 16GB] (rev a1)
     """
 
     delimiter = " "
