@@ -5,6 +5,7 @@ sys.path.append("..")
 import common.format_dicts as format_dicts
 from pytest import mark
 
+
 def test_strip_dict():
     list = [
         " space: single ".encode(),
@@ -236,7 +237,7 @@ def test_strip_gpu_dict():
        capabilities: pciexpress msi pm vga_controller bus_master cap_list rom fb
        configuration: depth=32 driver=i915 latency=0 mode=1920x1080 resolution=1920,1080 visual=truecolor xres=1920 yres=1080
        resources: iomemory:600-5ff iomemory:400-3ff irq:135 memory:603c000000-603cffffff memory:4000000000-400fffffff ioport:3000(size=64) memory:c0000-dffff memory:4010000000-4016ffffff memory:4020000000-40ffffffff
-    """
+    """  # noqa: E501
     gpu_delimiter = "*"
     line_delimiter = ": "
     result = format_dicts.strip_gpu_dict(input_string, gpu_delimiter, line_delimiter)
@@ -257,11 +258,11 @@ def test_strip_gpu_dict():
     )
     assert (
         result["Graphics Controller"]["configuration"]
-        == "depth=32 driver=i915 latency=0 mode=1920x1080 resolution=1920,1080 visual=truecolor xres=1920 yres=1080"
+        == "depth=32 driver=i915 latency=0 mode=1920x1080 resolution=1920,1080 visual=truecolor xres=1920 yres=1080"  # noqa: E501
     )
     assert (
         result["Graphics Controller"]["resources"]
-        == "iomemory:600-5ff iomemory:400-3ff irq:135 memory:603c000000-603cffffff memory:4000000000-400fffffff ioport:3000(size=64) memory:c0000-dffff memory:4010000000-4016ffffff memory:4020000000-40ffffffff"
+        == "iomemory:600-5ff iomemory:400-3ff irq:135 memory:603c000000-603cffffff memory:4000000000-400fffffff ioport:3000(size=64) memory:c0000-dffff memory:4010000000-4016ffffff memory:4020000000-40ffffffff"  # noqa: E501
     )
 
 
@@ -283,12 +284,13 @@ def test_strip_brctl_showmacs_switch_dict():
 def test_strip_show_mac_address_table_switch_dict():
     pass
 
+
 @mark.skip("Not working")
 def test_strip_accelerator_dict():
     input_string = """
     0b:00.0 Device accelerators: NVIDIA Corporation GV100GL [Tesla V100 PCIe 16GB] (rev a1)
     0b:00.1 Device accelerators: NVIDIA Corporation GV100GL [Tesla V100 PCIe 16GB] (rev a1)
-    """
+    """  # noqa: E501
 
     delimiter = " "
 
