@@ -753,7 +753,8 @@ def post_to_glpi(  # noqa: C901
             }
         elif "MACAddress" in json.loads(name):
             additional_information = {"mac": json.loads(name)["MACAddress"]}
-
+        else:
+            additional_information = None
         network_port_id = check_and_post(
             session, urls.NETWORK_PORT_URL, search_criteria, additional_information
         )
