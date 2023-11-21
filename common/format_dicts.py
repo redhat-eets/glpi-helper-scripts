@@ -190,10 +190,8 @@ def strip_disks_dict_coreos(dict: str, delimiter: str) -> dict:
     """
     stripped_dict = {}
     dict = dict.split("\n")
-    print(dict)
     for entry in dict:
         temp = entry.lstrip().strip().split()
-        print(temp)
         if temp[-1] == "disk":
             stripped_dict[temp[0]] = {}
             stripped_dict[temp[0]]["Size"] = temp[3]
