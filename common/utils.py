@@ -67,12 +67,13 @@ def check_fields(session: requests.sessions.Session, url: str) -> list:
             and glpi_fields.json()[0] == "ERROR_RESOURCE_NOT_FOUND_NOR_COMMONDBTM"
         ):
             more_fields = False
-            glpi_fields_list.append(glpi_fields)
+            glpi_fields_list.extend(glpi_fields.json())
         elif glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
             more_fields = False
         else:
-            glpi_fields_list.append(glpi_fields)
+            glpi_fields_list.extend(glpi_fields.json())
             api_range += api_increment
+
     return glpi_fields_list
 
 
