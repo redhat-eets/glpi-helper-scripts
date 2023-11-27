@@ -21,7 +21,6 @@ from common.utils import (
     check_fields,
     check_field_without_range,
     print_final_help,
-    get_computers,
 )
 from common.parser import argparser
 import json
@@ -74,7 +73,7 @@ def main() -> None:
     reservations = get_reservations(user_token, ip, no_verify)
 
     with SessionHandler(user_token, urls, no_verify) as session:
-        computers = get_computers(session, urls)
+        computers = check_fields(session, urls.COMPUTER_URL)
         disks = get_disks(session, urls)
         available, final_choices = reservable(
             session, reservations, computers, disks, requirements

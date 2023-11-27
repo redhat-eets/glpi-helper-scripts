@@ -22,7 +22,7 @@ import urllib3
 import yaml
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization, validate_url
-from common.utils import get_computers, print_final_help
+from common.utils import check_fields, print_final_help
 
 # Suppress InsecureRequestWarning caused by REST access without certificate validation.
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -241,7 +241,7 @@ def get_glpi_machines(
     Returns:
         glpi_machines (dict): machines in GLPI
     """
-    computers = get_computers(session, urls)
+    computers = check_fields(session, urls.COMPUTER_URL)
     computers_list = [yaml.safe_load(computer) for computer in computers]
     glpi_machines = {
         computer["serial"]: computer

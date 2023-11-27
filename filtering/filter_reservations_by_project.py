@@ -19,9 +19,9 @@ from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization
 from common.utils import (
     print_final_help,
-    get_computers,
     get_network_equipment,
     get_reservations,
+    check_fields,
 )
 from common.parser import argparser
 import yaml
@@ -57,7 +57,7 @@ def main() -> None:
 
     with SessionHandler(user_token, urls, no_verify) as session:
         reservations = yaml.safe_load(get_reservations(session, urls))
-        computers = get_computers(session, urls)
+        computers = check_fields(session, urls.COMPUTER_URL)
         network_equipment = get_network_equipment(session, urls)
 
     get_machines_reserved_with_tag(computers, network_equipment, reservations, jira)

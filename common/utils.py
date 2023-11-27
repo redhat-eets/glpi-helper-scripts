@@ -802,27 +802,6 @@ def print_final_help() -> None:
     )
 
 
-def get_computers(session: requests.sessions.Session, urls: UrlInitialization) -> list:
-    """Method for getting all computers
-
-    Args:
-        session (Session object):        the requests session object
-        urls (UrlInitialization object): the URL object
-
-    Returns:
-        list: computers from GLPI
-    """
-    print("Getting computer information:\n")
-
-    computers = []
-
-    computer_json = check_fields(session, urls.COMPUTER_URL)
-    for computer_list in computer_json:
-        for computer in computer_list.json():
-            computers.append(json.dumps(computer))
-    return computers
-
-
 def get_network_equipment(
     session: requests.sessions.Session, urls: UrlInitialization
 ) -> list:
