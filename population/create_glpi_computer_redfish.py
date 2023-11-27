@@ -932,12 +932,11 @@ def set_bmc_address_field(
         glpi_post (dict): Contains information about a Computer to be passed to GLPI
     """
     if put:
-        for computer_group in plugin_response:
-            for computer in computer_group.json():
-                if computer["items_id"] == computer_id:
-                    if computer["bmcaddressfield"]:
-                        print("Leaving 'BMC Address' field unchanged...")
-                        return glpi_post
+        for computer in plugin_response:
+            if computer["items_id"] == computer_id:
+                if computer["bmcaddressfield"]:
+                    print("Leaving 'BMC Address' field unchanged...")
+                    return glpi_post
     glpi_post["bmcaddressfield"] = redfish_base_url.partition("https://")[2]
     print("Updating BMC Address Field...")
     return glpi_post
