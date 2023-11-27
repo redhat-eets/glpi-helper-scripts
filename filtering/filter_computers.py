@@ -74,7 +74,9 @@ def main() -> None:
 
     with SessionHandler(user_token, urls, no_verify) as session:
         computers = check_fields(session, urls.COMPUTER_URL)
-        disks = get_disks(session, urls)
+        disks = check_fields(session, urls.DISK_ITEM_URL)
+        disks.sort(key=operator.itemgetter("totalsize"))
+
         available, final_choices = reservable(
             session, reservations, computers, disks, requirements
         )
@@ -135,31 +137,6 @@ def get_reservations(user_token: str, ip: str, no_verify: bool) -> list:
 
     print("Reservations parsed")
     return parsed_reservations
-
-
-def get_disks(user_token: str, urls: str) -> list:
-    """Get the disks from GLPI
-
-    Args:
-        user_token (str):                the user's GLPI API token
-        urls (UrlInitialization object): the URL object
-
-    Returns:
-        disks (list): the sorted disks from GLPI
-    """
-    print(
-        "------------------------------------------------------------------"
-        + "--------------\nGetting disk items\n-----------------"
-        + "---------------------------------------------------------------"
-    )
-    disks = []
-    disk_fields = check_fields(user_token, urls.DISK_ITEM_URL)
-    for disk_field in disk_fields:
-        for disk in disk_field.json():
-            disks.append(json.loads(json.dumps(disk)))
-
-    disks.sort(key=operator.itemgetter("totalsize"))
-    return disks
 
 
 def reservable(  # noqa: C901
