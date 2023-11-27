@@ -20,14 +20,15 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 def main():
-
     parser = argparser()
     parser.parser.add_argument(
         "-c",
         "--ldap_config",
         metavar="ldap_config",
-        help=("path to LDAP config YAML file,"
-              "see integration/ldap/general_ldap_example.yaml"),
+        help=(
+            "path to LDAP config YAML file,"
+            "see integration/ldap/general_ldap_example.yaml"
+        ),
         required=True,
     )
     parser.parser.add_argument(
@@ -152,37 +153,18 @@ def sync_ldap_with_glpi(
         urls (UrlInitialization): the URL object
         group_map (dict): User-defined dictionary w/ ldap groups to search
     """
-    all_users = get_all_users(session, urls.USER_URL)
+    all_users = check_fields(session, urls.USER_URL)
     group_response_list = check_fields(session, urls.GROUP_URL)
-    for group_response in group_response_list:
-        for group in group_response.json():
-            users_in_group = get_users_in_group(session, urls, str(group["id"]))
+    for group in group_response_list:
+        users_in_group = get_users_in_group(session, urls, str(group["id"]))
 
-            if group["completename"] in group_map:
-                # add group names to comments
-                update_group_comments(session, urls.GROUP_URL, group, group_map)
+        if group["completename"] in group_map:
+            # add group names to comments
+            update_group_comments(session, urls.GROUP_URL, group, group_map)
 
-                add_missing_users_to_group(
-                    session, urls.BASE_URL, group, users_in_group, group_map, all_users
-                )
-
-
-def get_all_users(session: requests.sessions.Session, user_url: str) -> list:
-    """Gets all users in GLPI
-
-    Args:
-        session (requests.sessions.Session): The requests session object
-        user_url (str): GLPI API endpoint for users
-
-    Returns:
-        list: Contains all GLPI users
-    """
-    full_user_list = check_fields(session, user_url)
-    all_users = []
-    for user_list in full_user_list:
-        for user_in_list in user_list.json():
-            all_users.append(user_in_list)
-    return all_users
+            add_missing_users_to_group(
+                session, urls.BASE_URL, group, users_in_group, group_map, all_users
+            )
 
 
 def get_users_in_group(
@@ -202,10 +184,9 @@ def get_users_in_group(
     users_response_list = check_fields(
         session, f"{urls.GROUP_URL}{group_id}/Group_User"
     )
-    for user_response in users_response_list:
-        for user in user_response.json():
-            user_info = session.get(f"{urls.USER_URL}{str(user['users_id'])}")
-            users_in_group.append(user_info.json()["name"])
+    for user in users_response_list:
+        user_info = session.get(f"{urls.USER_URL}{str(user['users_id'])}")
+        users_in_group.append(user_info.json()["name"])
     return users_in_group
 
 
