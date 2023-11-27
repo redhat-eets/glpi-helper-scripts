@@ -255,16 +255,15 @@ def post_to_glpi(  # noqa: C901
     # number matches then use a PUT to modify the cooresponding computer by ID.
     glpi_fields_list = check_fields(session, urls.COMPUTER_URL)
 
-    for glpi_fields in glpi_fields_list:
-        for glpi_computer in glpi_fields.json():
-            if glpi_computer["serial"] == serial_number:
-                global PUT
-                global COMPUTER_ID
-                PUT = True
-                COMPUTER_ID = glpi_computer["id"]
-                if glpi_computer["name"] != glpi_post["name"] and not overwrite:
-                    glpi_post["name"] = glpi_computer["name"]
-                break
+    for glpi_computer in glpi_fields_list:
+        if glpi_computer["serial"] == serial_number:
+            global PUT
+            global COMPUTER_ID
+            PUT = True
+            COMPUTER_ID = glpi_computer["id"]
+            if glpi_computer["name"] != glpi_post["name"] and not overwrite:
+                glpi_post["name"] = glpi_computer["name"]
+            break
 
     # If the PUT flag is set then PUT the data to GLPI to modify the existing
     # machine, otherwise POST it to create a new machine.

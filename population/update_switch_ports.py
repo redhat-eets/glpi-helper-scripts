@@ -94,11 +94,10 @@ def post_to_glpi(
                         get_switch_port_speed(lab, switch_ip, switch_info),
                     ]
 
-                for glpi_fields in glpi_fields_list:
-                    for glpi_field in glpi_fields.json():
-                        if glpi_field["name"] == switch_name:
-                            switch_id = glpi_field["id"]
-                            break
+                for glpi_field in glpi_fields_list:
+                    if glpi_field["name"] == switch_name:
+                        switch_id = glpi_field["id"]
+                        break
 
                 for switch_port_mac in switch_dict[switch_ip][1]:
                     switch_port = switch_dict[switch_ip][1][switch_port_mac]
