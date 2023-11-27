@@ -706,8 +706,7 @@ def post_to_glpi(  # noqa: C901
                 vendor = json.loads(name)["Manufacturer"]
             else:
                 vendor = "None"
-        print(name)
-        # print(json.loads(name))
+
         if "Id" in json.loads(name):
             nic_id = check_and_post_nic(
                 session,
@@ -872,7 +871,7 @@ def update_bmc_address(
     Returns:
         glpi_post (dict): Contains information about a Computer to be passed to GLPI
     """
-    if "ERROR" in plugin_response:
+    if "ERROR" in plugin_response[0]:
         glpi_post = add_bmc_address_to_comments(glpi_post, redfish_base_url, comment)
         print(
             "The provided field endpoint is unavailable, "
