@@ -802,29 +802,6 @@ def print_final_help() -> None:
     )
 
 
-def get_network_equipment(
-    session: requests.sessions.Session, urls: UrlInitialization
-) -> list:
-    """Method for getting all network equipment
-
-    Args:
-        session (Session object):        the requests session object
-        urls (UrlInitialization object): the URL object
-
-    Returns:
-        list: network equipment from GLPI
-    """
-    print("Getting computer information:\n")
-
-    network_equipment_output = []
-
-    network_equipment_json = check_fields(session, urls.NETWORK_EQUIPMENT_URL)
-    for network_equipment_list in network_equipment_json:
-        for network_equipment in network_equipment_list.json():
-            network_equipment_output.append(json.dumps(network_equipment))
-    return network_equipment_output
-
-
 def get_reservations(
     session: requests.sessions.Session,
     urls: UrlInitialization,
