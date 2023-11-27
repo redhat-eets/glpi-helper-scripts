@@ -12,7 +12,6 @@
 
 from common.urlinitialization import UrlInitialization
 from common.switches import Switches
-import json
 import requests
 import pexpect
 import common.format_dicts as format_dicts

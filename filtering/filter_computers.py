@@ -23,7 +23,6 @@ from common.utils import (
     print_final_help,
 )
 from common.parser import argparser
-import json
 import subprocess
 from typing import Tuple
 import yaml
