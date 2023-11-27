@@ -828,10 +828,7 @@ def get_reservations(
         for reservation in reservation_json:
             reservation_item_json = check_field_without_range(
                 session,
-                (
-                    urls.RESERVATION_ITEM_URL
-                    + str(reservation["reservationitems_id"])
-                ),
+                (urls.RESERVATION_ITEM_URL + str(reservation["reservationitems_id"])),
             )
             user_json = check_field_without_range(
                 session, (urls.USER_URL + str(reservation["users_id"]))
@@ -855,9 +852,7 @@ def get_reservations(
             if hostname and hostname != item_json["name"]:
                 continue
 
-            reservations_output += (
-                "Reservation " + str(reservation["id"]) + ":" + "\n"
-            )
+            reservations_output += "Reservation " + str(reservation["id"]) + ":" + "\n"
             reservations_output += (
                 "  User "
                 + str(reservation["users_id"])
@@ -878,9 +873,7 @@ def get_reservations(
             reservations_output += "  Ends: " + str(reservation["end"]) + "\n"
 
             if reservation["comment"]:
-                reservations_output += (
-                    '  Comment: "' + reservation["comment"] + '"\n\n'
-                )
+                reservations_output += '  Comment: "' + reservation["comment"] + '"\n\n'
             else:
                 reservations_output += "  Comment: N/A \n\n"
     else:
