@@ -361,7 +361,7 @@ def get_processor_or_memory(
         uri (str): The URI for the specific hardware component (processors or memory)
 
     Returns:
-        A list containing information about the specified hardware component 
+        A list containing information about the specified hardware component
         (processors or memory)
     """
     print(f"Getting Redfish information for URI: {uri}")
