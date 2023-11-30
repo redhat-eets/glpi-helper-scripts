@@ -212,11 +212,11 @@ def main() -> None:
     update_redfish_system_uri(REDFISH_OBJ, urls)
 
     system_json = get_redfish_system(REDFISH_OBJ)
-    processor_output = get_processor(REDFISH_OBJ)
+    processor_output = get_processor_or_memory(REDFISH_OBJ, REDFISH_PROCESSOR_URI)
 
     if processor_output:
         cpu_list = list(processor_output)
-    memory_output = get_memory(REDFISH_OBJ)
+    memory_output = get_processor_or_memory(REDFISH_OBJ, REDFISH_MEMORY_URI)
     if memory_output:
         ram_list = list(memory_output)
     storage_output = get_storage(REDFISH_OBJ)
@@ -350,50 +350,32 @@ def get_redfish_system(redfish_session: redfish.rest.v1.HttpClient) -> dict:
         return json.loads(system_summary.text)
 
 
-def get_processor(redfish_session: redfish.rest.v1.HttpClient) -> list:
-    """Get information about processors from Redfish
+def get_processor_or_memory(
+    redfish_session: redfish.rest.v1.HttpClient, uri: str
+) -> list:
+    """
+    Get information about processors or memory from Redfish.
 
     Args:
         redfish_session (Redfish HTTP Client): The Redfish client object
+        uri (str): The URI for the specific hardware component (processors or memory)
 
     Returns:
-        cpu_list: Information about processors
+        A list containing information about the specified hardware component 
+        (processors or memory)
     """
-    print("Getting Redfish processor information:")
-    processor_summary = redfish_session.get(REDFISH_PROCESSOR_URI)
-    cpu_list = []
-    if "Members" in processor_summary.text:
-        for cpu in json.loads(processor_summary.text)["Members"]:
-            cpu_info = redfish_session.get(cpu["@odata.id"])
-            cpu_list.append(cpu_info.text)
+    print(f"Getting Redfish information for URI: {uri}")
+    component_summary = redfish_session.get(uri)
+    component_list = []
+    if "Members" in component_summary.text:
+        for component in json.loads(component_summary.text)["Members"]:
+            component_info = redfish_session.get(component["@odata.id"])
+            component_list.append(component_info.text)
 
-    if check_resp_redfish_api(processor_summary) != 200:
+    if check_resp_redfish_api(component_summary) != 200:
         return False
     else:
-        return cpu_list
-
-
-def get_memory(redfish_session: redfish.rest.v1.HttpClient) -> list:
-    """Get RAM information from Redfish
-
-    Args:
-        redfish_session (Redfish HTTP Client): The Redfish client object
-
-    Returns:
-        ram_list: Information about RAM
-    """
-    print("Getting Redfish memory information:")
-    memory_summary = redfish_session.get(REDFISH_MEMORY_URI)
-    ram_list = []
-    if "Members" in memory_summary.text:
-        for ram in json.loads(memory_summary.text)["Members"]:
-            ram_info = redfish_session.get(ram["@odata.id"])
-            ram_list.append(ram_info.text)
-
-    if check_resp_redfish_api(memory_summary) != 200:
-        return False
-    else:
-        return ram_list
+        return component_list
 
 
 def get_storage(redfish_session: redfish.rest.v1.HttpClient) -> list:  # noqa: C901
