@@ -15,7 +15,7 @@ import sys
 sys.path.append("..")
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization
-from common.utils import print_final_help, get_computers
+from common.utils import print_final_help, check_fields
 from common.parser import argparser
 
 # Suppress InsecureRequestWarning caused by REST access without
@@ -49,7 +49,7 @@ def main() -> None:
     urls = UrlInitialization(ip)
 
     with SessionHandler(user_token, urls, no_verify) as session:
-        print(get_computers(session, urls))
+        print(check_fields(session, urls.COMPUTER_URL))
 
     if not concise:
         print_final_help()

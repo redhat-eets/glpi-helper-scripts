@@ -21,10 +21,8 @@ from common.utils import (
     check_fields,
     check_field_without_range,
     print_final_help,
-    get_computers,
 )
 from common.parser import argparser
-import json
 import subprocess
 from typing import Tuple
 import yaml
@@ -74,8 +72,10 @@ def main() -> None:
     reservations = get_reservations(user_token, ip, no_verify)
 
     with SessionHandler(user_token, urls, no_verify) as session:
-        computers = get_computers(session, urls)
-        disks = get_disks(session, urls)
+        computers = check_fields(session, urls.COMPUTER_URL)
+        disks = check_fields(session, urls.DISK_ITEM_URL)
+        disks.sort(key=operator.itemgetter("totalsize"))
+
         available, final_choices = reservable(
             session, reservations, computers, disks, requirements
         )
@@ -136,31 +136,6 @@ def get_reservations(user_token: str, ip: str, no_verify: bool) -> list:
 
     print("Reservations parsed")
     return parsed_reservations
-
-
-def get_disks(user_token: str, urls: str) -> list:
-    """Get the disks from GLPI
-
-    Args:
-        user_token (str):                the user's GLPI API token
-        urls (UrlInitialization object): the URL object
-
-    Returns:
-        disks (list): the sorted disks from GLPI
-    """
-    print(
-        "------------------------------------------------------------------"
-        + "--------------\nGetting disk items\n-----------------"
-        + "---------------------------------------------------------------"
-    )
-    disks = []
-    disk_fields = check_fields(user_token, urls.DISK_ITEM_URL)
-    for disk_field in disk_fields:
-        for disk in disk_field.json():
-            disks.append(json.loads(json.dumps(disk)))
-
-    disks.sort(key=operator.itemgetter("totalsize"))
-    return disks
 
 
 def reservable(  # noqa: C901

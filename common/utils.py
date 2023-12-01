@@ -12,7 +12,6 @@
 
 from common.urlinitialization import UrlInitialization
 from common.switches import Switches
-import json
 import requests
 import pexpect
 import common.format_dicts as format_dicts
@@ -36,10 +35,9 @@ def check_field(
     """
     glpi_fields_list = check_fields(session, url)
     # Check if the field is present at the URL endpoint.
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if all(glpi_field[key] == value for key, value in search_criteria.items()):
-                return glpi_field["id"]
+    for glpi_field in glpi_fields_list:
+        if all(glpi_field[key] == value for key, value in search_criteria.items()):
+            return glpi_field["id"]
     return None
 
 
@@ -67,12 +65,13 @@ def check_fields(session: requests.sessions.Session, url: str) -> list:
             and glpi_fields.json()[0] == "ERROR_RESOURCE_NOT_FOUND_NOR_COMMONDBTM"
         ):
             more_fields = False
-            glpi_fields_list.append(glpi_fields)
+            glpi_fields_list.extend(glpi_fields.json())
         elif glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
             more_fields = False
         else:
-            glpi_fields_list.append(glpi_fields)
+            glpi_fields_list.extend(glpi_fields.json())
             api_range += api_increment
+
     return glpi_fields_list
 
 
@@ -207,16 +206,15 @@ def check_and_post_processor_item(
     ids = []
     glpi_fields_list = check_fields(session, url)
 
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if (
-                glpi_field["items_id"] == item_id
-                and glpi_field["itemtype"] == item_type
-                and glpi_field["deviceprocessors_id"] == processor_id
-            ):
-                ids.append(glpi_field["id"])
-                if len(ids) == sockets:
-                    break
+    for glpi_field in glpi_fields_list:
+        if (
+            glpi_field["items_id"] == item_id
+            and glpi_field["itemtype"] == item_type
+            and glpi_field["deviceprocessors_id"] == processor_id
+        ):
+            ids.append(glpi_field["id"])
+            if len(ids) == sockets:
+                break
 
     print("Creating GLPI CPU Item field:")
     glpi_post = {
@@ -437,17 +435,16 @@ def check_and_post_device_memory_item(
     ids = []
     glpi_fields_list = check_fields(session, url)
 
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if (
-                glpi_field["items_id"] == item_id
-                and glpi_field["itemtype"] == item_type
-                and glpi_field["devicememories_id"] == memory_id
-                and glpi_field["size"] == size
-            ):
-                ids.append(glpi_field["id"])
-                if len(ids) == quantity:
-                    break
+    for glpi_field in glpi_fields_list:
+        if (
+            glpi_field["items_id"] == item_id
+            and glpi_field["itemtype"] == item_type
+            and glpi_field["devicememories_id"] == memory_id
+            and glpi_field["size"] == size
+        ):
+            ids.append(glpi_field["id"])
+            if len(ids) == quantity:
+                break
     # Create a field if one was not found and return the ID.
     print("Creating GLPI Memory Item field:")
     glpi_post = {
@@ -505,12 +502,11 @@ def check_and_remove_unspecified_device_memory_item(
     print("Checking GLPI Memory fields to remove Unspecified:")
     glpi_fields_list = check_fields(session, url)
 
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if glpi_field["items_id"] == item_id:
-                removed = session.delete(url + str(glpi_field["id"]))
-                print(str(removed) + "\n")
-                break
+    for glpi_field in glpi_fields_list:
+        if glpi_field["items_id"] == item_id:
+            removed = session.delete(url + str(glpi_field["id"]))
+            print(str(removed) + "\n")
+            break
     return
 
 
@@ -520,50 +516,6 @@ def print_final_help() -> None:
         "Script completed, see responses for any issues.\n\nNOTE: Please "
         + "verify correct information in GLPI.\n"
     )
-
-
-def get_computers(session: requests.sessions.Session, urls: UrlInitialization) -> list:
-    """Method for getting all computers
-
-    Args:
-        session (Session object):        the requests session object
-        urls (UrlInitialization object): the URL object
-
-    Returns:
-        list: computers from GLPI
-    """
-    print("Getting computer information:\n")
-
-    computers = []
-
-    computer_json = check_fields(session, urls.COMPUTER_URL)
-    for computer_list in computer_json:
-        for computer in computer_list.json():
-            computers.append(json.dumps(computer))
-    return computers
-
-
-def get_network_equipment(
-    session: requests.sessions.Session, urls: UrlInitialization
-) -> list:
-    """Method for getting all network equipment
-
-    Args:
-        session (Session object):        the requests session object
-        urls (UrlInitialization object): the URL object
-
-    Returns:
-        list: network equipment from GLPI
-    """
-    print("Getting computer information:\n")
-
-    network_equipment_output = []
-
-    network_equipment_json = check_fields(session, urls.NETWORK_EQUIPMENT_URL)
-    for network_equipment_list in network_equipment_json:
-        for network_equipment in network_equipment_list.json():
-            network_equipment_output.append(json.dumps(network_equipment))
-    return network_equipment_output
 
 
 def get_reservations(
@@ -589,65 +541,57 @@ def get_reservations(
 
     reservation_json = check_fields(session, urls.RESERVATION_URL)
     if reservation_json:
-        for reservation_list in reservation_json:
-            for reservation in reservation_list.json():
-                reservation_item_json = check_field_without_range(
-                    session,
-                    (
-                        urls.RESERVATION_ITEM_URL
-                        + str(reservation["reservationitems_id"])
-                    ),
-                )
-                user_json = check_field_without_range(
-                    session, (urls.USER_URL + str(reservation["users_id"]))
-                )
+        for reservation in reservation_json:
+            reservation_item_json = check_field_without_range(
+                session,
+                (urls.RESERVATION_ITEM_URL + str(reservation["reservationitems_id"])),
+            )
+            user_json = check_field_without_range(
+                session, (urls.USER_URL + str(reservation["users_id"]))
+            )
 
-                # If searching for specific user, only select
-                # reservations with that username.
-                if user and user.lower() not in user_json["name"].lower():
-                    continue
+            # If searching for specific user, only select
+            # reservations with that username.
+            if user and user.lower() not in user_json["name"].lower():
+                continue
 
-                item_json = check_field_without_range(
-                    session,
-                    urls.BASE_URL
-                    + reservation_item_json["itemtype"]
-                    + "/"
-                    + str(reservation_item_json["items_id"]),
-                )
+            item_json = check_field_without_range(
+                session,
+                urls.BASE_URL
+                + reservation_item_json["itemtype"]
+                + "/"
+                + str(reservation_item_json["items_id"]),
+            )
 
-                # If searching for specific hostname, only select
-                # reservations with that hostname.
-                if hostname and hostname != item_json["name"]:
-                    continue
+            # If searching for specific hostname, only select
+            # reservations with that hostname.
+            if hostname and hostname != item_json["name"]:
+                continue
 
-                reservations_output += (
-                    "Reservation " + str(reservation["id"]) + ":" + "\n"
-                )
-                reservations_output += (
-                    "  User "
-                    + str(reservation["users_id"])
-                    + ": "
-                    + user_json["name"]
-                    + "\n"
-                )
-                reservations_output += (
-                    "  "
-                    + reservation_item_json["itemtype"]
-                    + " "
-                    + str(reservation_item_json["items_id"])
-                    + ": "
-                    + item_json["name"]
-                    + "\n"
-                )
-                reservations_output += "  Begins: " + str(reservation["begin"]) + "\n"
-                reservations_output += "  Ends: " + str(reservation["end"]) + "\n"
+            reservations_output += "Reservation " + str(reservation["id"]) + ":" + "\n"
+            reservations_output += (
+                "  User "
+                + str(reservation["users_id"])
+                + ": "
+                + user_json["name"]
+                + "\n"
+            )
+            reservations_output += (
+                "  "
+                + reservation_item_json["itemtype"]
+                + " "
+                + str(reservation_item_json["items_id"])
+                + ": "
+                + item_json["name"]
+                + "\n"
+            )
+            reservations_output += "  Begins: " + str(reservation["begin"]) + "\n"
+            reservations_output += "  Ends: " + str(reservation["end"]) + "\n"
 
-                if reservation["comment"]:
-                    reservations_output += (
-                        '  Comment: "' + reservation["comment"] + '"\n\n'
-                    )
-                else:
-                    reservations_output += "  Comment: N/A \n\n"
+            if reservation["comment"]:
+                reservations_output += '  Comment: "' + reservation["comment"] + '"\n\n'
+            else:
+                reservations_output += "  Comment: N/A \n\n"
     else:
         reservations_output += "\tNo reservations.\n"
     return reservations_output

@@ -17,8 +17,6 @@ from common.utils import (  # noqa: F401
     get_unspecified_device_memory,
     check_and_remove_unspecified_device_memory_item,
     print_final_help,
-    get_computers,
-    get_network_equipment,
     get_reservations,
     get_switch_ports,
     error,
@@ -82,16 +80,6 @@ def test_check_and_remove_unspecified_device_memory_item():
 
 @mark.skip("Not written")
 def test_print_final_help():
-    pass
-
-
-@mark.skip("Not written")
-def test_get_computers():
-    pass
-
-
-@mark.skip("Not written")
-def test_get_network_equipment():
     pass
 
 

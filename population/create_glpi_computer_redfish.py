@@ -617,17 +617,16 @@ def post_to_glpi(  # noqa: C901
     glpi_fields_list = check_fields(session, urls.COMPUTER_URL)
     comment = None
     COMPUTER_ID = None
-    for glpi_fields in glpi_fields_list:
-        for glpi_computer in glpi_fields.json():
-            if glpi_computer["serial"] == serial_number:
-                global PUT
-                PUT = True
-                COMPUTER_ID = glpi_computer["id"]
-                comment = glpi_computer["comment"]
-                if glpi_computer["name"] != glpi_post["name"] and not overwrite:
-                    print("Using pre-existing name for computer...")
-                    glpi_post["name"] = glpi_computer["name"]
-                break
+    for glpi_computer in glpi_fields_list:
+        if glpi_computer["serial"] == serial_number:
+            global PUT
+            PUT = True
+            COMPUTER_ID = glpi_computer["id"]
+            comment = glpi_computer["comment"]
+            if glpi_computer["name"] != glpi_post["name"] and not overwrite:
+                print("Using pre-existing name for computer...")
+                glpi_post["name"] = glpi_computer["name"]
+            break
 
     # Add BMC Address to the Computer
     plugin_response = check_fields(session, urls.BMC_URL)
@@ -705,6 +704,7 @@ def post_to_glpi(  # noqa: C901
                 vendor = json.loads(name)["Manufacturer"]
             else:
                 vendor = "None"
+
         if "Id" in json.loads(name):
             manufacturers_id = vendor
             if vendor:
@@ -902,8 +902,7 @@ def update_bmc_address(
     Returns:
         glpi_post (dict): Contains information about a Computer to be passed to GLPI
     """
-    # plugin_response: list of response objects. meant to be from check_fields.
-    if "ERROR" in plugin_response[0].json()[0]:
+    if "ERROR" in plugin_response[0]:
         glpi_post = add_bmc_address_to_comments(glpi_post, redfish_base_url, comment)
         print(
             "The provided field endpoint is unavailable, "
@@ -964,12 +963,11 @@ def set_bmc_address_field(
         glpi_post (dict): Contains information about a Computer to be passed to GLPI
     """
     if put:
-        for computer_group in plugin_response:
-            for computer in computer_group.json():
-                if computer["items_id"] == computer_id:
-                    if computer["bmcaddressfield"]:
-                        print("Leaving 'BMC Address' field unchanged...")
-                        return glpi_post
+        for computer in plugin_response:
+            if computer["items_id"] == computer_id:
+                if computer["bmcaddressfield"]:
+                    print("Leaving 'BMC Address' field unchanged...")
+                    return glpi_post
     glpi_post["bmcaddressfield"] = redfish_base_url.partition("https://")[2]
     print("Updating BMC Address Field...")
     return glpi_post
@@ -1322,16 +1320,15 @@ def check_and_post_processor_item(
         ids = []
         glpi_fields_list = check_fields(session, url)
 
-        for glpi_fields in glpi_fields_list:
-            for glpi_field in glpi_fields.json():
-                if (
-                    glpi_field["items_id"] == item_id
-                    and glpi_field["itemtype"] == item_type
-                    and glpi_field["deviceprocessors_id"] == processor_id
-                ):
-                    ids.append(glpi_field["id"])
-                    if len(ids) == sockets:
-                        break
+        for glpi_field in glpi_fields_list:
+            if (
+                glpi_field["items_id"] == item_id
+                and glpi_field["itemtype"] == item_type
+                and glpi_field["deviceprocessors_id"] == processor_id
+            ):
+                ids.append(glpi_field["id"])
+                if len(ids) == sockets:
+                    break
 
         print("Creating GLPI CPU Item field:")
         glpi_post = {
