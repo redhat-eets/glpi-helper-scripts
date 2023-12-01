@@ -23,14 +23,8 @@ from common.utils import (
     check_and_post,
     check_and_post_processor,
     check_and_post_processor_item,
-    check_and_post_operating_system_item,
     check_and_post_network_port,
-    check_and_post_network_port_ethernet,
-    check_and_post_device_memory,
     check_and_post_device_memory_item,
-    check_and_post_nic,
-    check_and_post_nic_item,
-    check_and_post_disk_item,
     check_fields,
 )
 import common.format_dicts as format_dicts
@@ -228,22 +222,28 @@ def post_to_glpi(  # noqa: C901
     # NOTE: Different helper functions exist because of different syntax,
     #       field names, and formatting in the API.
     computer_type_id = check_and_post(
-        session, hostnamectl_dict["Chassis"].capitalize(), urls.COMPUTER_TYPE_URL
+        session,
+        urls.COMPUTER_TYPE_URL,
+        {"name": hostnamectl_dict["Chassis"].capitalize()},
     )
-    manufacturers_id = check_and_post(session, computer_type, urls.MANUFACTURER_URL)
-    computer_model_id = check_and_post(session, computer_model, urls.COMPUTER_MODEL_URL)
+    manufacturers_id = check_and_post(
+        session, urls.MANUFACTURER_URL, {"name": computer_type}
+    )
+    computer_model_id = check_and_post(
+        session, urls.COMPUTER_MODEL_URL, {"name": computer_model}
+    )
     processors_id = check_and_post_processor(session, cpu_dict, urls.CPU_URL, urls)
     operating_system_id = check_and_post(
-        session, os_dict["NAME"], urls.OPERATING_SYSTEM_URL
+        session, urls.OPERATING_SYSTEM_URL, {"name": os_dict["NAME"]}
     )
     operating_system_version_id = check_and_post(
-        session, os_dict["VERSION"], urls.OPERATING_SYSTEM_VERSION_URL
+        session, urls.OPERATING_SYSTEM_VERSION_URL, {"name": os_dict["VERSION"]}
     )
     operating_system_architecture_id = check_and_post(
-        session, architecture, urls.OPERATING_SYSTEM_ARCHITECTURE_URL
+        session, urls.OPERATING_SYSTEM_ARCHITECTURE_URL, {"name": architecture}
     )
     operating_system_kernel_version_id = check_and_post(
-        session, kernel, urls.OPERATING_SYSTEM_KERNEL_VERSION_URL
+        session, urls.OPERATING_SYSTEM_KERNEL_VERSION_URL, {"name": kernel}
     )
 
     # The final dictionary for the machine JSON to post.
@@ -307,17 +307,20 @@ def post_to_glpi(  # noqa: C901
         int(cpu_dict["Socket(s)"]),
     )
 
-    operating_system_id = check_and_post_operating_system_item(
+    check_and_post(
         session,
         urls.OPERATING_SYSTEM_ITEM_URL,
-        operating_system_id,
-        operating_system_version_id,
-        operating_system_architecture_id,
-        operating_system_kernel_version_id,
-        COMPUTER_ID,
-        "Computer",
+        {
+            "items_id": COMPUTER_ID,
+            "itemtype": "Computer",
+            "operatingsystems_id": operating_system_id,
+        },
+        {
+            "operatingsystemversions_id": operating_system_version_id,
+            "operatingsystemarchitectures_id": operating_system_architecture_id,
+            "operatingsystemkernelversions_id": operating_system_kernel_version_id,
+        },
     )
-
     # Create network devices.
     nic_ids = {}
     for name in nics_dict:
@@ -328,29 +331,39 @@ def post_to_glpi(  # noqa: C901
         nic_model_id = 0
         if "product" in nics_dict[name]:
             nic_model_id = check_and_post(
-                session, nics_dict[name]["product"], urls.DEVICE_NETWORK_CARD_MODEL_URL
+                session,
+                urls.DEVICE_NETWORK_CARD_MODEL_URL,
+                {"name": nics_dict[name]["product"]},
             )
 
         vendor = 0
         if "vendor" in nics_dict[name]:
             vendor = nics_dict[name]["vendor"]
 
-        nic_id = check_and_post_nic(
+        manufacturers_id = vendor
+        if vendor:
+            manufacturers_id = check_and_post(
+                session, urls.MANUFACTURER_URL, {"name": vendor}
+            )
+        nic_id = check_and_post(
             session,
             urls.DEVICE_NETWORK_CARD_URL,
-            name,
-            bandwidth,
-            vendor,
-            nic_model_id,
-            urls,
+            {
+                "designation": name,
+                "bandwidth": bandwidth,
+                "manufacturers_id": manufacturers_id,
+                "devicenetworkcardmodels_id": nic_model_id,
+            },
         )
-        nic_item_id = check_and_post_nic_item(
+        nic_item_id = check_and_post(
             session,
             urls.DEVICE_NETWORK_CARD_ITEM_URL,
-            COMPUTER_ID,
-            "Computer",
-            nic_id,
-            nics_dict[name]["serial"],
+            {
+                "items_id": COMPUTER_ID,
+                "itemtype": "Computer",
+                "devicenetworkcards_id": nic_id,
+                "mac": nics_dict[name]["serial"],
+            },
         )
         nic_ids[name] = nic_item_id
 
@@ -388,25 +401,35 @@ def post_to_glpi(  # noqa: C901
         if name in nic_ids:
             nic_id = nic_ids[name]
 
-        check_and_post_network_port_ethernet(
-            session, urls.NETWORK_PORT_ETHERNET_URL, network_port_id, speed, nic_id
+        check_and_post(
+            session,
+            urls.NETWORK_PORT_ETHERNET_URL,
+            {
+                "networkports_id": network_port_id,
+                "items_devicenetworkcards_id": nic_id,
+                "speed": speed,
+            },
         )
         logical_number += 1
 
     # Create Memory types.
     if "MemTotal:" in ram_dict:
         memory_type_id = check_and_post(
-            session, "Unspecified", urls.DEVICE_MEMORY_TYPE_URL
+            session, urls.DEVICE_MEMORY_TYPE_URL, {"name": "Unspecified"}
         )
-        manufacturers_id = check_and_post(session, "Unspecified", urls.MANUFACTURER_URL)
-        memory_id = check_and_post_device_memory(
+        manufacturers_id = check_and_post(
+            session, urls.MANUFACTURER_URL, {"name": "Unspecified"}
+        )
+        memory_id = check_and_post(
             session,
             urls.DEVICE_MEMORY_URL,
-            "Unspecified",
-            "Unspecified",
-            manufacturers_id,
-            ram_dict["MemTotal:"],
-            memory_type_id,
+            {
+                "designation": "Unspecified",
+                "frequence": "Unspecified",
+                "manufacturers_id": manufacturers_id,
+                "size_default": ram_dict["MemTotal:"],
+                "devicememorytypes_id": memory_type_id,
+            },
         )
 
         # Create Memory Items.
@@ -437,8 +460,15 @@ def post_to_glpi(  # noqa: C901
         else:
             size = float(disk_dict[disk_id]["Size"][:-1])
 
-        check_and_post_disk_item(
-            session, urls.DISK_ITEM_URL, COMPUTER_ID, "Computer", disk_id, size
+        check_and_post(
+            session,
+            urls.DISK_ITEM_URL,
+            {
+                "items_id": COMPUTER_ID,
+                "itemtype": "Computer",
+                "name": disk_id,
+                "totalsize": size,
+            },
         )
 
     return

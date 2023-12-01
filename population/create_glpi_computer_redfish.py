@@ -22,14 +22,8 @@ from common.urlinitialization import UrlInitialization, validate_url
 from common.utils import (
     print_final_help,
     check_and_post,
-    check_and_post_device_memory,
     check_and_post_device_memory_item,
-    check_and_post_disk_item,
-    check_and_post_network_port_ethernet,
-    check_and_post_nic,
-    check_and_post_nic_item,
     check_fields,
-    create_or_update_glpi_item,
     check_field,
 )
 from common.switches import Switches
@@ -587,16 +581,18 @@ def post_to_glpi(  # noqa: C901
     #
     # NOTE: Different helper functions exist because of different syntax,
     #       field names, and formatting in the API.
-    computer_type_id = check_and_post(session, "Server", urls.COMPUTER_TYPE_URL)
+    computer_type_id = check_and_post(
+        session, urls.COMPUTER_TYPE_URL, {"name": "Server"}
+    )
 
     manufacturers_id = check_and_post(
-        session, system_json["Manufacturer"], urls.MANUFACTURER_URL
+        session, urls.MANUFACTURER_URL, {"name": system_json["Manufacturer"]}
     )
     computer_model_id = check_and_post(
-        session, system_json["Model"], urls.COMPUTER_MODEL_URL
+        session, urls.COMPUTER_MODEL_URL, {"name": system_json["Model"]}
     )
     processors_id = check_and_post_processor(session, cpu_list, urls.CPU_URL, urls)
-    locations_id = check_and_post(session, LAB_CHOICE, urls.LOCATION_URL)
+    locations_id = check_and_post(session, urls.LOCATION_URL, {"name": LAB_CHOICE})
 
     # The final dictionary for the machine JSON to post.
     glpi_post = {}
@@ -697,7 +693,9 @@ def post_to_glpi(  # noqa: C901
         nic_model_id = 0
         if "Model" in name:
             nic_model_id = check_and_post(
-                session, json.loads(name)["Model"], urls.DEVICE_NETWORK_CARD_MODEL_URL
+                session,
+                urls.DEVICE_NETWORK_CARD_MODEL_URL,
+                {"name": json.loads(name)["Model"]},
             )
 
         vendor = 0
@@ -708,22 +706,30 @@ def post_to_glpi(  # noqa: C901
                 vendor = "None"
 
         if "Id" in json.loads(name):
-            nic_id = check_and_post_nic(
+            manufacturers_id = vendor
+            if vendor:
+                manufacturers_id = check_and_post(
+                    session, urls.MANUFACTURER_URL, {"name": vendor}
+                )
+            nic_id = check_and_post(
                 session,
                 urls.DEVICE_NETWORK_CARD_URL,
-                json.loads(name)["Id"],
-                bandwidth,
-                vendor,
-                nic_model_id,
-                urls,
+                {
+                    "designation": json.loads(name)["Id"],
+                    "bandwidth": bandwidth,
+                    "manufacturers_id": manufacturers_id,
+                    "devicenetworkcardmodels_id": nic_model_id,
+                },
             )
-            nic_item_id = check_and_post_nic_item(
+            nic_item_id = check_and_post(
                 session,
                 urls.DEVICE_NETWORK_CARD_ITEM_URL,
-                COMPUTER_ID,
-                "Computer",
-                nic_id,
-                "",
+                {
+                    "items_id": COMPUTER_ID,
+                    "itemtype": "Computer",
+                    "devicenetworkcards_id": nic_id,
+                    "mac": "",
+                },
             )
             nic_ids[json.loads(name)["Id"]] = nic_item_id
 
@@ -733,15 +739,24 @@ def post_to_glpi(  # noqa: C901
     switch_dict = {}
     logical_number = 0
     for name in networks_dict:
-        network_port_id = check_and_post_network_port(
-            session,
-            urls.NETWORK_PORT_URL,
-            COMPUTER_ID,
-            "Computer",
-            logical_number,
-            json.loads(name)["Id"],
-            "NetworkPortEthernet",
-            json.loads(name),
+        search_criteria = {
+            "items_id": COMPUTER_ID,
+            "itemtype": "Computer",
+            "logical_number": logical_number,
+            "name": json.loads(name)["Id"],
+            "instantiation_type": "NetworkPortEthernet",
+        }
+
+        if "AssociatedNetworkAddresses" in json.loads(name):
+            additional_information = {
+                "mac": json.loads(name)["AssociatedNetworkAddresses"][0]
+            }
+        elif "MACAddress" in json.loads(name):
+            additional_information = {"mac": json.loads(name)["MACAddress"]}
+        else:
+            additional_information = None
+        network_port_id = check_and_post(
+            session, urls.NETWORK_PORT_URL, search_criteria, additional_information
         )
         try:
             speed = json.loads(name)["SpeedMbps"]
@@ -756,8 +771,16 @@ def post_to_glpi(  # noqa: C901
             nic_id = nic_ids[json.loads(name)["Id"]]
         else:
             nic_id = 0
-        check_and_post_network_port_ethernet(
-            session, urls.NETWORK_PORT_ETHERNET_URL, network_port_id, speed, nic_id
+        check_and_post(
+            session,
+            urls.NETWORK_PORT_ETHERNET_URL,
+            {
+                "networkports_id": network_port_id,
+            },
+            {
+                "items_devicenetworkcards_id": nic_id,
+                "speed": speed,
+            },
         )
         logical_number += 1
 
@@ -770,18 +793,20 @@ def post_to_glpi(  # noqa: C901
         ):
             if "MemoryDeviceType" in ram:
                 memory_type_id = check_and_post(
-                    session, ram["MemoryDeviceType"], urls.DEVICE_MEMORY_TYPE_URL
+                    session,
+                    urls.DEVICE_MEMORY_TYPE_URL,
+                    {"name": ram["MemoryDeviceType"]},
                 )
             elif "DIMMType" in ram:  # HP field
                 memory_type_id = check_and_post(
-                    session, ram["DIMMType"], urls.DEVICE_MEMORY_TYPE_URL
+                    session, urls.DEVICE_MEMORY_TYPE_URL, {"name": ram["DIMMType"]}
                 )
             else:
                 memory_type_id = check_and_post(
-                    session, "Unspecified", urls.DEVICE_MEMORY_TYPE_URL
+                    session, urls.DEVICE_MEMORY_TYPE_URL, {"name": "Unspecified"}
                 )
             manufacturers_id = check_and_post(
-                session, ram["Manufacturer"].strip(), urls.MANUFACTURER_URL
+                session, urls.MANUFACTURER_URL, {"name": ram["Manufacturer"].strip()}
             )
             if "TotalSystemMemoryGiB" in system_json["MemorySummary"]:
                 total_system_memory = (
@@ -790,24 +815,28 @@ def post_to_glpi(  # noqa: C901
             else:
                 total_system_memory = ""
             if "OperatingSpeedMhz" in ram:
-                memory_id = check_and_post_device_memory(
+                memory_id = check_and_post(
                     session,
                     urls.DEVICE_MEMORY_URL,
-                    ram["PartNumber"],
-                    str(ram["OperatingSpeedMhz"]),
-                    manufacturers_id,
-                    total_system_memory,
-                    memory_type_id,
+                    {
+                        "designation": ram["PartNumber"],
+                        "frequence": str(ram["OperatingSpeedMhz"]),
+                        "manufacturers_id": manufacturers_id,
+                        "size_default": total_system_memory,
+                        "devicememorytypes_id": memory_type_id,
+                    },
                 )
             elif "MaximumFrequencyMHz" in ram:  # HP field
-                memory_id = check_and_post_device_memory(
+                memory_id = check_and_post(
                     session,
                     urls.DEVICE_MEMORY_URL,
-                    ram["PartNumber"],
-                    str(ram["MaximumFrequencyMHz"]),
-                    manufacturers_id,
-                    total_system_memory,
-                    memory_type_id,
+                    {
+                        "designation": ram["PartNumber"],
+                        "frequence": str(ram["MaximumFrequencyMHz"]),
+                        "manufacturers_id": manufacturers_id,
+                        "size_default": total_system_memory,
+                        "devicememorytypes_id": memory_type_id,
+                    },
                 )
             if memory_id in memory_item_dict:
                 memory_item_dict[memory_id]["quantity"] += 1
@@ -838,13 +867,15 @@ def post_to_glpi(  # noqa: C901
             size = round(float(disk_id["CapacityBytes"]) / 1000000)
         elif "CapacityMiB" in disk_id:
             size = disk_id["CapacityMiB"]
-        check_and_post_disk_item(
+        check_and_post(
             session,
             urls.DISK_ITEM_URL,
-            COMPUTER_ID,
-            "Computer",
-            disk_id.get("SerialNumber"),
-            size,
+            {
+                "items_id": COMPUTER_ID,
+                "itemtype": "Computer",
+                "name": disk_id.get("SerialNumber"),
+                "totalsize": size,
+            },
         )
 
     return
@@ -1006,9 +1037,9 @@ def add_rack_location_from_sunbird(
     )
     sunbird_json = sunbird_response.json()["searchResults"]["items"]
     if sunbird_json:
-        location_data = sunbird_json[0]
-        if location_data["cmbLocation"] in sunbird_config:
-            location_config = sunbird_config[location_data["cmbLocation"]]
+        sunbird_location_data = sunbird_json[0]
+        if sunbird_location_data["cmbLocation"] in sunbird_config:
+            location_config = sunbird_config[sunbird_location_data["cmbLocation"]]
 
         else:
             location_config = None
@@ -1023,12 +1054,12 @@ def add_rack_location_from_sunbird(
             print(
                 "No Sunbird config provided, setting data center and room automatically"
             )
-            data_center = location_data.get("tiDataCenterName", None)
-            if "tiRoomName" in location_data:
-                room = location_data["tiRoomName"]
+            data_center = sunbird_location_data.get("tiDataCenterName", None)
+            if "tiRoomName" in sunbird_location_data:
+                room = sunbird_location_data["tiRoomName"]
             # If the Room is not specified in Sunbird, use the Data Center name
             elif data_center is not None:
-                room = location_data["tiDataCenterName"]
+                room = sunbird_location_data["tiDataCenterName"]
             else:
                 room = None
         else:
@@ -1037,21 +1068,21 @@ def add_rack_location_from_sunbird(
 
         location_details = {
             "location": locations_id,
-            "full_location": location_data["cmbLocation"],
+            "full_location": sunbird_location_data["cmbLocation"],
             "DataCenter": data_center,
             "Room": room,
         }
 
-        location_details["Rack"] = location_data.get("cmbCabinet", None)
+        location_details["Rack"] = sunbird_location_data.get("cmbCabinet", None)
 
-        if location_data["cmbUPosition"]:
-            location_details["Item_Rack"] = int(location_data["cmbUPosition"])
+        if sunbird_location_data["cmbUPosition"]:
+            location_details["Item_Rack"] = int(sunbird_location_data["cmbUPosition"])
         else:
             location_details["Item_Rack"] = None
 
         # Get size of asset, otherwise default to 1 RU
-        if "tiRUs" in location_data:
-            location_details["required_units"] = int(location_data["tiRUs"])
+        if "tiRUs" in sunbird_location_data:
+            location_details["required_units"] = int(sunbird_location_data["tiRUs"])
         else:
             location_details["required_units"] = 1
         # Check for Data Center
@@ -1059,8 +1090,13 @@ def add_rack_location_from_sunbird(
             print("No Data Center could be retrieved from Sunbird, moving on...")
             return
 
-        dc_id = check_and_post_data_center(
-            session, field=location_details, url=urls.DATACENTER_URL
+        dc_id = check_and_post(
+            session,
+            urls.DATACENTER_URL,
+            {
+                "locations_id": location_details["location"],
+                "name": location_details["DataCenter"],
+            },
         )
 
         # Check for Data Center Room
@@ -1068,8 +1104,14 @@ def add_rack_location_from_sunbird(
             print("No Data Center Room was retrieved from Sunbird, moving on...")
             return
 
-        dcr_id = check_and_post_data_center_room(
-            session, field=location_details, url=urls.DCROOM_URL, dc_id=dc_id
+        dcrooms_id = check_and_post(
+            session,
+            urls.DCROOM_URL,
+            {
+                "locations_id": location_details["location"],
+                "name": str(location_details["Room"]),
+                "datacenters_id": dc_id,
+            },
         )
 
         # Check for Rack
@@ -1077,14 +1119,17 @@ def add_rack_location_from_sunbird(
             print("No cabinet could be retrieved from Sunbird, moving on...")
             return
 
-        rack_id = check_and_post_rack(
+        number_units = get_rack_units(
+            location_details, sunbird_url, sunbird_username, sunbird_password
+        )
+        rack_id = check_and_post(
             session,
-            field=location_details,
-            url=urls.RACK_URL,
-            dcrooms_id=dcr_id,
-            sunbird_url=sunbird_url,
-            sunbird_username=sunbird_username,
-            sunbird_password=sunbird_password,
+            urls.RACK_URL,
+            {"name": location_details["Rack"], "dcrooms_id": dcrooms_id},
+            {
+                "number_units": number_units,
+                "bgcolor": "#fec95c",  # Hardcoded, otherwise the rack won't show in UI
+            },
         )
 
         # Check for Item Rack
@@ -1101,125 +1146,30 @@ def add_rack_location_from_sunbird(
             session, field=location_details, urls=urls, computer_id=computer_id
         )
 
-        rack_item_id = check_and_post_rack_item(
+        check_and_post(
             session,
-            field=location_details,
-            url=urls.ITEM_RACK_URL,
-            rack_id=rack_id,
-            item_type="Computer",
-            computer_id=computer_id,
+            urls.ITEM_RACK_URL,
+            {
+                "itemtype": "Computer",
+                "items_id": computer_id,
+                "position": location_details["Item_Rack"],
+                "racks_id": rack_id,
+            },
+            {
+                "bgcolor": "#69ceba",  # Hardcoded, otherwise the rack won't show in UI
+                "orientation": 0,  # Hardcoded, otherwise the rack won't show in UI
+            },
         )
-        print(rack_item_id)
+        print(
+            (
+                f"Added computer to {location_details['DataCenter']} > "
+                f"{location_details['Room']} > {location_details['Rack']} > "
+                f"{location_details['Item_Rack']}"
+            )
+        )
 
     else:
         print("Couldn't find machine in Sunbird, moving on without location details")
-
-
-def check_and_post_data_center(
-    session: requests.sessions.Session, field: dict, url: str
-) -> int:
-    """A helper method to check the data center field at the given API endpoint (URL)
-       and post the field if it is not present.
-
-    Args:
-        Session (Session object): The requests session object
-        field (dict): Contains information about the rack location
-        url (str): GLPI API endpoint for the data center field
-
-    Returns:
-        id (int): ID of the data center in GLPI
-    """
-    print("Checking GLPI Data Center fields:")
-    # Check if the field is present at the URL endpoint.
-    id = check_field(session, url, search_criteria={"name": field["DataCenter"]})
-
-    # Create a field if one was not found and return the ID.
-    glpi_post = {"locations_id": field["location"], "name": field["DataCenter"]}
-    print("Created/Updated GLPI Data Center field")
-    id = create_or_update_glpi_item(session, url, glpi_post, id)
-
-    return id
-
-
-def check_and_post_data_center_room(
-    session: requests.sessions.Session, field: dict, url: str, dc_id: int
-) -> int:
-    """A helper method to check the data center room field at the given API endpoint
-    (URL) and post the field if it is not present.
-
-    Args:
-        Session (Session object): The requests session object
-        field (dict): Contains information about the rack location
-        url (str): GLPI API endpoint for the data center room field
-        dc_id (int): the id of the relevant data center in GLPI
-
-    Returns:
-        id (int): ID of the data center room in GLPI
-    """
-    print("Checking Data Center Room fields:")
-    # Check if the field is present at the URL endpoint.
-    id = check_field(
-        session,
-        url,
-        search_criteria={"name": str(field["Room"]), "datacenters_id": dc_id},
-    )
-
-    # Create a field if one was not found and return the ID.
-    glpi_post = {
-        "locations_id": field["location"],
-        "name": field["Room"],
-        "datacenters_id": dc_id,
-    }
-    id = create_or_update_glpi_item(session, url, glpi_post, id)
-    print("Created/Updated GLPI Data Center Room field")
-
-    return id
-
-
-def check_and_post_rack(
-    session: requests.sessions.Session,
-    field: dict,
-    url: str,
-    dcrooms_id: int,
-    sunbird_url: str,
-    sunbird_username: str,
-    sunbird_password: str,
-) -> int:
-    """A helper method to check the rack field at the given API endpoint (URL)
-       and post the field if it is not present.
-    Args:
-        Session (Session object): The requests session object
-        field (dict): Contains information about the rack location
-        url (str): GLPI API endpoint for the rack field
-        dcrooms_id (int): the id of the relevant data center room in GLPI
-        sunbird_username (str): Sunbird username
-        sunbird_password (str): Sunbird password
-        sunbird_url (str): Sunbird URL
-    Returns:
-        id (int): ID of the rack in GLPI
-    """
-    print("Checking GLPI Rack fields:")
-    # Check if the field is present at the URL endpoint.
-    id = check_field(
-        session,
-        url,
-        search_criteria={"name": field["Rack"], "dcrooms_id": dcrooms_id},
-    )
-
-    # Create a field if one was not found and return the ID.
-    number_units = get_rack_units(
-        field, sunbird_url, sunbird_username, sunbird_password
-    )
-    glpi_post = {
-        "locations_id": field["location"],
-        "name": field["Rack"],
-        "dcrooms_id": dcrooms_id,
-        "number_units": number_units,
-        "bgcolor": "#fec95c",  # Hardcoded, otherwise the rack won't show up in UI
-    }
-    id = create_or_update_glpi_item(session, url, glpi_post, id)
-
-    return id
 
 
 def get_rack_units(
@@ -1288,64 +1238,6 @@ def check_and_update_model_size(
         session.put(url=urls.COMPUTER_MODEL_URL, json={"input": glpi_put})
 
 
-def check_and_post_rack_item(
-    session: requests.sessions.Session,
-    field: dict,
-    url: str,
-    rack_id: int,
-    item_type: str,
-    computer_id: int,
-) -> int:
-    """A helper method to check the rack item field at the given API endpoint (URL)
-       and post the field if it is not present.
-
-    Args:
-        Session (Session object): The requests session object
-        field (dict): Contains information about the rack location
-        url (str): GLPI API endpoint for the rack item field
-        rack_id (int): the id of the relavant rack in GLPI
-        item_type (str): Type of item associated with rack item, usually "Computer"
-        computer_id (int): ID of the computer associated with the rack item
-
-    Returns:
-        id (int): ID of the rack item in GLPI
-    """
-    print("Checking GLPI Rack Item fields:")
-    # Check if the field is present at the URL endpoint.
-    id = check_field(
-        session,
-        url,
-        search_criteria={
-            "itemtype": item_type,
-            "items_id": computer_id,
-            "position": field["Item_Rack"],
-            "racks_id": rack_id,
-        },
-    )
-
-    # Create a field if one was not found and return the ID.
-    glpi_post = {
-        "items_id": computer_id,
-        "position": field["Item_Rack"],
-        "racks_id": rack_id,
-        "itemtype": item_type,
-        "bgcolor": "#69ceba",  # Hardcoded, otherwise the rack won't show up in UI
-        "orientation": 0,  # Hardcoded, otherwise the rack won't show up in UI
-    }
-
-    id = create_or_update_glpi_item(session, url, glpi_post, id)
-    print("Created/Updated GLPI Rack Item field")
-    print(
-        (
-            f"Added computer to {field['DataCenter']} > "
-            f"{field['Room']} > {field['Rack']} > "
-            f"{field['Item_Rack']}"
-        )
-    )
-
-    return id
-
-
 def check_and_post_processor(
     session: requests.sessions.Session, field: list, url: str, urls: UrlInitialization
 ) -> int:
@@ -1380,7 +1272,7 @@ def check_and_post_processor(
             # Get the manufacturer or create it (NOTE: This may create duplicates
             # with slight variation)
             manufacturers_id = check_and_post(
-                session, field["Manufacturer"], urls.MANUFACTURER_URL
+                session, urls.MANUFACTURER_URL, {"name": field["Manufacturer"]}
             )
             print("Creating GLPI CPU field:")
             glpi_post = {
@@ -1454,65 +1346,6 @@ def check_and_post_processor_item(
             print(str(post_response) + "\n")
 
         return
-
-
-def check_and_post_network_port(
-    session: requests.sessions.Session,
-    url: str,
-    item_id: int,
-    item_type: str,
-    port_number: int,
-    name: str,
-    instantiation_type: str,
-    network: dict,
-) -> int:
-    """A helper method to check the network port field at the given API endpoint
-    (URL) and post the field if it is not present.
-
-    Args:
-        session (Session object): The requests session object
-        url (str): GLPI API endpoint for network ports
-        item_id (int): ID of the computer that the network port is associated with
-        item_type (str): Type of item associated with the network port, usually
-                         "Computer"
-        port_number (int): Port number, usually iterated outside of function
-        name (str): Name of the Port
-        instantiation_type (str): Name of the GLPI field, usually NetworkPortEthernet
-        network (dict): Contains more information abot the network port
-
-    Returns:
-        id (int): GLPI ID of network port
-    """
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI Network Port fields:")
-    id = check_field(
-        session,
-        url,
-        search_criteria={
-            "items_id": item_id,
-            "itemtype": item_type,
-            "logical_number": port_number,
-            "name": name,
-            "instantiation_type": instantiation_type,
-        },
-    )
-
-    # Create a field if one was not found and return the ID.
-    glpi_post = {
-        "items_id": item_id,
-        "itemtype": item_type,
-        "logical_number": port_number,
-        "name": name,
-        "instantiation_type": instantiation_type,
-    }
-    if "AssociatedNetworkAddresses" in network:
-        glpi_post["mac"] = network["AssociatedNetworkAddresses"][0]
-    elif "MACAddress" in network:
-        glpi_post["mac"] = network["MACAddress"]
-
-    id = create_or_update_glpi_item(session, url, glpi_post, id)
-
-    return id
 
 
 # Executes main if run as a script.

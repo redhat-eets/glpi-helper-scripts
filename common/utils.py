@@ -90,25 +90,45 @@ def check_field_without_range(session: requests.sessions.Session, url: str) -> l
     return glpi_fields.json()
 
 
-def check_and_post(session: requests.sessions.Session, field: str, url: str) -> int:
+def check_and_post(
+    session: requests.sessions.Session,
+    url: str,
+    search_criteria: dict,
+    additional_information: dict = None,
+) -> int:
     """A helper method to check the field at the given API endpoint (URL) and post
        the field if it is not present.
 
     Args:
         Session (Session object): The requests session object
-        field (str): The component to be populated
         url (str): The url of the component to be populated
+        search_criteria (dict): Dictionary containing the desired state of the GLPI
+            item. It should contain fields to use when checking GLPI for pre-existing
+            items. For example: {"name": "glpi_field_value"} will check GLPI for
+            existing items named "glpi_field_value". The same dictionary
+            ({"name": "glpi_field_value"}) will be used to import this item into GLPI,
+            via either a PUT or POST request, after it's combined with
+            additional_information.
+        additional_information (dict): Dictionary containing fields that
+            shouldn't be used to check GLPI, but should be sent in the POST and PUT
+            requests. For example, when using check_and_post() for racks, you would pass
+            the background color under "additional_information". If a rack's name, ID,
+            and location were all the same, but its color was different, a new rack
+            should NOT be created, as that isn't a characteristic that helps identify a
+            unique rack. Instead, the existing rack should be updated in place.
 
     Returns:
         id (int): the id of the field.
     """
-    print("Checking GLPI fields:")
+    print(f"Checking GLPI fields for {url}:")
     # Check if the field is present at the URL endpoint.
-    id = check_field(session, url, search_criteria={"name": field})
+    id = check_field(session, url, search_criteria)
+
     # Create a field if one was not found and return the ID.
-    glpi_post = {"name": field}
+    if additional_information is not None:
+        search_criteria.update(additional_information)
+    glpi_post = search_criteria
     id = create_or_update_glpi_item(session, url, glpi_post, id)
-    print("Created/Updated GLPI field")
     return id
 
 
@@ -137,7 +157,7 @@ def check_and_post_processor(
         # Get the manufacturer or create it (NOTE: This may create duplicates
         # with slight variation)
         manufacturers_id = check_and_post(
-            session, field["Vendor ID"], urls.MANUFACTURER_URL
+            session, urls.MANUFACTURER_URL, {"name": field["Vendor ID"]}
         )
         print("Creating GLPI CPU field:")
         glpi_post = {
@@ -214,67 +234,6 @@ def check_and_post_processor_item(
         print(str(post_response) + "\n")
 
     return
-
-
-def check_and_post_operating_system_item(
-    session: requests.sessions.Session,
-    url: str,
-    operating_system_id: int,
-    operating_system_version_id: int,
-    operating_system_architecture_id: int,
-    operating_system_kernel_version_id: int,
-    item_id: int,
-    item_type: str,
-) -> int:
-    """A helper method to check the operating system item field at the given API
-       endpoint (URL) and post the field if it is not present. Takes in the session,
-       field, and API url. Return the id of the field. NOTE: Operating systems have
-       been moved to a different object than descibed (Item_OperatingSystem).
-       This is undocumented except for issue 3334 on the glpi-project GitHub.
-
-    Args:
-        session (Session object): The requests session object
-        url (str): GLPI API endpoint for the operating system item field
-        operating_system_id (int): ID of the operating system in GLPI
-        operating_system_version_id (int): ID of the operating system version in GLPI
-        operating_system_architecture_id (int): ID of the operating system architecture
-                                                in GLPI
-        operating_system_kernel_version_id (int): ID of the operating system kernel
-                                                  version in GLPI
-        item_id (int): ID of the item (usually a computer) associated with the
-                       operating system item
-        item_type (str): Type of the item associated with the operating system item,
-                         usually "Computer"
-
-    Returns:
-        id (int): ID of the operating system item in GLPI
-    """
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI OS fields:")
-    id = check_field(
-        session,
-        url,
-        search_criteria={
-            "items_id": item_id,
-            "itemtype": item_type,
-            "operatingsystems_id": operating_system_id,
-        },
-    )
-
-    # Create a field if one was not found and return the ID.
-    print("Creating GLPI OS Item field:")
-    glpi_post = {
-        "items_id": item_id,
-        "itemtype": item_type,
-        "operatingsystems_id": operating_system_id,
-        "operatingsystemversions_id": operating_system_version_id,
-        "operatingsystemarchitectures_id": operating_system_architecture_id,
-        "operatingsystemkernelversions_id": operating_system_kernel_version_id,
-    }
-
-    id = create_or_update_glpi_item(session, url, glpi_post, id)
-
-    return id
 
 
 def check_and_post_network_port(  # noqa: C901
@@ -373,44 +332,6 @@ def check_and_post_network_port(  # noqa: C901
     return id
 
 
-def check_and_post_network_port_ethernet(
-    session: requests.sessions.Session,
-    url: str,
-    network_port_id: int,
-    speed: str,
-    nic: str,
-) -> int:
-    """A helper method to check the network port ethernet field at the given API
-       endpoint (URL) and post the field if it is not present.
-
-    Args:
-        session (Session object): The requests session object
-        url (str): GLPI API endpoint for network port ethernet field
-        network_port_id (int): ID of the network port that the ethernet is associated
-                               with
-        speed (str): Speed that the port is capable of
-        nic (str): ID of the network card that the ethernet field is associated with
-
-    Returns:
-        id (int): GLPI ID of network port ethernet
-    """
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI Network Port Ethernet fields:")
-
-    id = check_field(session, url, search_criteria={"networkports_id": network_port_id})
-
-    print("Creating GLPI Network Port Ethernet field:")
-    glpi_post = {"networkports_id": network_port_id}
-    if nic is not None:
-        glpi_post["items_devicenetworkcards_id"] = nic
-    if speed != 0:
-        glpi_post["speed"] = speed
-
-    id = create_or_update_glpi_item(session, url, glpi_post, id)
-
-    return id
-
-
 def check_and_post_network_port_network_port(  # noqa: C901
     session: requests.sessions.Session,
     server_network_port_id: int,
@@ -484,59 +405,6 @@ def check_and_post_network_port_network_port(  # noqa: C901
             + "."
         )
         return
-
-
-def check_and_post_device_memory(
-    session: requests.sessions.Session,
-    url: str,
-    designation: str,
-    frequency: str,
-    manufacturers_id: int,
-    size: int,
-    memory_type_id: int,
-) -> int:
-    """A helper method to check the device memory field at the given API endpoint
-       (URL) and post the field if it is not present.
-
-    Args:
-        session (Session object): The requests session object
-        url (str): GLPI API endpoint for the memory field
-        designation (str): Name of memory device
-        frequency (int): Frequency of memory device, usually in MHz
-        manufacturers_id (int): ID of the memory manufacturer
-        size (int): Capacity of the memory device
-        memory_type_id (int): ID of the type of memory device
-
-    Returns:
-        id (int): ID of the memory device in GLPI
-    """
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI Memory fields:")
-    id = check_field(
-        session,
-        url,
-        search_criteria={
-            "designation": designation,
-            "frequence": frequency,
-            "manufacturers_id": manufacturers_id,
-            "size_default": size,
-            "devicememorytypes_id": memory_type_id,
-        },
-    )
-
-    # Create a field if one was not found and return the ID.
-    print("Creating GLPI Memory field:")
-    glpi_post = {
-        "designation": designation,
-        "frequence": frequency,
-        "manufacturers_id": manufacturers_id,
-        "size_default": size,
-        "devicememorytypes_id": memory_type_id,
-    }
-
-    id = create_or_update_glpi_item(session, url, glpi_post, id)
-
-    return id
 
 
 def check_and_post_device_memory_item(
@@ -640,157 +508,6 @@ def check_and_remove_unspecified_device_memory_item(
             print(str(removed) + "\n")
             break
     return
-
-
-def check_and_post_disk_item(
-    session: requests.sessions.Session,
-    url: str,
-    item_id: int,
-    item_type: str,
-    disk_name: str,
-    size: int,
-    partition: str = None,
-) -> None:
-    """A helper method to check the disk item field at the given API endpoint (URL)
-       and post the field if it is not present.
-
-    Args:
-        session (Session object): The requests session object
-        url (str): GLPI API endpoint for the disk item field
-        item_id (int): ID of the item (usually a computer) associated with the disk
-                       item
-        item_type (str): Type of the item associated with the disk item, usually
-                         "Computer"
-        disk_name (str): Name of disk item
-        size (int): Capacity of disk item in MB
-        partition (str): Mountpoint of the disk item
-    """
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI Disk Item fields:")
-    id = check_field(
-        session,
-        url,
-        search_criteria={"items_id": item_id, "itemtype": item_type, "name": disk_name},
-    )
-
-    # Create a field if one was not found and return the ID.
-    print("Creating GLPI Disk Item field:")
-    glpi_post = {
-        "items_id": item_id,
-        "itemtype": item_type,
-        "name": disk_name,
-        "totalsize": size,
-    }
-    if partition is not None:
-        glpi_post["mountpoint"] = partition
-    id = create_or_update_glpi_item(session, url, glpi_post, id)
-
-    return
-
-
-def check_and_post_nic(
-    session: requests.sessions.Session,
-    url: str,
-    name: str,
-    bandwidth: str,
-    vendor: str,
-    nic_model_id: int,
-    urls: UrlInitialization,
-) -> int:
-    """A helper method to check the nic field at the given API endpoint (URL) and
-       post the field if it is not present.
-
-    Args:
-        session (Session object): The requests session object
-        url (str): GLPI API endpoint for the NIC field
-        name (str): Name of NIC
-        bandwidth (str): bandwidth of NIC
-        vendor (str): Company that manufactured NIC
-        nic_model_id (int): ID of NIC model
-        urls (UrlInitialization object): the URL object
-
-
-    Returns:
-        id (int): ID of NIC in GLPI
-    """
-    manufacturers_id = vendor
-    if vendor:
-        manufacturers_id = check_and_post(session, vendor, urls.MANUFACTURER_URL)
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI NIC fields:")
-    id = check_field(
-        session,
-        url,
-        search_criteria={
-            "designation": name,
-            "bandwidth": bandwidth,
-            "manufacturers_id": manufacturers_id,
-            "devicenetworkcardmodels_id": nic_model_id,
-        },
-    )
-
-    # Create a field if one was not found and return the ID.
-    print("Creating GLPI NIC field:")
-    glpi_post = {
-        "designation": name,
-        "bandwidth": bandwidth,
-        "manufacturers_id": manufacturers_id,
-        "devicenetworkcardmodels_id": nic_model_id,
-    }
-
-    id = create_or_update_glpi_item(session, url, glpi_post, id)
-
-    return id
-
-
-def check_and_post_nic_item(
-    session: requests.sessions.Session,
-    url: str,
-    item_id: int,
-    item: str,
-    nic_id: int,
-    mac: str,
-) -> int:
-    """A helper method to check the nic item field at the given API endpoint (URL)
-       and post the field if it is not present.
-
-    Args:
-        session (Session object): The requests session object
-        url (str): GLPI API endpoint for the NIC field
-        item_id (int): ID of the item (usually a computer) associated with the NIC item
-        item (str): Type of the item associated with the NIC item, usually "Computer"
-        nic_id (int): ID of the NIC that the item is associated
-        mac (str): MAC address of the NIC item
-
-    Returns:
-        id (int): ID of the NIC item
-
-    """
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI NIC Item fields:")
-    id = check_field(
-        session,
-        url,
-        search_criteria={
-            "items_id": item_id,
-            "itemtype": item,
-            "devicenetworkcards_id": nic_id,
-            "mac": mac,
-        },
-    )
-
-    # Create a field if one was not found and return the ID.
-    print("Creating GLPI NIC Item field:")
-    glpi_post = {
-        "items_id": item_id,
-        "itemtype": item,
-        "devicenetworkcards_id": nic_id,
-        "mac": mac,
-    }
-
-    id = create_or_update_glpi_item(session, url, glpi_post, id)
-
-    return id
 
 
 def print_final_help() -> None:
@@ -951,8 +668,10 @@ def create_or_update_glpi_item(
     if id is None:
         post_response = session.post(url=url, json={"input": glpi_post})
         id = post_response.json()["id"]
+        print(f"Created item at {url}")
     else:
         post_response = session.put(url=url, json={"input": glpi_post})
+        print(f"Updated item at {url}")
     print(str(post_response) + "\n")
 
     return id
