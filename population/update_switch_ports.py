@@ -26,7 +26,7 @@ from common.utils import (
     print_final_help,
     get_switch_ports,
     check_and_post_network_port,
-    check_and_post_network_port_ethernet,
+    check_and_post,
     check_fields,
 )
 from common.switches import Switches
@@ -127,12 +127,14 @@ def post_to_glpi(
                         urls,
                         switch_info,
                     )
-                    check_and_post_network_port_ethernet(
+                    check_and_post(
                         session,
                         urls.NETWORK_PORT_ETHERNET_URL,
-                        network_port_id,
-                        speed,
-                        None,
+                        {
+                            "networkports_id": network_port_id,
+                            "items_devicenetworkcards_id": None,
+                            "speed": speed,
+                        },
                     )
     return
 

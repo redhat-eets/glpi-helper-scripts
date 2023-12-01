@@ -88,7 +88,7 @@ def main():
     parser.parser.add_argument(
         "-C",
         "--sunbird_config",
-        metavar="general_config",
+        metavar="sunbird_config",
         help="path to sunbird config YAML file, see "
         + "integration/sunbird/example_sunbird.yml",
     )

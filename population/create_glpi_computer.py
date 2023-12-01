@@ -23,17 +23,9 @@ from common.utils import (
     check_and_post,
     check_and_post_processor,
     check_and_post_processor_item,
-    check_and_post_operating_system_item,
-    check_and_post_device_memory,
     check_and_post_device_memory_item,
-    check_and_post_disk_item,
     check_and_post_network_port,
-    check_and_post_network_port_ethernet,
-    check_and_post_nic,
-    check_and_post_nic_item,
     check_fields,
-    create_or_update_glpi_item,
-    check_field,
 )
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization
@@ -214,22 +206,28 @@ def post_to_glpi(  # noqa: C901
     # NOTE: Different helper functions exist because of different syntax,
     #       field names, and formatting in the API.
     computer_type_id = check_and_post(
-        session, hostnamectl_dict["Chassis"].capitalize(), urls.COMPUTER_TYPE_URL
+        session,
+        urls.COMPUTER_TYPE_URL,
+        {"name": hostnamectl_dict["Chassis"].capitalize()},
     )
-    manufacturers_id = check_and_post(session, computer_type, urls.MANUFACTURER_URL)
-    computer_model_id = check_and_post(session, computer_model, urls.COMPUTER_MODEL_URL)
+    manufacturers_id = check_and_post(
+        session, urls.MANUFACTURER_URL, {"name": computer_type}
+    )
+    computer_model_id = check_and_post(
+        session, urls.COMPUTER_MODEL_URL, {"name": computer_model}
+    )
     processors_id = check_and_post_processor(session, cpu_dict, urls.CPU_URL, urls)
     operating_system_id = check_and_post(
-        session, os_dict["NAME"], urls.OPERATING_SYSTEM_URL
+        session, urls.OPERATING_SYSTEM_URL, {"name": os_dict["NAME"]}
     )
     operating_system_version_id = check_and_post(
-        session, os_dict["VERSION"], urls.OPERATING_SYSTEM_VERSION_URL
+        session, urls.OPERATING_SYSTEM_VERSION_URL, {"name": os_dict["VERSION"]}
     )
     operating_system_architecture_id = check_and_post(
-        session, architecture, urls.OPERATING_SYSTEM_ARCHITECTURE_URL
+        session, urls.OPERATING_SYSTEM_ARCHITECTURE_URL, {"name": architecture}
     )
     operating_system_kernel_version_id = check_and_post(
-        session, kernel, urls.OPERATING_SYSTEM_KERNEL_VERSION_URL
+        session, urls.OPERATING_SYSTEM_KERNEL_VERSION_URL, {"name": kernel}
     )
 
     # The final dictionary for the machine JSON to post.
@@ -294,15 +292,20 @@ def post_to_glpi(  # noqa: C901
         int(cpu_dict["Socket(s)"]),
     )
 
-    operating_system_id = check_and_post_operating_system_item(
+    # check and post operating system item
+    check_and_post(
         session,
         urls.OPERATING_SYSTEM_ITEM_URL,
-        operating_system_id,
-        operating_system_version_id,
-        operating_system_architecture_id,
-        operating_system_kernel_version_id,
-        COMPUTER_ID,
-        "Computer",
+        {
+            "items_id": COMPUTER_ID,
+            "itemtype": "Computer",
+            "operatingsystems_id": operating_system_id,
+        },
+        {
+            "operatingsystemversions_id": operating_system_version_id,
+            "operatingsystemarchitectures_id": operating_system_architecture_id,
+            "operatingsystemkernelversions_id": operating_system_kernel_version_id,
+        },
     )
 
     # Create network devices.
@@ -315,29 +318,39 @@ def post_to_glpi(  # noqa: C901
         nic_model_id = 0
         if "product" in nics_dict[name]:
             nic_model_id = check_and_post(
-                session, nics_dict[name]["product"], urls.DEVICE_NETWORK_CARD_MODEL_URL
+                session,
+                urls.DEVICE_NETWORK_CARD_MODEL_URL,
+                {"name": nics_dict[name]["product"]},
             )
 
         vendor = 0
         if "vendor" in nics_dict[name]:
             vendor = nics_dict[name]["vendor"]
 
-        nic_id = check_and_post_nic(
+        manufacturers_id = vendor
+        if vendor:
+            manufacturers_id = check_and_post(
+                session, urls.MANUFACTURER_URL, {"name": vendor}
+            )
+        nic_id = check_and_post(
             session,
             urls.DEVICE_NETWORK_CARD_URL,
-            name,
-            bandwidth,
-            vendor,
-            nic_model_id,
-            urls,
+            {
+                "designation": name,
+                "bandwidth": bandwidth,
+                "manufacturers_id": manufacturers_id,
+                "devicenetworkcardmodels_id": nic_model_id,
+            },
         )
-        nic_item_id = check_and_post_nic_item(
+        nic_item_id = check_and_post(
             session,
             urls.DEVICE_NETWORK_CARD_ITEM_URL,
-            COMPUTER_ID,
-            "Computer",
-            nic_id,
-            nics_dict[name]["serial"],
+            {
+                "items_id": COMPUTER_ID,
+                "itemtype": "Computer",
+                "devicenetworkcards_id": nic_id,
+                "mac": nics_dict[name]["serial"],
+            },
         )
         nic_ids[name] = nic_item_id
 
@@ -351,18 +364,38 @@ def post_to_glpi(  # noqa: C901
         gpu_model_id = 0
         if "product" in gpus_dict[name]:
             gpu_model_id = check_and_post(
-                session, gpus_dict[name]["product"], urls.DEVICE_GRAPHICS_CARD_MODEL_URL
+                session,
+                urls.DEVICE_GRAPHICS_CARD_MODEL_URL,
+                {"name": gpus_dict[name]["product"]},
             )
 
         vendor = 0
         if "vendor" in gpus_dict[name]:
             vendor = gpus_dict[name]["vendor"]
 
-        gpu_id = check_and_post_gpu(
-            session, urls.DEVICE_GRAPHICS_CARD_URL, name, vendor, gpu_model_id, urls
+        manufacturers_id = vendor
+        if vendor:
+            manufacturers_id = check_and_post(
+                session, urls.MANUFACTURER_URL, {"name": vendor}
+            )
+
+        gpu_id = check_and_post(
+            session,
+            urls.DEVICE_GRAPHICS_CARD_URL,
+            {
+                "designation": name,
+                "manufacturers_id": manufacturers_id,
+                "devicegraphiccardmodels_id": gpu_model_id,
+            },
         )
-        gpu_item_id = check_and_post_gpu_item(
-            session, urls.DEVICE_GRAPHICS_CARD_ITEM_URL, COMPUTER_ID, "Computer", gpu_id
+        gpu_item_id = check_and_post(
+            session,
+            urls.DEVICE_GRAPHICS_CARD_ITEM_URL,
+            {
+                "items_id": COMPUTER_ID,
+                "itemtype": "Computer",
+                "devicegraphiccards_id": gpu_id,
+            },
         )
         gpu_ids[name] = gpu_item_id
 
@@ -402,8 +435,14 @@ def post_to_glpi(  # noqa: C901
         if name in nic_ids:
             nic_id = nic_ids[name]
 
-        check_and_post_network_port_ethernet(
-            session, urls.NETWORK_PORT_ETHERNET_URL, network_port_id, speed, nic_id
+        check_and_post(
+            session,
+            urls.NETWORK_PORT_ETHERNET_URL,
+            {
+                "networkports_id": network_port_id,
+                "items_devicenetworkcards_id": nic_id,
+                "speed": speed,
+            },
         )
         logical_number += 1
 
@@ -419,19 +458,23 @@ def post_to_glpi(  # noqa: C901
             else:
                 ram_size = int(ram_dict[memory]["Size"].split()[0])
             memory_type_id = check_and_post(
-                session, ram_dict[memory]["Type"], urls.DEVICE_MEMORY_TYPE_URL
+                session, urls.DEVICE_MEMORY_TYPE_URL, {"name": ram_dict[memory]["Type"]}
             )
             manufacturers_id = check_and_post(
-                session, ram_dict[memory]["Manufacturer"], urls.MANUFACTURER_URL
+                session,
+                urls.MANUFACTURER_URL,
+                {"name": ram_dict[memory]["Manufacturer"]},
             )
-            memory_id = check_and_post_device_memory(
+            memory_id = check_and_post(
                 session,
                 urls.DEVICE_MEMORY_URL,
-                ram_dict[memory]["Part Number"],
-                ram_dict[memory]["Speed"].split()[0],
-                manufacturers_id,
-                ram_size,
-                memory_type_id,
+                {
+                    "designation": ram_dict[memory]["Part Number"],
+                    "frequence": ram_dict[memory]["Speed"].split()[0],
+                    "manufacturers_id": manufacturers_id,
+                    "size_default": ram_size,
+                    "devicememorytypes_id": memory_type_id,
+                },
             )
             if memory_id in memory_item_dict:
                 memory_item_dict[memory_id]["quantity"] += 1
@@ -459,241 +502,47 @@ def post_to_glpi(  # noqa: C901
         else:
             size = float(disk_dict[disk_id]["Size"][:-2])
 
-        check_and_post_disk_item(
+        check_and_post(
             session,
             urls.DISK_ITEM_URL,
-            COMPUTER_ID,
-            "Computer",
-            disk_id,
-            size,
-            disk_dict[disk_id]["Part"],
+            {
+                "items_id": COMPUTER_ID,
+                "itemtype": "Computer",
+                "name": disk_id,
+                "totalsize": size,
+                "mountpoint": disk_dict[disk_id]["Part"],
+            },
         )
 
     for accelerator in accelerator_dict:
         manufacturers_id = check_and_post(
             session,
-            accelerator_dict[accelerator]["manufacturer"],
             urls.MANUFACTURER_URL,
+            {"name": accelerator_dict[accelerator]["manufacturer"]},
         )
-        type_id = check_and_post_generic_type(
-            session, "Processing accelerators", urls.DEVICE_GENERIC_TYPE_URL
+        type_id = check_and_post(
+            session, urls.DEVICE_GENERIC_TYPE_URL, {"name": "Processing accelerators"}
         )
-        generic_id = check_and_post_device_generic(
+        generic_id = check_and_post(
             session,
             urls.DEVICE_GENERIC_URL,
-            ACCELERATOR_IDS[accelerator_dict[accelerator]["device"]],
-            manufacturers_id,
-            type_id,
+            {
+                "designation": ACCELERATOR_IDS[accelerator_dict[accelerator]["device"]],
+                "devicegenerictypes_id": type_id,
+                "manufacturers_id": manufacturers_id,
+            },
         )
-        check_and_post_device_generic_item(
-            session, urls.DEVICE_GENERIC_ITEM_URL, COMPUTER_ID, "Computer", generic_id
+        check_and_post(
+            session,
+            urls.DEVICE_GENERIC_ITEM_URL,
+            {
+                "items_id": COMPUTER_ID,
+                "itemtype": "Computer",
+                "devicegenerics_id": generic_id,
+            },
         )
 
     return
-
-
-def check_and_post_gpu(
-    session: requests.sessions.Session,
-    url: str,
-    name: str,
-    vendor: str,
-    gpu_model_id: int,
-    urls: UrlInitialization,
-) -> int:
-    """A helper method to check the graphics field at the given API endpoint (URL) and
-       post the field if it is not present.
-
-    Args:
-        session (Session object): The requests session object
-        url (str): GLPI API endpoint of the graphics card device
-        name (str): Model name of the GPU
-        vendor (str): Manufacturer of the GPU
-        gpu_model_id (str): ID of the GPU model in GLPI
-        urls (UrlInitialization object): the URL object
-
-    Returns:
-        id (int): ID of the GPU in GLPI
-    """
-    manufacturers_id = vendor
-    if vendor:
-        manufacturers_id = check_and_post(session, vendor, urls.MANUFACTURER_URL)
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI Graphics fields:")
-    id = check_field(
-        session,
-        url,
-        search_criteria={
-            "designation": name,
-            "manufacturers_id": manufacturers_id,
-            "devicegraphiccardmodels_id": gpu_model_id,
-        },
-    )
-
-    # Create a field if one was not found and return the ID.
-    print("Creating GLPI GPU field:")
-    glpi_post = {
-        "designation": name,
-        "manufacturers_id": manufacturers_id,
-        "devicegraphiccardmodels_id": gpu_model_id,
-    }
-
-    id = create_or_update_glpi_item(session, url, glpi_post, id)
-
-    return id
-
-
-def check_and_post_gpu_item(
-    session: requests.sessions.Session, url: str, item_id: int, item: str, gpu_id: int
-) -> int:
-    """A helper method to check the graphics item field at the given API endpoint (URL)
-       and post the field if it is not present.
-
-    Args:
-        session (Session object): requests.sessions.Session
-        url (str): GLPI API endpoint for the graphics card item
-        item_id (int): ID of the item (usually a computer) associated with the memory
-                       item
-        item_type (str): Type of the item associated with the memory item, usually
-                         "Computer"
-        gpu_id (int): ID of the GPU in GLPI
-    """
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI GPU Item fields:")
-    id = check_field(
-        session,
-        url,
-        search_criteria={
-            "items_id": item_id,
-            "itemtype": item,
-            "devicegraphiccards_id": gpu_id,
-        },
-    )
-
-    # Create a field if one was not found and return the ID.
-    print("Creating GLPI GPU Item field:")
-    glpi_post = {"items_id": item_id, "itemtype": item, "devicegraphiccards_id": gpu_id}
-
-    id = create_or_update_glpi_item(session, url, glpi_post, id)
-
-    return id
-
-
-def check_and_post_generic_type(
-    session: requests.sessions.Session, type: str, url: str
-) -> int:
-    """A helper method to check the generic type field at the given API endpoint (URL)
-       and post the field if it is not present.
-
-    Args:
-        session (Session object): The requests session object
-        type (str): Type of device
-        url (str): GLPI API endpoint of the generic type
-
-    Returns:
-        id (int): ID of the generic type in GLPI
-    """
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI Generic Type fields:")
-    id = check_field(session, url, search_criteria={"name": type})
-
-    # Create a field if one was not found and return the ID.
-    print("Creating GLPI Generic Type field:")
-    glpi_post = {"name": type}
-
-    id = create_or_update_glpi_item(session, url, glpi_post, id)
-
-    return id
-
-
-def check_and_post_device_generic(
-    session: requests.sessions.Session,
-    url: str,
-    device: str,
-    manufacturers_id: int,
-    type_id: int,
-) -> int:
-    """A helper method to check the generic device field at the given API endpoint
-       (URL) and post the field if it is not present.
-
-    Args:
-        session (Session object): The requests session object
-        url (str): GLPI API endpoint of the generic device
-        device (str): Name of device
-        manufacturers_id (int): ID of manufacturer in GLPI
-        type_id (int): ID of device type in GLPI
-
-    Returns:
-        id (int): ID of the generic device in GLPI
-    """
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI Generic fields:")
-    id = check_field(
-        session,
-        url,
-        search_criteria={
-            "designation": device,
-            "devicegenerictypes_id": type_id,
-            "manufacturers_id": manufacturers_id,
-        },
-    )
-
-    # Create a field if one was not found and return the ID.
-    print("Creating GLPI Generic field:")
-    glpi_post = {
-        "designation": device,
-        "devicegenerictypes_id": type_id,
-        "manufacturers_id": manufacturers_id,
-    }
-
-    id = create_or_update_glpi_item(session, url, glpi_post, id)
-
-    return id
-
-
-def check_and_post_device_generic_item(
-    session: requests.sessions.Session,
-    url: str,
-    item_id: int,
-    item_type: int,
-    generic_id: int,
-) -> int:
-    """A helper method to check the generic device item field at the given API endpoint
-       (URL) and post the field if it is not present.
-
-    Args:
-        session (Session object): The requests session object
-        url (str): GLPI API endpoint of the generic device item
-        item_id (int): ID of the item (usually a computer) associated with the disk item
-        item_type (str): Type of the item associated with the disk item, usually
-                         "Computer"
-        generic_id (int): ID of device in GLPI
-
-    Returns:
-        id (int): ID of the generic device in GLPI
-    """
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI Generic Item fields:")
-    id = check_field(
-        session,
-        url,
-        search_criteria={
-            "items_id": item_id,
-            "itemtype": item_type,
-            "devicegenerics_id": generic_id,
-        },
-    )
-
-    # Create a field if one was not found and return the ID.
-    print("Creating GLPI Generic field:")
-    glpi_post = {
-        "items_id": item_id,
-        "itemtype": item_type,
-        "devicegenerics_id": generic_id,
-    }
-
-    id = create_or_update_glpi_item(session, url, glpi_post, id)
-
-    return id
 
 
 # Executes main if run as a script.
