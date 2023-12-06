@@ -35,11 +35,17 @@ def main():
     ip = args.ip
     user_token = args.token
     list = args.list
+    no_verify = args.no_verify
 
-    parse_list(ip, user_token, list)
+    parse_list(ip, user_token, list, no_verify)
 
 
-def parse_list(ip: str, user_token: str, list: str) -> None:
+def parse_list(
+    ip: str,
+    user_token: str,
+    list: str,
+    no_verify: bool,
+) -> None:
     """Method for parsing the input reservation YAML and calling
        create_glpi_reservation.py.
 
@@ -47,7 +53,8 @@ def parse_list(ip: str, user_token: str, list: str) -> None:
         ip (str):         The IP or hostname of the GLPI session
         user_token (str): The user token to use with GLPI
         list (str):       The YAML file path
-
+        no_verify (bool): If present, this will not verify the SSL session if it fails,
+                          allowing the script to proceed
     Returns:
         None
     """
@@ -97,27 +104,28 @@ def parse_list(ip: str, user_token: str, list: str) -> None:
             ):
                 epic = reservations["servers"][server]["epic"]
         print("Calling create_glpi_reservation:")
-        output = subprocess.check_output(
-            [
-                "./create_glpi_reservation.py",
-                "-i",
-                ip,
-                "-t",
-                user_token,
-                "-u",
-                username,
-                "-b",
-                str(start),
-                "-e",
-                str(end),
-                "-j",
-                epic,
-                "-c",
-                comment,
-                "-s",
-                server,
-            ]
-        )
+        command = [
+            "./create_glpi_reservation.py",
+            "-i",
+            ip,
+            "-t",
+            user_token,
+            "-u",
+            username,
+            "-b",
+            str(start),
+            "-e",
+            str(end),
+            "-j",
+            epic,
+            "-c",
+            comment,
+            "-s",
+            server,
+        ]
+        if no_verify:
+            command.extend(["-v"])
+        output = subprocess.check_output(command)
         print(output.decode("utf-8"))
         print("\n")
 
