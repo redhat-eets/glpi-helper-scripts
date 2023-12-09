@@ -1152,10 +1152,10 @@ def add_rack_location_from_sunbird(
             {
                 "itemtype": "Computer",
                 "items_id": computer_id,
-                "position": location_details["Item_Rack"],
-                "racks_id": rack_id,
             },
             {
+                "position": location_details["Item_Rack"],
+                "racks_id": rack_id,
                 "bgcolor": "#69ceba",  # Hardcoded, otherwise the rack won't show in UI
                 "orientation": 0,  # Hardcoded, otherwise the rack won't show in UI
             },

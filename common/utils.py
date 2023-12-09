@@ -127,6 +127,8 @@ def check_and_post(
     # Create a field if one was not found and return the ID.
     if additional_information is not None:
         search_criteria.update(additional_information)
+    if id is not None:
+        search_criteria.update({"id": id})
     glpi_post = search_criteria
     id = create_or_update_glpi_item(session, url, glpi_post, id)
     return id
