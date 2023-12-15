@@ -242,10 +242,9 @@ def get_glpi_machines(
         glpi_machines (dict): machines in GLPI
     """
     computers = check_fields(session, urls.COMPUTER_URL)
-    computers_list = [yaml.safe_load(computer) for computer in computers]
     glpi_machines = {
         computer["serial"]: computer
-        for computer in computers_list
+        for computer in computers
         if computer["serial"]
     }
 
