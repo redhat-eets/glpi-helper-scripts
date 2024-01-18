@@ -64,7 +64,7 @@ def main() -> None:
         action="store_true",
         required=False,
         help="a flag for concise output of only the yaml, useful for "
-        + "programmatic parsing"
+        + "programmatic parsing",
     )
     parser.add_argument(
         "-v",

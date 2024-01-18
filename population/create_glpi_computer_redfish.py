@@ -55,8 +55,7 @@ def main() -> None:
         "-g",
         "--general_config",
         metavar="general_config",
-        help="path to general config YAML file, "
-        + "see general_config_example.yaml",
+        help="path to general config YAML file, see general_config_example.yaml",
         required=True,
     )
     parser.add_argument(
@@ -901,7 +900,7 @@ def strip_hostname(nslookup_output: list) -> str:
     for line in nslookup_output:
         if "name = " in line:
             name_index = line.index("name = ")
-            name = line[name_index + len("name = "): -1]
+            name = line[name_index + len("name = ") : -1]
             return name
 
 

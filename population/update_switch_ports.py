@@ -136,11 +136,11 @@ def post_to_glpi(
                     logical_number = switch_port.split()[-1]
                     print(switch_port)
                     if (
-                        switch_port[0: len(switch_port) - len(logical_number) - 1]
+                        switch_port[0 : len(switch_port) - len(logical_number) - 1]
                         in switch_dict[switch_ip][3]
                     ):
                         speed = switch_dict[switch_ip][3][
-                            switch_port[0: len(switch_port) - len(logical_number) - 1]
+                            switch_port[0 : len(switch_port) - len(logical_number) - 1]
                         ]
                     else:
                         speed = 0
