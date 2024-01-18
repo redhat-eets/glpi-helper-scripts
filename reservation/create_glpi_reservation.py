@@ -24,6 +24,12 @@ from common.utils import (
     print_final_help,
 )
 
+# Suppress InsecureRequestWarning caused by REST access without
+# certificate validation.
+import urllib3
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 
 def main() -> None:
     """Main function"""
@@ -92,6 +98,7 @@ def main() -> None:
     jira_id = args.jira
     comment = args.comment
     hostname = args.server
+    no_verify = args.no_verify
 
     if jira_id:
         final_comment = jira_id
@@ -102,7 +109,7 @@ def main() -> None:
 
     urls = UrlInitialization(ip)
 
-    with SessionHandler(user_token, urls) as session:
+    with SessionHandler(user_token, urls, no_verify) as session:
         create_reservations(
             session, username, hostname, begin, end, final_comment, urls
         )
