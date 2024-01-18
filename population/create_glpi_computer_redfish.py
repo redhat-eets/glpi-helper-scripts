@@ -1065,6 +1065,9 @@ def add_rack_location_from_sunbird(
         else:
             data_center = location_config.get("Data Center", None)
             room = location_config.get("Room", None)
+            if room is None:
+                if data_center is not None:
+                    room = sunbird_location_data["tiDataCenterName"]
 
         location_details = {
             "location": locations_id,
@@ -1152,10 +1155,10 @@ def add_rack_location_from_sunbird(
             {
                 "itemtype": "Computer",
                 "items_id": computer_id,
-                "position": location_details["Item_Rack"],
-                "racks_id": rack_id,
             },
             {
+                "position": location_details["Item_Rack"],
+                "racks_id": rack_id,
                 "bgcolor": "#69ceba",  # Hardcoded, otherwise the rack won't show in UI
                 "orientation": 0,  # Hardcoded, otherwise the rack won't show in UI
             },
