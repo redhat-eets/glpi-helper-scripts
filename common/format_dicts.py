@@ -119,13 +119,12 @@ def strip_ram_dict(dict: str, delimiter: str) -> dict:
     return stripped_dict
 
 
-def strip_ram_dict_coreos(dict: str, delimiter: str) -> dict:
+def strip_ram_dict_coreos(dict: str) -> dict:
     """A helper method to strip whitespace and split a dictionary (without decoding)
        of ram items.
 
     Args:
         dict (str): Information to be stripped and split into a dictionary
-        delimiter (str): Text to split the information on
 
     Returns:
         stripped_dict (dict): Contains stripped and split information
@@ -191,7 +190,6 @@ def strip_disks_dict_coreos(dict: str, delimiter: str) -> dict:
     """
     stripped_dict = {}
     dict = dict.split("\n")
-
     for entry in dict:
         temp = entry.lstrip().strip().split()
         if temp[-1] == "disk":
@@ -269,7 +267,7 @@ def strip_nics_dict_coreos(
     return stripped_dict
 
 
-def strip_gpu_dict(dict: str, nic_delimiter: str, line_delimiter: str) -> dict:
+def strip_gpu_dict(dict: str, gpu_delimiter: str, line_delimiter: str) -> dict:
     """A helper method to strip whitespace and split a dictionary (without decoding)
        of GPU items.
 
@@ -282,7 +280,7 @@ def strip_gpu_dict(dict: str, nic_delimiter: str, line_delimiter: str) -> dict:
         stripped_dict (dict): Contains stripped and split information
     """
     stripped_dict = {}
-    dict = dict.split(nic_delimiter)
+    dict = dict.split(gpu_delimiter)
     dict.pop(0)
     for entry in dict:
         temp_dict = {}
@@ -316,9 +314,8 @@ def strip_brctl_showmacs_switch_dict(dict: str, delimiter: str) -> dict:
     for entry in dict:
         temp = entry.lstrip().strip().split(delimiter)
         for item in range(len(temp)):
-            # if temp[item][0:3] == 'swp' or temp[item][0:6] == 'uplink':
             temp_split = temp[item].split()
-            if len(temp_split) >= 4 and temp_split[3] == "no":
+            if len(temp_split) >= 4 and temp_split[2] == "no":
                 if temp_split[1] in stripped_dict:
                     print("Duplicate: " + temp_split[1])
 
@@ -331,8 +328,7 @@ def strip_brctl_showmacs_switch_dict(dict: str, delimiter: str) -> dict:
                     + " "
                     + "{:02d}".format(interface_mac_count[temp_split[0]])
                 )
-                # stripped_dict[temp_split[1]] = temp_split[0]
-    # print(stripped_dict)
+
     return stripped_dict
 
 
