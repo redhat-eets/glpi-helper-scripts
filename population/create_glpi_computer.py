@@ -16,7 +16,6 @@ sys.path.append("..")
 import common.format_dicts as format_dicts
 
 # Imports.
-import argparse
 import requests
 import subprocess
 from common.utils import (
@@ -24,18 +23,14 @@ from common.utils import (
     check_and_post,
     check_and_post_processor,
     check_and_post_processor_item,
-    check_and_post_operating_system_item,
-    check_and_post_device_memory,
     check_and_post_device_memory_item,
-    check_and_post_disk_item,
     check_and_post_network_port,
-    check_and_post_network_port_ethernet,
-    check_and_post_nic,
-    check_and_post_nic_item,
+    check_fields,
 )
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization
 from common.switches import Switches
+from common.parser import argparser
 
 # Suppress InsecureRequestWarning caused by REST access to Redfish without
 # certificate validation.
@@ -48,58 +43,37 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 def main() -> None:
     """Main function"""
     # Get the command line arguments from the user.
-    parser = argparse.ArgumentParser(
-        description="GLPI Computer REST upload example. NOTE: needs to "
+    parser = argparser()
+    parser.parser.description = (
+        "GLPI Computer REST upload example. NOTE: needs to "
         + "be run with root priviledges."
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-g",
         "--general_config",
         metavar="general_config",
         help="path to general config YAML file, see general_config_example.yaml",
         required=True,
     )
-    parser.add_argument(
-        "-i",
-        "--ip",
-        metavar="ip",
-        type=str,
-        required=True,
-        help='the IP/URL of the GLPI instance (example: "127.0.0.1")',
-    )
-    parser.add_argument(
-        "-t",
-        "--token",
-        metavar="user_token",
-        type=str,
-        required=True,
-        help="the user token string for authentication with GLPI",
-    )
-    parser.add_argument(
-        "-v",
-        "--no_verify",
-        action="store_true",
-        help="Use this flag if you want to not verify the SSL session if it fails",
-    )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-c",
         "--switch_config",
         metavar="switch_config",
         help="optional path to switch config YAML file",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-e",
         "--experiment",
         action="store_true",
         help="Use this flag if you want to append '_TEST' to the serial number",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-p",
         "--put",
         action="store_true",
         help="Use this flag if you want to only use PUT requests",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-id",
         "--computer_id",
         metavar="computer_id",
@@ -108,7 +82,13 @@ def main() -> None:
         default="",
         help="the id of the computer",
     )
-    args = parser.parse_args()
+    parser.parser.add_argument(
+        "-o",
+        "--overwrite",
+        action="store_true",
+        help="Use this flag if you want to overwrite existing names",
+    )
+    args = parser.parser.parse_args()
 
     with open(args.general_config, "r") as config_path:
         config_map = yaml.safe_load(config_path)
@@ -127,17 +107,21 @@ def main() -> None:
     PUT = args.put
     global COMPUTER_ID
     COMPUTER_ID = args.computer_id
+    overwrite = args.overwrite
 
     urls = UrlInitialization(ip)
     switch_info = Switches(switch_config)
     with SessionHandler(user_token, urls, no_verify) as session:
-        post_to_glpi(session, urls, switch_info)
+        post_to_glpi(session, urls, switch_info, overwrite)
 
     print_final_help()
 
 
 def post_to_glpi(  # noqa: C901
-    session: requests.sessions.Session, urls: UrlInitialization, switch_info: Switches
+    session: requests.sessions.Session,
+    urls: UrlInitialization,
+    switch_info: Switches,
+    overwrite: bool,
 ) -> None:
     """A method to post the JSON created to GLPI. This method calls numerous helper
        functions which create different parts of the JSON required, get fields from
@@ -147,6 +131,7 @@ def post_to_glpi(  # noqa: C901
         session (Session object): The requests session object
         urls (UrlInitialization object): the URL object
         switch_info (Switches object): Contains information about lab switches
+        overwrite (boolean): flagged to overwrite existing names
     """
     print("Getting local machine information\n")
     # Get the hostnamectl output as an example, splitting on newlines.
@@ -221,22 +206,28 @@ def post_to_glpi(  # noqa: C901
     # NOTE: Different helper functions exist because of different syntax,
     #       field names, and formatting in the API.
     computer_type_id = check_and_post(
-        session, hostnamectl_dict["Chassis"].capitalize(), urls.COMPUTER_TYPE_URL
+        session,
+        urls.COMPUTER_TYPE_URL,
+        {"name": hostnamectl_dict["Chassis"].capitalize()},
     )
-    manufacturers_id = check_and_post(session, computer_type, urls.MANUFACTURER_URL)
-    computer_model_id = check_and_post(session, computer_model, urls.COMPUTER_MODEL_URL)
+    manufacturers_id = check_and_post(
+        session, urls.MANUFACTURER_URL, {"name": computer_type}
+    )
+    computer_model_id = check_and_post(
+        session, urls.COMPUTER_MODEL_URL, {"name": computer_model}
+    )
     processors_id = check_and_post_processor(session, cpu_dict, urls.CPU_URL, urls)
     operating_system_id = check_and_post(
-        session, os_dict["NAME"], urls.OPERATING_SYSTEM_URL
+        session, urls.OPERATING_SYSTEM_URL, {"name": os_dict["NAME"]}
     )
     operating_system_version_id = check_and_post(
-        session, os_dict["VERSION"], urls.OPERATING_SYSTEM_VERSION_URL
+        session, urls.OPERATING_SYSTEM_VERSION_URL, {"name": os_dict["VERSION"]}
     )
     operating_system_architecture_id = check_and_post(
-        session, architecture, urls.OPERATING_SYSTEM_ARCHITECTURE_URL
+        session, urls.OPERATING_SYSTEM_ARCHITECTURE_URL, {"name": architecture}
     )
     operating_system_kernel_version_id = check_and_post(
-        session, kernel, urls.OPERATING_SYSTEM_KERNEL_VERSION_URL
+        session, urls.OPERATING_SYSTEM_KERNEL_VERSION_URL, {"name": kernel}
     )
 
     # The final dictionary for the machine JSON to post.
@@ -260,34 +251,17 @@ def post_to_glpi(  # noqa: C901
 
     # Get the list of computers and check the serial number. If the serial
     # number matches then use a PUT to modify the cooresponding computer by ID.
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    # Fixing the issue of not getting all data without ranges.
-    while more_fields:
-        range_url = (
-            urls.COMPUTER_URL
-            + "?range="
-            + str(api_range)
-            + "-"
-            + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
+    glpi_fields_list = check_fields(session, urls.COMPUTER_URL)
 
-    for glpi_fields in glpi_fields_list:
-        for glpi_computer in glpi_fields.json():
-            if glpi_computer["serial"] == serial_number:
-                global PUT
-                global COMPUTER_ID
-                PUT = True
-                COMPUTER_ID = glpi_computer["id"]
-                break
+    for glpi_computer in glpi_fields_list:
+        if glpi_computer["serial"] == serial_number:
+            global PUT
+            global COMPUTER_ID
+            PUT = True
+            COMPUTER_ID = glpi_computer["id"]
+            if glpi_computer["name"] != glpi_post["name"] and not overwrite:
+                glpi_post["name"] = glpi_computer["name"]
+            break
 
     # If the PUT flag is set then PUT the data to GLPI to modify the existing
     # machine, otherwise POST it to create a new machine.
@@ -317,15 +291,20 @@ def post_to_glpi(  # noqa: C901
         int(cpu_dict["Socket(s)"]),
     )
 
-    operating_system_id = check_and_post_operating_system_item(
+    # check and post operating system item
+    check_and_post(
         session,
         urls.OPERATING_SYSTEM_ITEM_URL,
-        operating_system_id,
-        operating_system_version_id,
-        operating_system_architecture_id,
-        operating_system_kernel_version_id,
-        COMPUTER_ID,
-        "Computer",
+        {
+            "items_id": COMPUTER_ID,
+            "itemtype": "Computer",
+            "operatingsystems_id": operating_system_id,
+        },
+        {
+            "operatingsystemversions_id": operating_system_version_id,
+            "operatingsystemarchitectures_id": operating_system_architecture_id,
+            "operatingsystemkernelversions_id": operating_system_kernel_version_id,
+        },
     )
 
     # Create network devices.
@@ -338,29 +317,39 @@ def post_to_glpi(  # noqa: C901
         nic_model_id = 0
         if "product" in nics_dict[name]:
             nic_model_id = check_and_post(
-                session, nics_dict[name]["product"], urls.DEVICE_NETWORK_CARD_MODEL_URL
+                session,
+                urls.DEVICE_NETWORK_CARD_MODEL_URL,
+                {"name": nics_dict[name]["product"]},
             )
 
         vendor = 0
         if "vendor" in nics_dict[name]:
             vendor = nics_dict[name]["vendor"]
 
-        nic_id = check_and_post_nic(
+        manufacturers_id = vendor
+        if vendor:
+            manufacturers_id = check_and_post(
+                session, urls.MANUFACTURER_URL, {"name": vendor}
+            )
+        nic_id = check_and_post(
             session,
             urls.DEVICE_NETWORK_CARD_URL,
-            name,
-            bandwidth,
-            vendor,
-            nic_model_id,
-            urls,
+            {
+                "designation": name,
+                "bandwidth": bandwidth,
+                "manufacturers_id": manufacturers_id,
+                "devicenetworkcardmodels_id": nic_model_id,
+            },
         )
-        nic_item_id = check_and_post_nic_item(
+        nic_item_id = check_and_post(
             session,
             urls.DEVICE_NETWORK_CARD_ITEM_URL,
-            COMPUTER_ID,
-            "Computer",
-            nic_id,
-            nics_dict[name]["serial"],
+            {
+                "items_id": COMPUTER_ID,
+                "itemtype": "Computer",
+                "devicenetworkcards_id": nic_id,
+                "mac": nics_dict[name]["serial"],
+            },
         )
         nic_ids[name] = nic_item_id
 
@@ -374,18 +363,38 @@ def post_to_glpi(  # noqa: C901
         gpu_model_id = 0
         if "product" in gpus_dict[name]:
             gpu_model_id = check_and_post(
-                session, gpus_dict[name]["product"], urls.DEVICE_GRAPHICS_CARD_MODEL_URL
+                session,
+                urls.DEVICE_GRAPHICS_CARD_MODEL_URL,
+                {"name": gpus_dict[name]["product"]},
             )
 
         vendor = 0
         if "vendor" in gpus_dict[name]:
             vendor = gpus_dict[name]["vendor"]
 
-        gpu_id = check_and_post_gpu(
-            session, urls.DEVICE_GRAPHICS_CARD_URL, name, vendor, gpu_model_id, urls
+        manufacturers_id = vendor
+        if vendor:
+            manufacturers_id = check_and_post(
+                session, urls.MANUFACTURER_URL, {"name": vendor}
+            )
+
+        gpu_id = check_and_post(
+            session,
+            urls.DEVICE_GRAPHICS_CARD_URL,
+            {
+                "designation": name,
+                "manufacturers_id": manufacturers_id,
+                "devicegraphiccardmodels_id": gpu_model_id,
+            },
         )
-        gpu_item_id = check_and_post_gpu_item(
-            session, urls.DEVICE_GRAPHICS_CARD_ITEM_URL, COMPUTER_ID, "Computer", gpu_id
+        gpu_item_id = check_and_post(
+            session,
+            urls.DEVICE_GRAPHICS_CARD_ITEM_URL,
+            {
+                "items_id": COMPUTER_ID,
+                "itemtype": "Computer",
+                "devicegraphiccards_id": gpu_id,
+            },
         )
         gpu_ids[name] = gpu_item_id
 
@@ -425,8 +434,14 @@ def post_to_glpi(  # noqa: C901
         if name in nic_ids:
             nic_id = nic_ids[name]
 
-        check_and_post_network_port_ethernet(
-            session, urls.NETWORK_PORT_ETHERNET_URL, network_port_id, speed, nic_id
+        check_and_post(
+            session,
+            urls.NETWORK_PORT_ETHERNET_URL,
+            {
+                "networkports_id": network_port_id,
+                "items_devicenetworkcards_id": nic_id,
+                "speed": speed,
+            },
         )
         logical_number += 1
 
@@ -442,19 +457,23 @@ def post_to_glpi(  # noqa: C901
             else:
                 ram_size = int(ram_dict[memory]["Size"].split()[0])
             memory_type_id = check_and_post(
-                session, ram_dict[memory]["Type"], urls.DEVICE_MEMORY_TYPE_URL
+                session, urls.DEVICE_MEMORY_TYPE_URL, {"name": ram_dict[memory]["Type"]}
             )
             manufacturers_id = check_and_post(
-                session, ram_dict[memory]["Manufacturer"], urls.MANUFACTURER_URL
+                session,
+                urls.MANUFACTURER_URL,
+                {"name": ram_dict[memory]["Manufacturer"]},
             )
-            memory_id = check_and_post_device_memory(
+            memory_id = check_and_post(
                 session,
                 urls.DEVICE_MEMORY_URL,
-                ram_dict[memory]["Part Number"],
-                ram_dict[memory]["Speed"].split()[0],
-                manufacturers_id,
-                ram_size,
-                memory_type_id,
+                {
+                    "designation": ram_dict[memory]["Part Number"],
+                    "frequence": ram_dict[memory]["Speed"].split()[0],
+                    "manufacturers_id": manufacturers_id,
+                    "size_default": ram_size,
+                    "devicememorytypes_id": memory_type_id,
+                },
             )
             if memory_id in memory_item_dict:
                 memory_item_dict[memory_id]["quantity"] += 1
@@ -482,365 +501,47 @@ def post_to_glpi(  # noqa: C901
         else:
             size = float(disk_dict[disk_id]["Size"][:-2])
 
-        check_and_post_disk_item(
+        check_and_post(
             session,
             urls.DISK_ITEM_URL,
-            COMPUTER_ID,
-            "Computer",
-            disk_id,
-            size,
-            disk_dict[disk_id]["Part"],
+            {
+                "items_id": COMPUTER_ID,
+                "itemtype": "Computer",
+                "name": disk_id,
+                "totalsize": size,
+                "mountpoint": disk_dict[disk_id]["Part"],
+            },
         )
 
     for accelerator in accelerator_dict:
         manufacturers_id = check_and_post(
             session,
-            accelerator_dict[accelerator]["manufacturer"],
             urls.MANUFACTURER_URL,
+            {"name": accelerator_dict[accelerator]["manufacturer"]},
         )
-        type_id = check_and_post_generic_type(
-            session, "Processing accelerators", urls.DEVICE_GENERIC_TYPE_URL
+        type_id = check_and_post(
+            session, urls.DEVICE_GENERIC_TYPE_URL, {"name": "Processing accelerators"}
         )
-        generic_id = check_and_post_device_generic(
+        generic_id = check_and_post(
             session,
             urls.DEVICE_GENERIC_URL,
-            ACCELERATOR_IDS[accelerator_dict[accelerator]["device"]],
-            manufacturers_id,
-            type_id,
+            {
+                "designation": ACCELERATOR_IDS[accelerator_dict[accelerator]["device"]],
+                "devicegenerictypes_id": type_id,
+                "manufacturers_id": manufacturers_id,
+            },
         )
-        check_and_post_device_generic_item(
-            session, urls.DEVICE_GENERIC_ITEM_URL, COMPUTER_ID, "Computer", generic_id
+        check_and_post(
+            session,
+            urls.DEVICE_GENERIC_ITEM_URL,
+            {
+                "items_id": COMPUTER_ID,
+                "itemtype": "Computer",
+                "devicegenerics_id": generic_id,
+            },
         )
 
     return
-
-
-def check_and_post_gpu(
-    session: requests.sessions.Session,
-    url: str,
-    name: str,
-    vendor: str,
-    gpu_model_id: int,
-    urls: UrlInitialization,
-) -> int:
-    """A helper method to check the graphics field at the given API endpoint (URL) and
-       post the field if it is not present.
-
-    Args:
-        session (Session object): The requests session object
-        url (str): GLPI API endpoint of the graphics card device
-        name (str): Model name of the GPU
-        vendor (str): Manufacturer of the GPU
-        gpu_model_id (str): ID of the GPU model in GLPI
-        urls (UrlInitialization object): the URL object
-
-    Returns:
-        id (int): ID of the GPU in GLPI
-    """
-    manufacturers_id = vendor
-    if vendor:
-        manufacturers_id = check_and_post(session, vendor, urls.MANUFACTURER_URL)
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI Graphics fields:")
-    id = ""
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    # Fixing the issue of not getting all data without ranges.
-    while more_fields:
-        range_url = (
-            url + "?range=" + str(api_range) + "-" + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
-
-    id_found = False
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if (
-                glpi_field["designation"] == name
-                and glpi_field["manufacturers_id"] == manufacturers_id
-                and glpi_field["devicegraphiccardmodels_id"] == gpu_model_id
-            ):
-                id = glpi_field["id"]
-                id_found = True
-                break
-
-    # Create a field if one was not found and return the ID.
-    print("Creating GLPI GPU field:")
-    glpi_post = {
-        "designation": name,
-        "manufacturers_id": manufacturers_id,
-        "devicegraphiccardmodels_id": gpu_model_id,
-    }
-
-    if id_found is False:
-        post_response = session.post(url=url, json={"input": glpi_post})
-        id = post_response.json()["id"]
-    else:
-        post_response = session.put(url=url, json={"input": glpi_post})
-    print(str(post_response) + "\n")
-
-    return id
-
-
-def check_and_post_gpu_item(
-    session: requests.sessions.Session, url: str, item_id: int, item: str, gpu_id: int
-) -> int:
-    """A helper method to check the graphics item field at the given API endpoint (URL)
-       and post the field if it is not present.
-
-    Args:
-        session (Session object): requests.sessions.Session
-        url (str): GLPI API endpoint for the graphics card item
-        item_id (int): ID of the item (usually a computer) associated with the memory
-                       item
-        item_type (str): Type of the item associated with the memory item, usually
-                         "Computer"
-        gpu_id (int): ID of the GPU in GLPI
-    """
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI GPU Item fields:")
-    id = ""
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    # Fixing the issue of not getting all data without ranges.
-    while more_fields:
-        range_url = (
-            url + "?range=" + str(api_range) + "-" + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
-
-    id_found = False
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if (
-                glpi_field["items_id"] == item_id
-                and glpi_field["itemtype"] == item
-                and glpi_field["devicegraphiccards_id"] == gpu_id
-            ):
-                id = glpi_field["id"]
-                id_found = True
-                break
-
-    # Create a field if one was not found and return the ID.
-    print("Creating GLPI GPU Item field:")
-    glpi_post = {"items_id": item_id, "itemtype": item, "devicegraphiccards_id": gpu_id}
-
-    if id_found is False:
-        post_response = session.post(url=url, json={"input": glpi_post})
-        id = post_response.json()["id"]
-    else:
-        post_response = session.put(url=url, json={"input": glpi_post})
-    print(str(post_response) + "\n")
-
-    return id
-
-
-def check_and_post_generic_type(
-    session: requests.sessions.Session, type: str, url: str
-) -> int:
-    """A helper method to check the generic type field at the given API endpoint (URL)
-       and post the field if it is not present.
-
-    Args:
-        session (Session object): The requests session object
-        type (str): Type of device
-        url (str): GLPI API endpoint of the generic type
-
-    Returns:
-        id (int): ID of the generic type in GLPI
-    """
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI Generic Type fields:")
-    id = ""
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    # Fixing the issue of not getting all data without ranges.
-    while more_fields:
-        range_url = (
-            url + "?range=" + str(api_range) + "-" + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
-
-    id_found = False
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if glpi_field["name"] == type:
-                id = glpi_field["id"]
-                id_found = True
-                break
-
-    # Create a field if one was not found and return the ID.
-    print("Creating GLPI Generic Type field:")
-    glpi_post = {"name": type}
-
-    if id_found is False:
-        post_response = session.post(url=url, json={"input": glpi_post})
-        id = post_response.json()["id"]
-    else:
-        post_response = session.put(url=url, json={"input": glpi_post})
-    print(str(post_response) + "\n")
-
-    return id
-
-
-def check_and_post_device_generic(
-    session: requests.sessions.Session,
-    url: str,
-    device: str,
-    manufacturers_id: int,
-    type_id: int,
-) -> int:
-    """A helper method to check the generic device field at the given API endpoint
-       (URL) and post the field if it is not present.
-
-    Args:
-        session (Session object): The requests session object
-        url (str): GLPI API endpoint of the generic device
-        device (str): Name of device
-        manufacturers_id (int): ID of manufacturer in GLPI
-        type_id (int): ID of device type in GLPI
-
-    Returns:
-        id (int): ID of the generic device in GLPI
-    """
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI Generic fields:")
-    id = ""
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    # Fixing the issue of not getting all data without ranges.
-    while more_fields:
-        range_url = (
-            url + "?range=" + str(api_range) + "-" + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
-
-    id_found = False
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if (
-                glpi_field["designation"] == device
-                and glpi_field["devicegenerictypes_id"] == type_id
-                and glpi_field["manufacturers_id"] == manufacturers_id
-            ):
-                id = glpi_field["id"]
-                id_found = True
-                break
-
-    # Create a field if one was not found and return the ID.
-    print("Creating GLPI Generic field:")
-    glpi_post = {
-        "designation": device,
-        "devicegenerictypes_id": type_id,
-        "manufacturers_id": manufacturers_id,
-    }
-
-    if id_found is False:
-        post_response = session.post(url=url, json={"input": glpi_post})
-        id = post_response.json()["id"]
-    else:
-        post_response = session.put(url=url, json={"input": glpi_post})
-    print(str(post_response) + "\n")
-
-    return id
-
-
-def check_and_post_device_generic_item(
-    session: requests.sessions.Session,
-    url: str,
-    item_id: int,
-    item_type: int,
-    generic_id: int,
-) -> int:
-    """A helper method to check the generic device item field at the given API endpoint
-       (URL) and post the field if it is not present.
-
-    Args:
-        session (Session object): The requests session object
-        url (str): GLPI API endpoint of the generic device item
-        item_id (int): ID of the item (usually a computer) associated with the disk item
-        item_type (str): Type of the item associated with the disk item, usually
-                         "Computer"
-        generic_id (int): ID of device in GLPI
-
-    Returns:
-        id (int): ID of the generic device in GLPI
-    """
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI Generic Item fields:")
-    id = ""
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    # Fixing the issue of not getting all data without ranges.
-    while more_fields:
-        range_url = (
-            url + "?range=" + str(api_range) + "-" + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
-
-    id_found = False
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if (
-                glpi_field["items_id"] == item_id
-                and glpi_field["itemtype"] == item_type
-                and glpi_field["devicegenerics_id"] == generic_id
-            ):
-                id = glpi_field["id"]
-                id_found = True
-                break
-
-    # Create a field if one was not found and return the ID.
-    print("Creating GLPI Generic field:")
-    glpi_post = {
-        "items_id": item_id,
-        "itemtype": item_type,
-        "devicegenerics_id": generic_id,
-    }
-
-    if id_found is False:
-        post_response = session.post(url=url, json={"input": glpi_post})
-        id = post_response.json()["id"]
-    else:
-        post_response = session.put(url=url, json={"input": glpi_post})
-    print(str(post_response) + "\n")
-
-    return id
 
 
 # Executes main if run as a script.

@@ -16,22 +16,18 @@
 import sys
 
 sys.path.append("..")
-import argparse
 import json
 from common.sessionhandler import SessionHandler
-from common.urlinitialization import UrlInitialization
+from common.urlinitialization import UrlInitialization, validate_url
 from common.utils import (
     print_final_help,
     check_and_post,
-    check_and_post_device_memory,
     check_and_post_device_memory_item,
-    check_and_post_disk_item,
-    check_and_post_network_port_ethernet,
-    check_and_post_nic,
-    check_and_post_nic_item,
     check_fields,
+    check_field,
 )
 from common.switches import Switches
+from common.parser import argparser
 import redfish
 import requests
 import subprocess
@@ -47,69 +43,54 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 def main() -> None:
     """Main function"""
     # Get the command line arguments from the user.
-    parser = argparse.ArgumentParser(
-        description="GLPI Computer REST upload example. NOTE: needs to "
+    parser = argparser()
+    parser.parser.description = (
+        "GLPI Computer REST upload example. NOTE: needs to "
         + "be run with root priviledges."
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-g",
         "--general_config",
         metavar="general_config",
         help="path to general config YAML file, see general_config_example.yaml",
         required=True,
     )
-    parser.add_argument(
-        "-i",
-        "--ip",
-        metavar="ip",
-        type=str,
-        required=True,
-        help='the IP/URL of the GLPI instance (example: "127.0.0.1")',
-    )
-    parser.add_argument(
-        "-t",
-        "--token",
-        metavar="user_token",
-        type=str,
-        required=True,
-        help="the user token string for authentication with GLPI",
-    )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-l",
         "--lab",
         action="store",
         required=True,
         help="the lab in which this server resides",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "--ipmi_ip",
         metavar="ipmi_ip",
         type=str,
         required=True,
         help="the IPMI IP address of the server",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "--ipmi_user",
         metavar="ipmi_user",
         type=str,
         required=True,
         help="the IPMI username",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "--ipmi_pass",
         metavar="ipmi_pass",
         type=str,
         required=True,
         help="the IPMI password",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "--public_ip",
         metavar="public_ip",
         type=str,
         required=True,
         help="the public IP address of the server",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-n",
         "--no_dns",
         metavar="no_dns",
@@ -117,38 +98,54 @@ def main() -> None:
         help="Use this flag if you want to use a custom string as the"
         + "name of this machine instead of using its DNS via nslookup",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-s",
         "--sku",
         action="store_true",
         help="Use this flag if you want to use the SKU of this Dell machine"
         + "instead of its serial number",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-c",
         "--switch_config",
         metavar="switch_config",
         help="optional path to switch config YAML file",
     )
-    parser.add_argument(
-        "-v",
-        "--no_verify",
-        action="store_true",
-        help="Use this flag if you want to not verify the SSL session if it fails",
-    )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-e",
         "--experiment",
         action="store_true",
         help="Use this flag if you want to append '_TEST' to the serial number",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-p",
         "--put",
         action="store_true",
         help="Use this flag if you want to only use PUT requests",
     )
-    args = parser.parse_args()
+    parser.parser.add_argument(
+        "-o",
+        "--overwrite",
+        action="store_true",
+        help="Use this flag if you want to overwrite existing names",
+    )
+    parser.parser.add_argument(
+        "-U", "--sunbird_username", type=str, help="Username of Sunbird account"
+    )
+    parser.parser.add_argument(
+        "-P", "--sunbird_password", type=str, help="Password of Sunbird account"
+    )
+    parser.parser.add_argument(
+        "-S", "--sunbird_url", type=str, help="URL of Sunbird instance"
+    )
+    parser.parser.add_argument(
+        "-C",
+        "--sunbird_config",
+        metavar="general_config",
+        help="path to sunbird config YAML file, see "
+        + "integration/sunbird/example_sunbird.yml as an example",
+    )
+    args = parser.parser.parse_args()
 
     # Process General Config
     with open(args.general_config, "r") as config_path:
@@ -157,6 +154,13 @@ def main() -> None:
     if "ACCELERATOR_IDS" in config_map:
         global ACCELERATOR_IDS
         ACCELERATOR_IDS = config_map["ACCELERATOR_IDS"]
+
+    # Process Sunbird Config
+    if args.sunbird_config:
+        with open(args.sunbird_config, "r") as sunbird_config_path:
+            sunbird_config = yaml.safe_load(sunbird_config_path)
+    else:
+        sunbird_config = args.sunbird_config
 
     global LAB_CHOICE
     LAB_CHOICE = args.lab
@@ -171,10 +175,17 @@ def main() -> None:
     sku = args.sku
     switch_config = args.switch_config
     no_verify = args.no_verify
+    sunbird_username = args.sunbird_username
+    sunbird_password = args.sunbird_password
+    if args.sunbird_url:
+        sunbird_url = validate_url(args.sunbird_url)
+    else:
+        sunbird_url = None
     global TEST
     TEST = args.experiment
     global PUT
     PUT = args.put
+    overwrite = args.overwrite
 
     urls = UrlInitialization(ip)
     Switches(switch_config)
@@ -187,6 +198,7 @@ def main() -> None:
         username=ipmi_username,
         password=ipmi_password,
         default_prefix="/redfish/v1",
+        timeout=20,
     )
 
     REDFISH_OBJ.login(auth="session")
@@ -255,6 +267,11 @@ def main() -> None:
             port_list,
             sku,
             urls,
+            overwrite,
+            sunbird_username,
+            sunbird_password,
+            sunbird_url,
+            sunbird_config,
         )
 
     print_final_help()
@@ -299,7 +316,7 @@ def update_redfish_system_uri(
         REDFISH_SIMPLE_STORAGE_URI = REDFISH_SYSTEM_URI + "/SimpleStorage"  # May 503
         global REDFISH_SYSTEMS_ETHERNET_INTERFACES_URI
         REDFISH_SYSTEMS_ETHERNET_INTERFACES_URI = (
-            REDFISH_SYSTEM_URI + "/1/EthernetInterfaces"
+            REDFISH_SYSTEM_URI + "/EthernetInterfaces"
         )  # May 503 (Needs TAS per manual)
         global REDFISH_MEMORY_URI
         REDFISH_MEMORY_URI = REDFISH_SYSTEM_URI + "/Memory"
@@ -406,6 +423,7 @@ def get_storage(redfish_session: redfish.rest.v1.HttpClient) -> list:  # noqa: C
     if "Oem" in system_summary:
         if "Hp" in system_summary["Oem"] or "Hpe" in system_summary["Oem"]:
             hp = True
+            smart_storage_info = None
             if "Hp" in system_summary["Oem"]:
                 if "Links" in system_summary["Oem"]["Hp"]:
                     if "SmartStorage" in system_summary["Oem"]["Hp"]["Links"]:
@@ -422,32 +440,32 @@ def get_storage(redfish_session: redfish.rest.v1.HttpClient) -> list:  # noqa: C
                                 "@odata.id"
                             ]
                         )
-
-            if "Links" in smart_storage_info.dict:
-                if "ArrayControllers" in smart_storage_info.dict["Links"]:
-                    ac_info = redfish_session.get(
-                        smart_storage_info.dict["Links"]["ArrayControllers"][
-                            "@odata.id"
-                        ]
-                    )
-                    if "Members" in ac_info.dict:
-                        for ac in ac_info.dict["Members"]:
-                            ac_member_info = redfish_session.get(ac["@odata.id"])
-                            if "Links" in ac_member_info.dict:
-                                if "PhysicalDrives" in ac_member_info.dict["Links"]:
-                                    hp_drive_endpoint = redfish_session.get(
-                                        ac_member_info.dict["Links"]["PhysicalDrives"][
-                                            "@odata.id"
-                                        ]
-                                    )
-                                    if "Members" in hp_drive_endpoint.dict:
-                                        for hp_drive in hp_drive_endpoint.dict[
-                                            "Members"
-                                        ]:
-                                            hp_drive_info = redfish_session.get(
-                                                hp_drive["@odata.id"]
-                                            )
-                                            drive_list.append(hp_drive_info.text)
+            if smart_storage_info:
+                if "Links" in smart_storage_info.dict:
+                    if "ArrayControllers" in smart_storage_info.dict["Links"]:
+                        ac_info = redfish_session.get(
+                            smart_storage_info.dict["Links"]["ArrayControllers"][
+                                "@odata.id"
+                            ]
+                        )
+                        if "Members" in ac_info.dict:
+                            for ac in ac_info.dict["Members"]:
+                                ac_member_info = redfish_session.get(ac["@odata.id"])
+                                if "Links" in ac_member_info.dict:
+                                    if "PhysicalDrives" in ac_member_info.dict["Links"]:
+                                        hp_drive_endpoint = redfish_session.get(
+                                            ac_member_info.dict["Links"][
+                                                "PhysicalDrives"
+                                            ]["@odata.id"]
+                                        )
+                                        if "Members" in hp_drive_endpoint.dict:
+                                            for hp_drive in hp_drive_endpoint.dict[
+                                                "Members"
+                                            ]:
+                                                hp_drive_info = redfish_session.get(
+                                                    hp_drive["@odata.id"]
+                                                )
+                                                drive_list.append(hp_drive_info.text)
 
     if check_resp_redfish_api(storage_summary) != 200 and not hp:
         return False
@@ -468,6 +486,7 @@ def get_network(redfish_session: redfish.rest.v1.HttpClient) -> list:
     network_summary = redfish_session.get(REDFISH_NETWORK_URI)
     nic_list = []
     port_list = []
+    eth_list = []
     if "Members" in network_summary.text:
         for nic in json.loads(network_summary.text)["Members"]:
             network_interface = redfish_session.get(nic["@odata.id"])
@@ -494,11 +513,19 @@ def get_network(redfish_session: redfish.rest.v1.HttpClient) -> list:
                             if "@odata.id" in port:
                                 port_info = redfish_session.get(port["@odata.id"])
                                 port_list.append(port_info.text)
+    ethernet_summary = redfish_session.get(REDFISH_SYSTEMS_ETHERNET_INTERFACES_URI)
+    if "Members" in ethernet_summary.text:
+        for eth in json.loads(ethernet_summary.text)["Members"]:
+            ethernet_interface = redfish_session.get(eth["@odata.id"])
+            eth_list.append(ethernet_interface.text)
 
     if check_resp_redfish_api(network_summary) != 200:
         return False
     else:
-        return nic_list, port_list
+        if port_list:
+            return nic_list, port_list
+        else:
+            return nic_list, eth_list
 
 
 def post_to_glpi(  # noqa: C901
@@ -512,6 +539,11 @@ def post_to_glpi(  # noqa: C901
     networks_dict: list,
     sku: bool,
     urls: UrlInitialization,
+    overwrite: bool,
+    sunbird_username: str,
+    sunbird_password: str,
+    sunbird_url: str,
+    sunbird_config: dict,
 ) -> None:
     """A method to post the JSON created to GLPI. This method calls numerous helper
        functions which create different parts of the JSON required, get fields from
@@ -529,6 +561,11 @@ def post_to_glpi(  # noqa: C901
         networks_dict (list): Information about network ports in system
         sku (bool): Determines if SKU should be used instead of Serial Number
         urls (common.urlinitialization.UrlInitialization): GLPI API URL's
+        overwrite (bool): flagged to overwrite existing names
+        sunbird_username (str): Sunbird username
+        sunbird_password (str): Sunbird password
+        sunbird_url (str): Sunbird URL
+        sunbird_config (dict): a user-provided dictionary of lab locations and cabinets
     """
     if sku and "dell" in system_json["Manufacturer"].lower() and "SKU" in system_json:
         serial_number = system_json["SKU"]
@@ -544,16 +581,18 @@ def post_to_glpi(  # noqa: C901
     #
     # NOTE: Different helper functions exist because of different syntax,
     #       field names, and formatting in the API.
-    computer_type_id = check_and_post(session, "Server", urls.COMPUTER_TYPE_URL)
+    computer_type_id = check_and_post(
+        session, urls.COMPUTER_TYPE_URL, {"name": "Server"}
+    )
 
     manufacturers_id = check_and_post(
-        session, system_json["Manufacturer"], urls.MANUFACTURER_URL
+        session, urls.MANUFACTURER_URL, {"name": system_json["Manufacturer"]}
     )
     computer_model_id = check_and_post(
-        session, system_json["Model"], urls.COMPUTER_MODEL_URL
+        session, urls.COMPUTER_MODEL_URL, {"name": system_json["Model"]}
     )
     processors_id = check_and_post_processor(session, cpu_list, urls.CPU_URL, urls)
-    locations_id = check_and_post(session, LAB_CHOICE, urls.LOCATION_URL)
+    locations_id = check_and_post(session, urls.LOCATION_URL, {"name": LAB_CHOICE})
 
     # The final dictionary for the machine JSON to post.
     glpi_post = {}
@@ -575,36 +614,19 @@ def post_to_glpi(  # noqa: C901
 
     # Get the list of computers and check the serial number. If the serial
     # number matches then use a PUT to modify the cooresponding computer by ID.
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    # Fixing the issue of not getting all data without ranges.
-    while more_fields:
-        range_url = (
-            urls.COMPUTER_URL
-            + "?range="
-            + str(api_range)
-            + "-"
-            + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
-
+    glpi_fields_list = check_fields(session, urls.COMPUTER_URL)
     comment = None
     COMPUTER_ID = None
-    for glpi_fields in glpi_fields_list:
-        for glpi_computer in glpi_fields.json():
-            if glpi_computer["uuid"] == uuid:
-                global PUT
-                PUT = True
-                COMPUTER_ID = glpi_computer["id"]
-                comment = glpi_computer["comment"]
-                break
+    for glpi_computer in glpi_fields_list:
+        if glpi_computer["serial"] == serial_number:
+            global PUT
+            PUT = True
+            COMPUTER_ID = glpi_computer["id"]
+            comment = glpi_computer["comment"]
+            if glpi_computer["name"] != glpi_post["name"] and not overwrite:
+                print("Using pre-existing name for computer...")
+                glpi_post["name"] = glpi_computer["name"]
+            break
 
     # Add BMC Address to the Computer
     plugin_response = check_fields(session, urls.BMC_URL)
@@ -627,6 +649,31 @@ def post_to_glpi(  # noqa: C901
         print(str(computer_response) + "\n")
         COMPUTER_ID = computer_response.json()["id"]
 
+    # Get Rack Location from Sunbird if all relevant flags are provided
+    if all(
+        parameter is not None
+        for parameter in [sunbird_username, sunbird_password, sunbird_url]
+    ):
+        add_rack_location_from_sunbird(
+            session,
+            urls,
+            serial_number,
+            locations_id,
+            COMPUTER_ID,
+            sunbird_url,
+            sunbird_username,
+            sunbird_password,
+            sunbird_config,
+        )
+    else:
+        print(
+            (
+                "To get rack locations from Sunbird, you need to provide the "
+                "Sunbird URL, username, and password via the -U, -P, and -S flags."
+                "Importing without Sunbird info..."
+            )
+        )
+
     # NOTE: The 'check_and_post' style helper methods called below (for the
     # processor(s), operating system, switches, memory, and network) come after
     # the PUT/POST of the machine itself because they require the computer's ID.
@@ -646,7 +693,9 @@ def post_to_glpi(  # noqa: C901
         nic_model_id = 0
         if "Model" in name:
             nic_model_id = check_and_post(
-                session, json.loads(name)["Model"], urls.DEVICE_NETWORK_CARD_MODEL_URL
+                session,
+                urls.DEVICE_NETWORK_CARD_MODEL_URL,
+                {"name": json.loads(name)["Model"]},
             )
 
         vendor = 0
@@ -655,25 +704,32 @@ def post_to_glpi(  # noqa: C901
                 vendor = json.loads(name)["Manufacturer"]
             else:
                 vendor = "None"
-        print(name)
-        # print(json.loads(name))
+
         if "Id" in json.loads(name):
-            nic_id = check_and_post_nic(
+            manufacturers_id = vendor
+            if vendor:
+                manufacturers_id = check_and_post(
+                    session, urls.MANUFACTURER_URL, {"name": vendor}
+                )
+            nic_id = check_and_post(
                 session,
                 urls.DEVICE_NETWORK_CARD_URL,
-                json.loads(name)["Id"],
-                bandwidth,
-                vendor,
-                nic_model_id,
-                urls,
+                {
+                    "designation": json.loads(name)["Id"],
+                    "bandwidth": bandwidth,
+                    "manufacturers_id": manufacturers_id,
+                    "devicenetworkcardmodels_id": nic_model_id,
+                },
             )
-            nic_item_id = check_and_post_nic_item(
+            nic_item_id = check_and_post(
                 session,
                 urls.DEVICE_NETWORK_CARD_ITEM_URL,
-                COMPUTER_ID,
-                "Computer",
-                nic_id,
-                "",
+                {
+                    "items_id": COMPUTER_ID,
+                    "itemtype": "Computer",
+                    "devicenetworkcards_id": nic_id,
+                    "mac": "",
+                },
             )
             nic_ids[json.loads(name)["Id"]] = nic_item_id
 
@@ -683,16 +739,29 @@ def post_to_glpi(  # noqa: C901
     switch_dict = {}
     logical_number = 0
     for name in networks_dict:
-        network_port_id = check_and_post_network_port(
-            session,
-            urls.NETWORK_PORT_URL,
-            COMPUTER_ID,
-            "Computer",
-            logical_number,
-            json.loads(name)["Id"],
-            "NetworkPortEthernet",
-            json.loads(name),
+        search_criteria = {
+            "items_id": COMPUTER_ID,
+            "itemtype": "Computer",
+            "logical_number": logical_number,
+            "name": json.loads(name)["Id"],
+            "instantiation_type": "NetworkPortEthernet",
+        }
+
+        if "AssociatedNetworkAddresses" in json.loads(name):
+            additional_information = {
+                "mac": json.loads(name)["AssociatedNetworkAddresses"][0]
+            }
+        elif "MACAddress" in json.loads(name):
+            additional_information = {"mac": json.loads(name)["MACAddress"]}
+        else:
+            additional_information = None
+        network_port_id = check_and_post(
+            session, urls.NETWORK_PORT_URL, search_criteria, additional_information
         )
+        try:
+            speed = json.loads(name)["SpeedMbps"]
+        except KeyError:
+            pass
         try:
             speed = json.loads(name)["SupportedLinkCapabilities"][0]["LinkSpeedMbps"]
         except KeyError:
@@ -702,8 +771,16 @@ def post_to_glpi(  # noqa: C901
             nic_id = nic_ids[json.loads(name)["Id"]]
         else:
             nic_id = 0
-        check_and_post_network_port_ethernet(
-            session, urls.NETWORK_PORT_ETHERNET_URL, network_port_id, speed, nic_id
+        check_and_post(
+            session,
+            urls.NETWORK_PORT_ETHERNET_URL,
+            {
+                "networkports_id": network_port_id,
+            },
+            {
+                "items_devicenetworkcards_id": nic_id,
+                "speed": speed,
+            },
         )
         logical_number += 1
 
@@ -716,18 +793,20 @@ def post_to_glpi(  # noqa: C901
         ):
             if "MemoryDeviceType" in ram:
                 memory_type_id = check_and_post(
-                    session, ram["MemoryDeviceType"], urls.DEVICE_MEMORY_TYPE_URL
+                    session,
+                    urls.DEVICE_MEMORY_TYPE_URL,
+                    {"name": ram["MemoryDeviceType"]},
                 )
             elif "DIMMType" in ram:  # HP field
                 memory_type_id = check_and_post(
-                    session, ram["DIMMType"], urls.DEVICE_MEMORY_TYPE_URL
+                    session, urls.DEVICE_MEMORY_TYPE_URL, {"name": ram["DIMMType"]}
                 )
             else:
                 memory_type_id = check_and_post(
-                    session, "Unspecified", urls.DEVICE_MEMORY_TYPE_URL
+                    session, urls.DEVICE_MEMORY_TYPE_URL, {"name": "Unspecified"}
                 )
             manufacturers_id = check_and_post(
-                session, ram["Manufacturer"].strip(), urls.MANUFACTURER_URL
+                session, urls.MANUFACTURER_URL, {"name": ram["Manufacturer"].strip()}
             )
             if "TotalSystemMemoryGiB" in system_json["MemorySummary"]:
                 total_system_memory = (
@@ -736,24 +815,28 @@ def post_to_glpi(  # noqa: C901
             else:
                 total_system_memory = ""
             if "OperatingSpeedMhz" in ram:
-                memory_id = check_and_post_device_memory(
+                memory_id = check_and_post(
                     session,
                     urls.DEVICE_MEMORY_URL,
-                    ram["PartNumber"],
-                    str(ram["OperatingSpeedMhz"]),
-                    manufacturers_id,
-                    total_system_memory,
-                    memory_type_id,
+                    {
+                        "designation": ram["PartNumber"],
+                        "frequence": str(ram["OperatingSpeedMhz"]),
+                        "manufacturers_id": manufacturers_id,
+                        "size_default": total_system_memory,
+                        "devicememorytypes_id": memory_type_id,
+                    },
                 )
             elif "MaximumFrequencyMHz" in ram:  # HP field
-                memory_id = check_and_post_device_memory(
+                memory_id = check_and_post(
                     session,
                     urls.DEVICE_MEMORY_URL,
-                    ram["PartNumber"],
-                    str(ram["MaximumFrequencyMHz"]),
-                    manufacturers_id,
-                    total_system_memory,
-                    memory_type_id,
+                    {
+                        "designation": ram["PartNumber"],
+                        "frequence": str(ram["MaximumFrequencyMHz"]),
+                        "manufacturers_id": manufacturers_id,
+                        "size_default": total_system_memory,
+                        "devicememorytypes_id": memory_type_id,
+                    },
                 )
             if memory_id in memory_item_dict:
                 memory_item_dict[memory_id]["quantity"] += 1
@@ -784,13 +867,15 @@ def post_to_glpi(  # noqa: C901
             size = round(float(disk_id["CapacityBytes"]) / 1000000)
         elif "CapacityMiB" in disk_id:
             size = disk_id["CapacityMiB"]
-        check_and_post_disk_item(
+        check_and_post(
             session,
             urls.DISK_ITEM_URL,
-            COMPUTER_ID,
-            "Computer",
-            disk_id["SerialNumber"],
-            size,
+            {
+                "items_id": COMPUTER_ID,
+                "itemtype": "Computer",
+                "name": disk_id.get("SerialNumber"),
+                "totalsize": size,
+            },
         )
 
     return
@@ -817,14 +902,14 @@ def update_bmc_address(
     Returns:
         glpi_post (dict): Contains information about a Computer to be passed to GLPI
     """
-    # plugin_response: list of response objects. meant to be from check_fields.
-    if "ERROR" in plugin_response[0].json()[0]:
-        glpi_post = add_bmc_address_to_comments(glpi_post, comment, redfish_base_url)
+    if "ERROR" in plugin_response[0]:
+        glpi_post = add_bmc_address_to_comments(glpi_post, redfish_base_url, comment)
         print(
             "The provided field endpoint is unavailable, "
             + "adding the BMC address to the comments."
         )
     else:
+        print("Checking the 'BMC Address' field...")
         glpi_post = set_bmc_address_field(
             glpi_post, plugin_response, computer_id, redfish_base_url, put
         )
@@ -878,13 +963,13 @@ def set_bmc_address_field(
         glpi_post (dict): Contains information about a Computer to be passed to GLPI
     """
     if put:
-        for computer_group in plugin_response:
-            for computer in computer_group.json():
-                if computer["items_id"] == computer_id:
-                    if computer["bmcaddressfield"]:
-                        return glpi_post
+        for computer in plugin_response:
+            if computer["items_id"] == computer_id:
+                if computer["bmcaddressfield"]:
+                    print("Leaving 'BMC Address' field unchanged...")
+                    return glpi_post
     glpi_post["bmcaddressfield"] = redfish_base_url.partition("https://")[2]
-
+    print("Updating BMC Address Field...")
     return glpi_post
 
 
@@ -902,6 +987,258 @@ def strip_hostname(nslookup_output: list) -> str:
             name_index = line.index("name = ")
             name = line[name_index + len("name = ") : -1]
             return name
+
+
+def add_rack_location_from_sunbird(
+    session: requests.sessions.Session,
+    urls: UrlInitialization,
+    serial_number: str,
+    locations_id: int,
+    computer_id: int,
+    sunbird_url: str,
+    sunbird_username: str,
+    sunbird_password: str,
+    sunbird_config: dict,
+) -> None:
+    """A method to check for a computer's rack location in Sunbird and post it to GLPI.
+    If not all three of sunbird_username, sunbird_password, and sunbird_config are set,
+    the check will be skipped and the import will continue without Sunbird data.
+
+    Args:
+        session (Session object): The requests session object
+        urls (common.urlinitialization.UrlInitialization): GLPI API URL's
+        serial_number (str): Serial number of the relevant computer
+        locations_id (int): ID of the geographic location of the relevant computer
+        computer_id (int): ID of the relevant computer
+        sunbird_username (str): Sunbird username
+        sunbird_password (str): Sunbird password
+        sunbird_url (str): Sunbird URL
+        sunbird_config (dict): A user-provided dictionary of lab locations and cabinets
+    """
+    headers = {"Accept": "application/json", "Content-Type": "application/json"}
+    payload = {
+        "columns": [{"name": "tiSerialNumber", "filter": {"eq": serial_number}}],
+        "selectedColumns": [
+            {"name": "cmbLocation"},
+            {"name": "cmbCabinet"},
+            {"name": "cmbUPosition"},
+            {"name": "tiDataCenterName"},
+            {"name": "tiRoomName"},
+            {"name": "tiRUs"},
+        ],
+        "customFieldByLabel": True,
+    }
+    sunbird_response = requests.post(
+        f"{sunbird_url}/api/v2/quicksearch/items",
+        headers=headers,
+        json=payload,
+        verify=False,
+        auth=(sunbird_username, sunbird_password),
+    )
+    sunbird_json = sunbird_response.json()["searchResults"]["items"]
+    if sunbird_json:
+        sunbird_location_data = sunbird_json[0]
+        if sunbird_location_data["cmbLocation"] in sunbird_config:
+            location_config = sunbird_config[sunbird_location_data["cmbLocation"]]
+
+        else:
+            location_config = None
+
+        # If not explicitly provided, set the data center and room to any text before
+        # the first > and after the last >. So Example > 01 > Test becomes
+        # (Example, Test). Do this if the location of the machine in Sunbird isn't
+        # found in the provided config file.
+        if location_config is None or (
+            "Data Center" not in location_config and "Room" not in location_config
+        ):
+            print(
+                "No Sunbird config provided, setting data center and room automatically"
+            )
+            data_center = sunbird_location_data.get("tiDataCenterName", None)
+            if "tiRoomName" in sunbird_location_data:
+                room = sunbird_location_data["tiRoomName"]
+            # If the Room is not specified in Sunbird, use the Data Center name
+            elif data_center is not None:
+                room = sunbird_location_data["tiDataCenterName"]
+            else:
+                room = None
+        else:
+            data_center = location_config.get("Data Center", None)
+            room = location_config.get("Room", None)
+            if room is None:
+                if data_center is not None:
+                    room = sunbird_location_data["tiDataCenterName"]
+
+        location_details = {
+            "location": locations_id,
+            "full_location": sunbird_location_data["cmbLocation"],
+            "DataCenter": data_center,
+            "Room": room,
+        }
+
+        location_details["Rack"] = sunbird_location_data.get("cmbCabinet", None)
+
+        if sunbird_location_data["cmbUPosition"]:
+            location_details["Item_Rack"] = int(sunbird_location_data["cmbUPosition"])
+        else:
+            location_details["Item_Rack"] = None
+
+        # Get size of asset, otherwise default to 1 RU
+        if "tiRUs" in sunbird_location_data:
+            location_details["required_units"] = int(sunbird_location_data["tiRUs"])
+        else:
+            location_details["required_units"] = 1
+        # Check for Data Center
+        if location_details["DataCenter"] is None:
+            print("No Data Center could be retrieved from Sunbird, moving on...")
+            return
+
+        dc_id = check_and_post(
+            session,
+            urls.DATACENTER_URL,
+            {
+                "locations_id": location_details["location"],
+                "name": location_details["DataCenter"],
+            },
+        )
+
+        # Check for Data Center Room
+        if location_details["Room"] is None:
+            print("No Data Center Room was retrieved from Sunbird, moving on...")
+            return
+
+        dcrooms_id = check_and_post(
+            session,
+            urls.DCROOM_URL,
+            {
+                "locations_id": location_details["location"],
+                "name": str(location_details["Room"]),
+                "datacenters_id": dc_id,
+            },
+        )
+
+        # Check for Rack
+        if location_details["Rack"] is None:
+            print("No cabinet could be retrieved from Sunbird, moving on...")
+            return
+
+        number_units = get_rack_units(
+            location_details, sunbird_url, sunbird_username, sunbird_password
+        )
+        rack_id = check_and_post(
+            session,
+            urls.RACK_URL,
+            {"name": location_details["Rack"], "dcrooms_id": dcrooms_id},
+            {
+                "number_units": number_units,
+                "bgcolor": "#fec95c",  # Hardcoded, otherwise the rack won't show in UI
+            },
+        )
+
+        # Check for Item Rack
+        if location_details["Item_Rack"] is None:
+            print(
+                (
+                    "No U Position was retrieved from Sunbird, "
+                    "computer will not be assigned to rack."
+                )
+            )
+            return
+
+        check_and_update_model_size(
+            session, field=location_details, urls=urls, computer_id=computer_id
+        )
+
+        check_and_post(
+            session,
+            urls.ITEM_RACK_URL,
+            {
+                "itemtype": "Computer",
+                "items_id": computer_id,
+            },
+            {
+                "position": location_details["Item_Rack"],
+                "racks_id": rack_id,
+                "bgcolor": "#69ceba",  # Hardcoded, otherwise the rack won't show in UI
+                "orientation": 0,  # Hardcoded, otherwise the rack won't show in UI
+            },
+        )
+        print(
+            (
+                f"Added computer to {location_details['DataCenter']} > "
+                f"{location_details['Room']} > {location_details['Rack']} > "
+                f"{location_details['Item_Rack']}"
+            )
+        )
+
+    else:
+        print("Couldn't find machine in Sunbird, moving on without location details")
+
+
+def get_rack_units(
+    field: dict, sunbird_url: str, sunbird_username: str, sunbird_password: str
+) -> int:
+    """Retrieve the number of units in the rack from Sunbird
+
+    Args:
+        field (dict): Contains information about the rack location
+        sunbird_username (str): Sunbird username
+        sunbird_password (str): Sunbird password
+        sunbird_url (str): Sunbird URL
+
+    Returns:
+        int: Number of units in rack
+    """
+    headers = {"Accept": "application/json", "Content-Type": "application/json"}
+    payload = {
+        "columns": [
+            {"name": "tiClass", "filter": {"eq": "Cabinet"}},
+            {"name": "cmbLocation", "filter": {"eq": field["full_location"]}},
+            {"name": "cmbCabinet", "filter": {"eq": field["Rack"]}},
+        ],
+        "selectedColumns": [{"name": "tiRUs"}],
+        "customFieldByLabel": True,
+    }
+    sunbird_response = requests.post(
+        f"{sunbird_url}/api/v2/quicksearch/items",
+        headers=headers,
+        json=payload,
+        verify=False,
+        auth=(sunbird_username, sunbird_password),
+    )
+    sunbird_json = sunbird_response.json()["searchResults"]["items"][0]
+
+    number_units = int(sunbird_json["tiRUs"])
+
+    return number_units
+
+
+def check_and_update_model_size(
+    session: requests.sessions.Session,
+    field: dict,
+    urls: UrlInitialization,
+    computer_id: int,
+) -> None:
+    """Update a computer model's size if it doesn't match information from Sunbird
+
+    Args:
+        Session (Session object): The requests session object
+        field (dict): Contains information about the rack location
+        urls (common.urlinitialization.UrlInitialization): GLPI API URL's
+        computer_id (int): ID of the computer associated with the rack item
+    """
+    computer_info = session.get(url=urls.COMPUTER_URL + f"/{computer_id}")
+    computer_model_id = computer_info.json()["computermodels_id"]
+    computer_model_info = session.get(
+        url=urls.COMPUTER_MODEL_URL + f"/{computer_model_id}"
+    )
+    required_units = computer_model_info.json()["required_units"]
+    if required_units != field["required_units"]:
+        print(
+            f"Modifying model size from {required_units} to {field['required_units']}"
+        )
+        glpi_put = {"required_units": field["required_units"], "id": computer_model_id}
+        session.put(url=urls.COMPUTER_MODEL_URL, json={"input": glpi_put})
 
 
 def check_and_post_processor(
@@ -928,46 +1265,21 @@ def check_and_post_processor(
         print("Checking GLPI CPU fields:")
         # Check if the field is present at the URL endpoint.
         if field["Model"]:
-            id = field["Model"]
+            search_criteria = field["Model"]
         else:
-            id = field["ProcessorId"]["VendorId"]
-        glpi_fields_list = []
-        api_range = 0
-        api_increment = 50
-        more_fields = True
-        # Fixing the issue of not getting all data without ranges.
-        while more_fields:
-            range_url = (
-                url + "?range=" + str(api_range) + "-" + str(api_range + api_increment)
-            )
-            glpi_fields = session.get(url=range_url)
-            if (
-                glpi_fields.json()
-                and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL"
-            ):
-                more_fields = False
-            else:
-                glpi_fields_list.append(glpi_fields)
-                api_range += api_increment
-
-        id_found = False
-        for glpi_fields in glpi_fields_list:
-            for glpi_field in glpi_fields.json():
-                if glpi_field["designation"] == id:
-                    id = glpi_field["id"]
-                    id_found = True
-                    break
+            search_criteria = field["ProcessorId"]["VendorId"]
+        id = check_field(session, url, search_criteria={"designation": search_criteria})
 
         # Create a field if one was not found and return the ID.
-        if not id_found:
+        if id is None:
             # Get the manufacturer or create it (NOTE: This may create duplicates
             # with slight variation)
             manufacturers_id = check_and_post(
-                session, field["Manufacturer"], urls.MANUFACTURER_URL
+                session, urls.MANUFACTURER_URL, {"name": field["Manufacturer"]}
             )
             print("Creating GLPI CPU field:")
             glpi_post = {
-                "designation": id,
+                "designation": search_criteria,
                 "nbcores_default": field["TotalCores"],
                 "nbthreads_default": field["TotalThreads"],
                 "manufacturers_id": manufacturers_id,
@@ -1009,35 +1321,17 @@ def check_and_post_processor_item(
         # Check if the field is present at the URL endpoint.
         print("Checking GLPI Processor fields:")
         ids = []
-        glpi_fields_list = []
-        api_range = 0
-        api_increment = 50
-        more_fields = True
-        # Fixing the issue of not getting all data without ranges.
-        while more_fields:
-            range_url = (
-                url + "?range=" + str(api_range) + "-" + str(api_range + api_increment)
-            )
-            glpi_fields = session.get(url=range_url)
-            if (
-                glpi_fields.json()
-                and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL"
-            ):
-                more_fields = False
-            else:
-                glpi_fields_list.append(glpi_fields)
-                api_range += api_increment
+        glpi_fields_list = check_fields(session, url)
 
-        for glpi_fields in glpi_fields_list:
-            for glpi_field in glpi_fields.json():
-                if (
-                    glpi_field["items_id"] == item_id
-                    and glpi_field["itemtype"] == item_type
-                    and glpi_field["deviceprocessors_id"] == processor_id
-                ):
-                    ids.append(glpi_field["id"])
-                    if len(ids) == sockets:
-                        break
+        for glpi_field in glpi_fields_list:
+            if (
+                glpi_field["items_id"] == item_id
+                and glpi_field["itemtype"] == item_type
+                and glpi_field["deviceprocessors_id"] == processor_id
+            ):
+                ids.append(glpi_field["id"])
+                if len(ids) == sockets:
+                    break
 
         print("Creating GLPI CPU Item field:")
         glpi_post = {
@@ -1055,87 +1349,6 @@ def check_and_post_processor_item(
             print(str(post_response) + "\n")
 
         return
-
-
-def check_and_post_network_port(
-    session: requests.sessions.Session,
-    url: str,
-    item_id: int,
-    item_type: str,
-    port_number: int,
-    name: str,
-    instantiation_type: str,
-    network: dict,
-) -> int:
-    """A helper method to check the network port field at the given API endpoint
-    (URL) and post the field if it is not present.
-
-    Args:
-        session (Session object): The requests session object
-        url (str): GLPI API endpoint for network ports
-        item_id (int): ID of the computer that the network port is associated with
-        item_type (str): Type of item associated with the network port, usually
-                         "Computer"
-        port_number (int): Port number, usually iterated outside of function
-        name (str): Name of the Port
-        instantiation_type (str): Name of the GLPI field, usually NetworkPortEthernet
-        network (dict): Contains more information abot the network port
-
-    Returns:
-        id (int): GLPI ID of network port
-    """
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI Network Port fields:")
-    id = ""
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    # Fixing the issue of not getting all data without ranges.
-    while more_fields:
-        range_url = (
-            url + "?range=" + str(api_range) + "-" + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
-
-    id_found = False
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if (
-                glpi_field["items_id"] == item_id
-                and glpi_field["itemtype"] == item_type
-                and glpi_field["logical_number"] == port_number
-                and glpi_field["name"] == name
-                and glpi_field["instantiation_type"] == instantiation_type
-            ):
-                id = glpi_field["id"]
-                id_found = True
-                break
-
-    # Create a field if one was not found and return the ID.
-    glpi_post = {
-        "items_id": item_id,
-        "itemtype": item_type,
-        "logical_number": port_number,
-        "name": name,
-        "instantiation_type": instantiation_type,
-    }
-    if "AssociatedNetworkAddresses" in network:
-        glpi_post["mac"] = network["AssociatedNetworkAddresses"][0]
-    if not id_found:
-        response = session.post(url=url, json={"input": glpi_post})
-        id = response.json()["id"]
-    else:
-        # 200 put code does not return id field.
-        response = session.put(url=url, json={"input": glpi_post})
-    print(str(response) + "\n")
-
-    return id
 
 
 # Executes main if run as a script.

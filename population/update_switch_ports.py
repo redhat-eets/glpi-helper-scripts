@@ -17,7 +17,7 @@ import sys
 
 sys.path.append("..")
 
-import argparse
+from common.parser import argparser
 import pexpect
 import requests
 from common.sessionhandler import SessionHandler
@@ -26,7 +26,8 @@ from common.utils import (
     print_final_help,
     get_switch_ports,
     check_and_post_network_port,
-    check_and_post_network_port_ethernet,
+    check_and_post,
+    check_fields,
 )
 from common.switches import Switches
 
@@ -34,34 +35,19 @@ from common.switches import Switches
 def main() -> None:
     """Main function"""
     # Get the command line arguments from the user.
-    parser = argparse.ArgumentParser(
-        description="GLPI Switch port REST upload example. NOTE: needs to "
-        + "be run with root priviledges."
+    parser = argparser()
+    parser.parser.description = (
+        "GLPI Switch port REST upload example. "
+        + "NOTE: needs to be run with root priviledges."
     )
-    parser.add_argument(
-        "-i",
-        "--ip",
-        metavar="ip",
-        type=str,
-        required=True,
-        help='the IP/URL of the GLPI instance (example: "127.0.0.1")',
-    )
-    parser.add_argument(
-        "-t",
-        "--token",
-        metavar="user_token",
-        type=str,
-        required=True,
-        help="the user token string for authentication with GLPI",
-    )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-c",
         "--switch_config",
         metavar="switch_config",
         required=True,
         help="optional path to switch config YAML file",
     )
-    args = parser.parse_args()
+    args = parser.parser.parse_args()
 
     user_token = args.token
     ip = args.ip
@@ -91,24 +77,7 @@ def post_to_glpi(
     global switch_dict
 
     print("Checking GLPI Network Equipment fields:")
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    while more_fields:
-        range_url = (
-            urls.NETWORK_EQUIPMENT_URL
-            + "?range="
-            + str(api_range)
-            + "-"
-            + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
+    glpi_fields_list = check_fields(session, urls.NETWORK_EQUIPMENT_URL)
 
     print("Getting switch information\n")
     for lab in switch_info.switch_map.keys():
@@ -125,11 +94,10 @@ def post_to_glpi(
                         get_switch_port_speed(lab, switch_ip, switch_info),
                     ]
 
-                for glpi_fields in glpi_fields_list:
-                    for glpi_field in glpi_fields.json():
-                        if glpi_field["name"] == switch_name:
-                            switch_id = glpi_field["id"]
-                            break
+                for glpi_field in glpi_fields_list:
+                    if glpi_field["name"] == switch_name:
+                        switch_id = glpi_field["id"]
+                        break
 
                 for switch_port_mac in switch_dict[switch_ip][1]:
                     switch_port = switch_dict[switch_ip][1][switch_port_mac]
@@ -158,12 +126,14 @@ def post_to_glpi(
                         urls,
                         switch_info,
                     )
-                    check_and_post_network_port_ethernet(
+                    check_and_post(
                         session,
                         urls.NETWORK_PORT_ETHERNET_URL,
-                        network_port_id,
-                        speed,
-                        None,
+                        {
+                            "networkports_id": network_port_id,
+                            "items_devicenetworkcards_id": None,
+                            "speed": speed,
+                        },
                     )
     return
 

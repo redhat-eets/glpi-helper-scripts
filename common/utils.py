@@ -12,31 +12,32 @@
 
 from common.urlinitialization import UrlInitialization
 from common.switches import Switches
-import json
 import requests
 import pexpect
 import common.format_dicts as format_dicts
 
 
-def check_field(session: requests.sessions.Session, field: str, url: str) -> str:
+def check_field(
+    session: requests.sessions.Session,
+    url: str,
+    search_criteria: dict,
+) -> str:
     """Method for getting the glpi fields at the given url and checking if a
        specific field exists.
 
     Args:
         session (Session object): The requests session object
-        field (str):              The field to check
         url (str):                The url to get the fields
+        search_criteria (dict):   A dictionary of criteria to match w/ GLPI fields.
 
     Returns:
         (str): The field ID if found, None otherwise
     """
     glpi_fields_list = check_fields(session, url)
     # Check if the field is present at the URL endpoint.
-    id = field
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if glpi_field["name"] == id:
-                return glpi_field["id"]
+    for glpi_field in glpi_fields_list:
+        if all(glpi_field[key] == value for key, value in search_criteria.items()):
+            return glpi_field["id"]
     return None
 
 
@@ -64,12 +65,13 @@ def check_fields(session: requests.sessions.Session, url: str) -> list:
             and glpi_fields.json()[0] == "ERROR_RESOURCE_NOT_FOUND_NOR_COMMONDBTM"
         ):
             more_fields = False
-            glpi_fields_list.append(glpi_fields)
+            glpi_fields_list.extend(glpi_fields.json())
         elif glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
             more_fields = False
         else:
-            glpi_fields_list.append(glpi_fields)
+            glpi_fields_list.extend(glpi_fields.json())
             api_range += api_increment
+
     return glpi_fields_list
 
 
@@ -88,53 +90,46 @@ def check_field_without_range(session: requests.sessions.Session, url: str) -> l
     return glpi_fields.json()
 
 
-def check_and_post(session: requests.sessions.Session, field: str, url: str) -> int:
+def check_and_post(
+    session: requests.sessions.Session,
+    url: str,
+    search_criteria: dict,
+    additional_information: dict = None,
+) -> int:
     """A helper method to check the field at the given API endpoint (URL) and post
        the field if it is not present.
 
     Args:
         Session (Session object): The requests session object
-        field (str): The component to be populated
         url (str): The url of the component to be populated
+        search_criteria (dict): Dictionary containing the desired state of the GLPI
+            item. It should contain fields to use when checking GLPI for pre-existing
+            items. For example: {"name": "glpi_field_value"} will check GLPI for
+            existing items named "glpi_field_value". The same dictionary
+            ({"name": "glpi_field_value"}) will be used to import this item into GLPI,
+            via either a PUT or POST request, after it's combined with
+            additional_information.
+        additional_information (dict): Dictionary containing fields that
+            shouldn't be used to check GLPI, but should be sent in the POST and PUT
+            requests. For example, when using check_and_post() for racks, you would pass
+            the background color under "additional_information". If a rack's name, ID,
+            and location were all the same, but its color was different, a new rack
+            should NOT be created, as that isn't a characteristic that helps identify a
+            unique rack. Instead, the existing rack should be updated in place.
 
     Returns:
         id (int): the id of the field.
     """
-    print("Checking GLPI fields:")
+    print(f"Checking GLPI fields for {url}:")
     # Check if the field is present at the URL endpoint.
-    id = field
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    # Fixing the issue of not getting all data without ranges.
-    while more_fields:
-        range_url = (
-            url + "?range=" + str(api_range) + "-" + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
-
-    id_found = False
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if glpi_field["name"] == id:
-                id = glpi_field["id"]
-                id_found = True
-                break
+    id = check_field(session, url, search_criteria)
 
     # Create a field if one was not found and return the ID.
-    if id_found is False:
-        print("Creating GLPI field:")
-        glpi_post = {"name": field}
-        post_response = session.post(url=url, json={"input": glpi_post})
-        print(str(post_response) + "\n")
-        id = post_response.json()["id"]
-
+    if additional_information is not None:
+        search_criteria.update(additional_information)
+    if id is not None:
+        search_criteria.update({"id": id})
+    id = create_or_update_glpi_item(session, url, search_criteria, id)
     return id
 
 
@@ -157,37 +152,13 @@ def check_and_post_processor(
     """
     print("Checking GLPI CPU fields:")
     # Check if the field is present at the URL endpoint.
-    id = field["Model name"]
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    # Fixing the issue of not getting all data without ranges.
-    while more_fields:
-        range_url = (
-            url + "?range=" + str(api_range) + "-" + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
-
-    id_found = False
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if glpi_field["designation"] == id:
-                id = glpi_field["id"]
-                id_found = True
-                break
-
+    id = check_field(session, url, search_criteria={"designation": field["Model name"]})
     # Create a field if one was not found and return the ID.
-    if id_found is False:
+    if id is None:
         # Get the manufacturer or create it (NOTE: This may create duplicates
         # with slight variation)
         manufacturers_id = check_and_post(
-            session, field["Vendor ID"], urls.MANUFACTURER_URL
+            session, urls.MANUFACTURER_URL, {"name": field["Vendor ID"]}
         )
         print("Creating GLPI CPU field:")
         glpi_post = {
@@ -234,32 +205,17 @@ def check_and_post_processor_item(
     # Check if the field is present at the URL endpoint.
     print("Checking GLPI Processor fields:")
     ids = []
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    # Fixing the issue of not getting all data without ranges.
-    while more_fields:
-        range_url = (
-            url + "?range=" + str(api_range) + "-" + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
+    glpi_fields_list = check_fields(session, url)
 
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if (
-                glpi_field["items_id"] == item_id
-                and glpi_field["itemtype"] == item_type
-                and glpi_field["deviceprocessors_id"] == processor_id
-            ):
-                ids.append(glpi_field["id"])
-                if len(ids) == sockets:
-                    break
+    for glpi_field in glpi_fields_list:
+        if (
+            glpi_field["items_id"] == item_id
+            and glpi_field["itemtype"] == item_type
+            and glpi_field["deviceprocessors_id"] == processor_id
+        ):
+            ids.append(glpi_field["id"])
+            if len(ids) == sockets:
+                break
 
     print("Creating GLPI CPU Item field:")
     glpi_post = {
@@ -279,91 +235,6 @@ def check_and_post_processor_item(
         print(str(post_response) + "\n")
 
     return
-
-
-def check_and_post_operating_system_item(
-    session: requests.sessions.Session,
-    url: str,
-    operating_system_id: int,
-    operating_system_version_id: int,
-    operating_system_architecture_id: int,
-    operating_system_kernel_version_id: int,
-    item_id: int,
-    item_type: str,
-) -> int:
-    """A helper method to check the operating system item field at the given API
-       endpoint (URL) and post the field if it is not present. Takes in the session,
-       field, and API url. Return the id of the field. NOTE: Operating systems have
-       been moved to a different object than descibed (Item_OperatingSystem).
-       This is undocumented except for issue 3334 on the glpi-project GitHub.
-
-    Args:
-        session (Session object): The requests session object
-        url (str): GLPI API endpoint for the operating system item field
-        operating_system_id (int): ID of the operating system in GLPI
-        operating_system_version_id (int): ID of the operating system version in GLPI
-        operating_system_architecture_id (int): ID of the operating system architecture
-                                                in GLPI
-        operating_system_kernel_version_id (int): ID of the operating system kernel
-                                                  version in GLPI
-        item_id (int): ID of the item (usually a computer) associated with the
-                       operating system item
-        item_type (str): Type of the item associated with the operating system item,
-                         usually "Computer"
-
-    Returns:
-        id (int): ID of the operating system item in GLPI
-    """
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI OS fields:")
-    id = ""
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    # Fixing the issue of not getting all data without ranges.
-    while more_fields:
-        range_url = (
-            url + "?range=" + str(api_range) + "-" + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
-
-    id_found = False
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if (
-                glpi_field["items_id"] == item_id
-                and glpi_field["itemtype"] == item_type
-                and glpi_field["operatingsystems_id"] == operating_system_id
-            ):
-                id = glpi_field["id"]
-                id_found = True
-                break
-
-    # Create a field if one was not found and return the ID.
-    print("Creating GLPI OS Item field:")
-    glpi_post = {
-        "items_id": item_id,
-        "itemtype": item_type,
-        "operatingsystems_id": operating_system_id,
-        "operatingsystemversions_id": operating_system_version_id,
-        "operatingsystemarchitectures_id": operating_system_architecture_id,
-        "operatingsystemkernelversions_id": operating_system_kernel_version_id,
-    }
-
-    if id_found is False:
-        post_response = session.post(url=url, json={"input": glpi_post})
-        id = post_response.json()["id"]
-    else:
-        post_response = session.put(url=url, json={"input": glpi_post})
-    print(str(post_response) + "\n")
-
-    return id
 
 
 def check_and_post_network_port(  # noqa: C901
@@ -403,37 +274,17 @@ def check_and_post_network_port(  # noqa: C901
     """
     # Check if the field is present at the URL endpoint.
     print("Checking GLPI Network Port fields:")
-    id = ""
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    # Fixing the issue of not getting all data without ranges.
-    while more_fields:
-        range_url = (
-            url + "?range=" + str(api_range) + "-" + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
-
-    id_found = False
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if (
-                int(glpi_field["items_id"]) == item_id
-                and glpi_field["itemtype"] == item_type
-                and int(glpi_field["logical_number"]) == int(port_number)
-                and glpi_field["name"] == name
-                and glpi_field["instantiation_type"] == instantiation_type
-            ):
-                print("FOUND")
-                id = glpi_field["id"]
-                id_found = True
-                break
+    id = check_field(
+        session,
+        url,
+        search_criteria={
+            "items_id": item_id,
+            "itemtype": item_type,
+            "logical_number": port_number,
+            "name": name,
+            "instantiation_type": instantiation_type,
+        },
+    )
 
     # Create a field if one was not found and return the ID.
     glpi_post = {
@@ -448,13 +299,7 @@ def check_and_post_network_port(  # noqa: C901
             if line[0] == "ether":
                 glpi_post["mac"] = line[1]
                 break
-    if id_found is False:
-        response = session.post(url=url, json={"input": glpi_post})
-        id = response.json()["id"]
-    else:
-        # 200 put code does not return id field.
-        response = session.put(url=url, json={"input": glpi_post})
-    print(str(response) + "\n")
+    id = create_or_update_glpi_item(session, url, glpi_post, id)
 
     # Attempt to connect the network ports.
     if "mac" in glpi_post:
@@ -488,72 +333,6 @@ def check_and_post_network_port(  # noqa: C901
     return id
 
 
-def check_and_post_network_port_ethernet(
-    session: requests.sessions.Session,
-    url: str,
-    network_port_id: int,
-    speed: str,
-    nic: str,
-) -> int:
-    """A helper method to check the network port ethernet field at the given API
-       endpoint (URL) and post the field if it is not present.
-
-    Args:
-        session (Session object): The requests session object
-        url (str): GLPI API endpoint for network port ethernet field
-        network_port_id (int): ID of the network port that the ethernet is associated
-                               with
-        speed (str): Speed that the port is capable of
-        nic (str): ID of the network card that the ethernet field is associated with
-
-    Returns:
-        id (int): GLPI ID of network port ethernet
-    """
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI Network Port Ethernet fields:")
-    id = ""
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    # Fixing the issue of not getting all data without ranges.
-    while more_fields:
-        range_url = (
-            url + "?range=" + str(api_range) + "-" + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
-
-    id_found = False
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if glpi_field["networkports_id"] == network_port_id:
-                id = glpi_field["id"]
-                id_found = True
-                break
-    print("Creating GLPI Network Port Ethernet field:")
-    glpi_post = {"networkports_id": network_port_id}
-    if nic is not None:
-        glpi_post["items_devicenetworkcards_id"] = nic
-    if speed != 0:
-        glpi_post["speed"] = speed
-
-    if not id_found:
-        response = session.post(url=url, json={"input": glpi_post})
-        print(response.json())
-        id = response.json()["id"]
-    else:
-        # 200 put code does not return id field.
-        response = session.put(url=url, json={"input": glpi_post})
-    print(str(response) + "\n")
-
-    return id
-
-
 def check_and_post_network_port_network_port(  # noqa: C901
     session: requests.sessions.Session,
     server_network_port_id: int,
@@ -582,117 +361,40 @@ def check_and_post_network_port_network_port(  # noqa: C901
     """
     # Check if the field is present at the URL endpoint.
     print("Checking GLPI Network Equipment fields:")
-    switch_port_id = ""
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    while more_fields:
-        range_url = (
-            network_equipment_url
-            + "?range="
-            + str(api_range)
-            + "-"
-            + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
+    switch_id = check_field(
+        session, network_equipment_url, search_criteria={"name": switch_name}
+    )
 
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if glpi_field["name"] == switch_name:
-                switch_id = glpi_field["id"]
-                break
+    switch_port_id = check_field(
+        session,
+        network_port_url,
+        search_criteria={
+            "itemtype": "NetworkEquipment",
+            "items_id": switch_id,
+            "name": switch_port,
+        },
+    )
 
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    while more_fields:
-        range_url = (
-            network_port_url
-            + "?range="
-            + str(api_range)
-            + "-"
-            + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
-
-    switch_port_id_found = False
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if (
-                glpi_field["itemtype"] == "NetworkEquipment"
-                and glpi_field["items_id"] == switch_id
-                and glpi_field["name"] == switch_port
-            ):
-                switch_port_id = glpi_field["id"]
-                switch_port_id_found = True
-                break
-
-    if switch_port_id_found:
+    if switch_port_id:
         # Check if the field is present at the URL endpoint.
         print("Checking GLPI Network Port to Network Port Ethernet fields:")
-        id = ""
-        glpi_fields_list = []
-        api_range = 0
-        api_increment = 50
-        more_fields = True
-        # Fixing the issue of not getting all data without ranges.
-        while more_fields:
-            range_url = (
-                network_port_network_port_url
-                + "?range="
-                + str(api_range)
-                + "-"
-                + str(api_range + api_increment)
-            )
-            glpi_fields = session.get(url=range_url)
-            if (
-                glpi_fields.json()
-                and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL"
-            ):
-                more_fields = False
-            else:
-                glpi_fields_list.append(glpi_fields)
-                api_range += api_increment
+        id = check_field(
+            session,
+            network_port_network_port_url,
+            search_criteria={
+                "networkports_id_1": server_network_port_id,
+                "networkports_id_2": switch_port_id,
+            },
+        )
 
-        id_found = False
-        for glpi_fields in glpi_fields_list:
-            for glpi_field in glpi_fields.json():
-                if (
-                    glpi_field["networkports_id_1"] == server_network_port_id
-                    and glpi_field["networkports_id_2"] == switch_port_id
-                ):
-                    id = glpi_field["id"]
-                    id_found = True
-                    break
         print("Creating GLPI Network Port to Network Port Ethernet field:")
         glpi_post = {
             "networkports_id_1": server_network_port_id,
             "networkports_id_2": switch_port_id,
         }
-        if not id_found:
-            response = session.post(
-                url=network_port_network_port_url, json={"input": glpi_post}
-            )
-            print(response.json())
-            id = response.json()["id"]
-        else:
-            # 200 put code does not return id field.
-            response = session.put(
-                url=network_port_network_port_url, json={"input": glpi_post}
-            )
-        print(str(response) + "\n")
+        id = create_or_update_glpi_item(
+            session, network_port_network_port_url, glpi_post, id
+        )
 
         return id
     else:
@@ -704,82 +406,6 @@ def check_and_post_network_port_network_port(  # noqa: C901
             + "."
         )
         return
-
-
-def check_and_post_device_memory(
-    session: requests.sessions.Session,
-    url: str,
-    designation: str,
-    frequency: str,
-    manufacturers_id: int,
-    size: int,
-    memory_type_id: int,
-) -> int:
-    """A helper method to check the device memory field at the given API endpoint
-       (URL) and post the field if it is not present.
-
-    Args:
-        session (Session object): The requests session object
-        url (str): GLPI API endpoint for the memory field
-        designation (str): Name of memory device
-        frequency (int): Frequency of memory device, usually in MHz
-        manufacturers_id (int): ID of the memory manufacturer
-        size (int): Capacity of the memory device
-        memory_type_id (int): ID of the type of memory device
-
-    Returns:
-        id (int): ID of the memory device in GLPI
-    """
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI Memory fields:")
-    id = ""
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    # Fixing the issue of not getting all data without ranges.
-    while more_fields:
-        range_url = (
-            url + "?range=" + str(api_range) + "-" + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
-
-    id_found = False
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if (
-                glpi_field["designation"] == designation
-                and glpi_field["frequence"] == frequency
-                and glpi_field["manufacturers_id"] == manufacturers_id
-                and glpi_field["size_default"] == size
-                and glpi_field["devicememorytypes_id"] == memory_type_id
-            ):
-                id = glpi_field["id"]
-                id_found = True
-                break
-    # Create a field if one was not found and return the ID.
-    print("Creating GLPI Memory field:")
-    glpi_post = {
-        "designation": designation,
-        "frequence": frequency,
-        "manufacturers_id": manufacturers_id,
-        "size_default": size,
-        "devicememorytypes_id": memory_type_id,
-    }
-
-    if not id_found:
-        post_response = session.post(url=url, json={"input": glpi_post})
-        id = post_response.json()["id"]
-    else:
-        post_response = session.put(url=url, json={"input": glpi_post})
-    print(str(post_response) + "\n")
-
-    return id
 
 
 def check_and_post_device_memory_item(
@@ -808,33 +434,18 @@ def check_and_post_device_memory_item(
     # Check if the field is present at the URL endpoint.
     print("Checking GLPI Memory Item fields:")
     ids = []
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    # Fixing the issue of not getting all data without ranges.
-    while more_fields:
-        range_url = (
-            url + "?range=" + str(api_range) + "-" + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
+    glpi_fields_list = check_fields(session, url)
 
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if (
-                glpi_field["items_id"] == item_id
-                and glpi_field["itemtype"] == item_type
-                and glpi_field["devicememories_id"] == memory_id
-                and glpi_field["size"] == size
-            ):
-                ids.append(glpi_field["id"])
-                if len(ids) == quantity:
-                    break
+    for glpi_field in glpi_fields_list:
+        if (
+            glpi_field["items_id"] == item_id
+            and glpi_field["itemtype"] == item_type
+            and glpi_field["devicememories_id"] == memory_id
+            and glpi_field["size"] == size
+        ):
+            ids.append(glpi_field["id"])
+            if len(ids) == quantity:
+                break
     # Create a field if one was not found and return the ID.
     print("Creating GLPI Memory Item field:")
     glpi_post = {
@@ -870,29 +481,12 @@ def get_unspecified_device_memory(
     """
     # Check if the field is present at the URL endpoint.
     print("Checking GLPI Memory fields to remove Unspecified:")
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    # Fixing the issue of not getting all data without ranges.
-    while more_fields:
-        range_url = (
-            url + "?range=" + str(api_range) + "-" + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
-
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if (
-                glpi_field["designation"] == designation
-                and glpi_field["frequence"] == designation
-            ):
-                return glpi_field["id"]
+    id = check_field(
+        session,
+        url,
+        search_criteria={"designation": designation, "frequence": designation},
+    )
+    return id
 
 
 def check_and_remove_unspecified_device_memory_item(
@@ -907,254 +501,14 @@ def check_and_remove_unspecified_device_memory_item(
     """
     # Check if the field is present at the URL endpoint.
     print("Checking GLPI Memory fields to remove Unspecified:")
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    # Fixing the issue of not getting all data without ranges.
-    while more_fields:
-        range_url = (
-            url + "?range=" + str(api_range) + "-" + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
+    glpi_fields_list = check_fields(session, url)
 
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if glpi_field["items_id"] == item_id:
-                removed = session.delete(url + str(glpi_field["id"]))
-                print(str(removed) + "\n")
-                break
+    for glpi_field in glpi_fields_list:
+        if glpi_field["items_id"] == item_id:
+            removed = session.delete(url + str(glpi_field["id"]))
+            print(str(removed) + "\n")
+            break
     return
-
-
-def check_and_post_disk_item(
-    session: requests.sessions.Session,
-    url: str,
-    item_id: int,
-    item_type: str,
-    disk_name: str,
-    size: int,
-    partition: str = None,
-) -> None:
-    """A helper method to check the disk item field at the given API endpoint (URL)
-       and post the field if it is not present.
-
-    Args:
-        session (Session object): The requests session object
-        url (str): GLPI API endpoint for the disk item field
-        item_id (int): ID of the item (usually a computer) associated with the disk
-                       item
-        item_type (str): Type of the item associated with the disk item, usually
-                         "Computer"
-        disk_name (str): Name of disk item
-        size (int): Capacity of disk item in MB
-        partition (str): Mountpoint of the disk item
-    """
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI Disk Item fields:")
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    # Fixing the issue of not getting all data without ranges.
-    while more_fields:
-        range_url = (
-            url + "?range=" + str(api_range) + "-" + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
-
-    id_found = False
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if (
-                glpi_field["items_id"] == item_id
-                and glpi_field["itemtype"] == item_type
-                and glpi_field["name"] == disk_name
-            ):
-                id_found = True
-                break
-
-    # Create a field if one was not found and return the ID.
-    print("Creating GLPI Disk Item field:")
-    glpi_post = {
-        "items_id": item_id,
-        "itemtype": item_type,
-        "name": disk_name,
-        "totalsize": size,
-    }
-    if partition is not None:
-        glpi_post["mountpoint"] = partition
-    if not id_found:
-        post_response = session.post(url=url, json={"input": glpi_post})
-        print(str(post_response) + "\n")
-    else:
-        post_response = session.put(url=url, json={"input": glpi_post})
-        print(str(post_response) + "\n")
-
-    return
-
-
-def check_and_post_nic(
-    session: requests.sessions.Session,
-    url: str,
-    name: str,
-    bandwidth: str,
-    vendor: str,
-    nic_model_id: int,
-    urls: UrlInitialization,
-) -> int:
-    """A helper method to check the nic field at the given API endpoint (URL) and
-       post the field if it is not present.
-
-    Args:
-        session (Session object): The requests session object
-        url (str): GLPI API endpoint for the NIC field
-        name (str): Name of NIC
-        bandwidth (str): bandwidth of NIC
-        vendor (str): Company that manufactured NIC
-        nic_model_id (int): ID of NIC model
-        urls (UrlInitialization object): the URL object
-
-
-    Returns:
-        id (int): ID of NIC in GLPI
-    """
-    manufacturers_id = vendor
-    if vendor:
-        manufacturers_id = check_and_post(session, vendor, urls.MANUFACTURER_URL)
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI NIC fields:")
-    id = ""
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    # Fixing the issue of not getting all data without ranges.
-    while more_fields:
-        range_url = (
-            url + "?range=" + str(api_range) + "-" + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
-
-    id_found = False
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if (
-                glpi_field["designation"] == name
-                and glpi_field["bandwidth"] == bandwidth
-                and glpi_field["manufacturers_id"] == manufacturers_id
-                and glpi_field["devicenetworkcardmodels_id"] == nic_model_id
-            ):
-                id = glpi_field["id"]
-                id_found = True
-                break
-
-    # Create a field if one was not found and return the ID.
-    print("Creating GLPI NIC field:")
-    glpi_post = {
-        "designation": name,
-        "bandwidth": bandwidth,
-        "manufacturers_id": manufacturers_id,
-        "devicenetworkcardmodels_id": nic_model_id,
-    }
-
-    if not id_found:
-        post_response = session.post(url=url, json={"input": glpi_post})
-        id = post_response.json()["id"]
-    else:
-        post_response = session.put(url=url, json={"input": glpi_post})
-    print(str(post_response) + "\n")
-
-    return id
-
-
-def check_and_post_nic_item(
-    session: requests.sessions.Session,
-    url: str,
-    item_id: int,
-    item: str,
-    nic_id: int,
-    mac: str,
-) -> int:
-    """A helper method to check the nic item field at the given API endpoint (URL)
-       and post the field if it is not present.
-
-    Args:
-        session (Session object): The requests session object
-        url (str): GLPI API endpoint for the NIC field
-        item_id (int): ID of the item (usually a computer) associated with the NIC item
-        item (str): Type of the item associated with the NIC item, usually "Computer"
-        nic_id (int): ID of the NIC that the item is associated
-        mac (str): MAC address of the NIC item
-
-    Returns:
-        id (int): ID of the NIC item
-
-    """
-    # Check if the field is present at the URL endpoint.
-    print("Checking GLPI NIC Item fields:")
-    id = ""
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    # Fixing the issue of not getting all data without ranges.
-    while more_fields:
-        range_url = (
-            url + "?range=" + str(api_range) + "-" + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
-
-    id_found = False
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if (
-                glpi_field["items_id"] == item_id
-                and glpi_field["itemtype"] == item
-                and glpi_field["devicenetworkcards_id"] == nic_id
-                and glpi_field["mac"] == mac
-            ):
-                id = glpi_field["id"]
-                id_found = True
-                break
-
-    # Create a field if one was not found and return the ID.
-    print("Creating GLPI NIC Item field:")
-    glpi_post = {
-        "items_id": item_id,
-        "itemtype": item,
-        "devicenetworkcards_id": nic_id,
-        "mac": mac,
-    }
-
-    if not id_found:
-        post_response = session.post(url=url, json={"input": glpi_post})
-        id = post_response.json()["id"]
-    else:
-        post_response = session.put(url=url, json={"input": glpi_post})
-    print(str(post_response) + "\n")
-
-    return id
 
 
 def print_final_help() -> None:
@@ -1165,58 +519,19 @@ def print_final_help() -> None:
     )
 
 
-def get_computers(session: requests.sessions.Session, urls: UrlInitialization) -> list:
-    """Method for getting all computers
-
-    Args:
-        session (Session object):        the requests session object
-        urls (UrlInitialization object): the URL object
-
-    Returns:
-        list: computers from GLPI
-    """
-    print("Getting computer information:\n")
-
-    computers = []
-
-    computer_json = check_fields(session, urls.COMPUTER_URL)
-    for computer_list in computer_json:
-        for computer in computer_list.json():
-            computers.append(json.dumps(computer))
-    return computers
-
-
-def get_network_equipment(
-    session: requests.sessions.Session, urls: UrlInitialization
-) -> list:
-    """Method for getting all network equipment
-
-    Args:
-        session (Session object):        the requests session object
-        urls (UrlInitialization object): the URL object
-
-    Returns:
-        list: network equipment from GLPI
-    """
-    print("Getting computer information:\n")
-
-    network_equipment_output = []
-
-    network_equipment_json = check_fields(session, urls.NETWORK_EQUIPMENT_URL)
-    for network_equipment_list in network_equipment_json:
-        for network_equipment in network_equipment_list.json():
-            network_equipment_output.append(json.dumps(network_equipment))
-    return network_equipment_output
-
-
 def get_reservations(
-    session: requests.sessions.Session, urls: UrlInitialization
+    session: requests.sessions.Session,
+    urls: UrlInitialization,
+    hostname: str = None,
+    user: str = None,
 ) -> str:
     """Method for printing all reservation_split to stdout
 
     Args:
         session (Session object):        the requests session object
         urls (UrlInitialization object): the URL object
+        hostname (str):                  Name of computer to search for
+        user (str):                      Name of user to search for
 
     Returns:
         list: reservations from GLPI
@@ -1227,51 +542,57 @@ def get_reservations(
 
     reservation_json = check_fields(session, urls.RESERVATION_URL)
     if reservation_json:
-        for reservation_list in reservation_json:
-            for reservation in reservation_list.json():
-                reservation_item_json = check_field_without_range(
-                    session,
-                    (
-                        urls.RESERVATION_ITEM_URL
-                        + str(reservation["reservationitems_id"])
-                    ),
-                )
-                user_json = check_field_without_range(
-                    session, (urls.USER_URL + str(reservation["users_id"]))
-                )
-                # computer_json = check_field_without_range(
-                #    session,
-                #    (urls.COMPUTER_URL + str(reservation_item_json["items_id"])),
-                # )
-                item_json = check_field_without_range(
-                    session,
-                    urls.BASE_URL
-                    + reservation_item_json["itemtype"]
-                    + "/"
-                    + str(reservation_item_json["items_id"]),
-                )
-                reservations_output += (
-                    "Reservation " + str(reservation["id"]) + ":" + "\n"
-                )
-                reservations_output += (
-                    "  User "
-                    + str(reservation["users_id"])
-                    + ": "
-                    + user_json["name"]
-                    + "\n"
-                )
-                reservations_output += (
-                    "  "
-                    + reservation_item_json["itemtype"]
-                    + " "
-                    + str(reservation_item_json["items_id"])
-                    + ": "
-                    + item_json["name"]
-                    + "\n"
-                )
-                reservations_output += "  Begins: " + str(reservation["begin"]) + "\n"
-                reservations_output += "  Ends: " + str(reservation["end"]) + "\n"
+        for reservation in reservation_json:
+            reservation_item_json = check_field_without_range(
+                session,
+                (urls.RESERVATION_ITEM_URL + str(reservation["reservationitems_id"])),
+            )
+            user_json = check_field_without_range(
+                session, (urls.USER_URL + str(reservation["users_id"]))
+            )
+
+            # If searching for specific user, only select
+            # reservations with that username.
+            if user and user.lower() not in user_json["name"].lower():
+                continue
+
+            item_json = check_field_without_range(
+                session,
+                urls.BASE_URL
+                + reservation_item_json["itemtype"]
+                + "/"
+                + str(reservation_item_json["items_id"]),
+            )
+
+            # If searching for specific hostname, only select
+            # reservations with that hostname.
+            if hostname and hostname != item_json["name"]:
+                continue
+
+            reservations_output += "Reservation " + str(reservation["id"]) + ":" + "\n"
+            reservations_output += (
+                "  User "
+                + str(reservation["users_id"])
+                + ": "
+                + user_json["name"]
+                + "\n"
+            )
+            reservations_output += (
+                "  "
+                + reservation_item_json["itemtype"]
+                + " "
+                + str(reservation_item_json["items_id"])
+                + ": "
+                + item_json["name"]
+                + "\n"
+            )
+            reservations_output += "  Begins: " + str(reservation["begin"]) + "\n"
+            reservations_output += "  Ends: " + str(reservation["end"]) + "\n"
+
+            if reservation["comment"]:
                 reservations_output += '  Comment: "' + reservation["comment"] + '"\n\n'
+            else:
+                reservations_output += "  Comment: N/A \n\n"
     else:
         reservations_output += "\tNo reservations.\n"
     return reservations_output
@@ -1329,6 +650,32 @@ def get_switch_ports(lab: str, switch: str, switch_info: Switches) -> dict:
     child.sendline("exit")
 
     return switch_output_dict
+
+
+def create_or_update_glpi_item(
+    session: requests.sessions.Session, url: str, glpi_post: dict, id: int
+) -> int:
+    """Creates or updates a GLPI Item field based on the id_found flag.
+
+    Args:
+        session (Session object): The requests session object
+        url (str): GLPI API endpoint for the operating system item field
+        glpi_post (dict): Dictionary containing the GLPI data to post or update
+        id (int): The current ID value
+
+    Returns:
+        id (int): ID of the created or updated operating system item in GLPI
+    """
+    if id is None:
+        post_response = session.post(url=url, json={"input": glpi_post})
+        id = post_response.json()["id"]
+        print(f"Created item at {url}")
+    else:
+        post_response = session.put(url=url, json={"input": glpi_post})
+        print(f"Updated item at {url}")
+    print(str(post_response) + "\n")
+
+    return id
 
 
 def error(message):

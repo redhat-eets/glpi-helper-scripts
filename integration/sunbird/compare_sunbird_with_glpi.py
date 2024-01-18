@@ -22,7 +22,7 @@ import urllib3
 import yaml
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization, validate_url
-from common.utils import get_computers, print_final_help
+from common.utils import check_fields, print_final_help
 
 # Suppress InsecureRequestWarning caused by REST access without certificate validation.
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -141,9 +141,16 @@ def main() -> None:
             glpi_machines, headers, sunbird_url, sunbird_username, sunbird_password
         )
 
-        # Compare the two dictionaries
-        sunbird_only = set(sunbird_machines.keys()) - set(glpi_machines.keys())
-        glpi_only = set(glpi_machines.keys()) - set(glpi_machines_in_sunbird.keys())
+        # Convert keys/serial numbers to upper case
+        upper_case_sunbird = [key.upper() for key in sunbird_machines.keys()]
+        upper_case_glpi = [key.upper() for key in glpi_machines.keys()]
+        upper_case_glpi_in_sunbird = [
+            key.upper() for key in glpi_machines_in_sunbird.keys()
+        ]
+
+        # Compare the two dictionaries in a case-insensitive manner
+        sunbird_only = set(upper_case_sunbird) - set(upper_case_glpi)
+        glpi_only = set(upper_case_glpi) - set(upper_case_glpi_in_sunbird)
 
         # Output the results
         sunbird_only_list = list(sunbird_only)
@@ -190,20 +197,13 @@ def get_sunbird_machines(
                 {"name": "tiSubclass", "filter": {"eq": "Standard"}},
                 {"name": "tiClass", "filter": {"eq": "Device"}},
                 {"name": "cmbLocation", "filter": {"eq": location}},
-                {"name": "cmbCabinet", "filter": {"in": config_map[location]}},
+                {
+                    "name": "cmbCabinet",
+                    "filter": {"in": config_map[location]["Cabinets"]},
+                },
             ],
             "selectedColumns": [
-                {"name": "tiName"},
-                {"name": "cmbLocation"},
-                {"name": "cmbCabinet"},
-                {"name": "cmbUPosition"},
-                {"name": "cmbMake"},
-                {"name": "cmbModel"},
-                {"name": "id"},
                 {"name": "tiSerialNumber"},
-                {"name": "tiCustomField_Client_class"},
-                {"name": "tiSubclass"},
-                {"name": "tiClass"},
             ],
             "customFieldByLabel": True,
         }
@@ -216,8 +216,14 @@ def get_sunbird_machines(
             auth=(username, password),
         )
         sunbird_json = sunbird_response.json()["searchResults"]["items"]
+
+        # Only get machines with serial numbers
+        machines_with_serial = [
+            computer for computer in sunbird_json if "tiSerialNumber" in computer
+        ]
+
         sunbird_dict = {
-            computer["tiSerialNumber"]: computer for computer in sunbird_json
+            computer["tiSerialNumber"]: computer for computer in machines_with_serial
         }
         sunbird_machines.update(sunbird_dict)
     return sunbird_machines
@@ -235,11 +241,10 @@ def get_glpi_machines(
     Returns:
         glpi_machines (dict): machines in GLPI
     """
-    computers = get_computers(session, urls)
-    computers_list = [yaml.safe_load(computer) for computer in computers]
+    computers = check_fields(session, urls.COMPUTER_URL)
     glpi_machines = {
         computer["serial"]: computer
-        for computer in computers_list
+        for computer in computers
         if computer["serial"]
     }
 
@@ -268,17 +273,7 @@ def get_glpi_machines_in_sunbird(
             {"name": "tiSerialNumber", "filter": {"in": list(glpi_machines.keys())}},
         ],
         "selectedColumns": [
-            {"name": "tiName"},
-            {"name": "cmbLocation"},
-            {"name": "cmbCabinet"},
-            {"name": "cmbUPosition"},
-            {"name": "cmbMake"},
-            {"name": "cmbModel"},
-            {"name": "id"},
             {"name": "tiSerialNumber"},
-            {"name": "tiCustomField_Client_class"},
-            {"name": "tiSubclass"},
-            {"name": "tiClass"},
         ],
         "customFieldByLabel": True,
     }

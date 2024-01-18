@@ -19,7 +19,19 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 
 ## What does this work aim to accomplish?
 This work does not exist in a vacuum, and the authors are aware of both first and third party agents, inventory gathering tools, and plugins that integrate with GLPI. However, in our lab configurations change often, machines are reallocated, and there may be restrictions on third-party software being installed. For these reasons, we chose to implement this scripting to fit our needs. For this reason the reader should also consult prior work before choosing to use this tooling.
-  
+
+## Prerequisites
+A current version of Python is recommended to run the scripts. As of writing the minimum version to avoid warnings would be 3.7. However, the scripting has been successfully run up to version 3.11. The same is true of pip, which should be a current version (23.0 as of writing, but this should be upgraded in the following steps).
+
+Running the script from a python3 virtual environment is recommended (note that the Python version of your venv can differ from the default Python path, if desired). Install the required python modules as follows, demonstrated for Python 3.11:
+
+```
+python3.11 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
 ## Importing machine(s) into GLPI
 The `population/create...`  scripts handle creating a computer and updating fields in a GLPI deployment. For more specific usage information use the help message provided by the scripts.
 
@@ -66,6 +78,7 @@ LAB:                     # lab name
 ```
     - For additional usage options see the help option of the script.
 6. If the script was run successfully, go to the GLPI URL and ensure that fields were correctly populated.
+    - The script by default will not overwrite any unique names given to the target. Pass in the "-o" flag to overwrite with the default hostname.
 7. If desired, manually set the location, technician, group, status, and any other desired fields for this machine, as these fields may help with identification or reporting later.
 8. If there was previously information populated, check fields are remove redundant information if present(for example, in the 'Components' section one may need "Unspecified" memory if previously populated). This has been specifically noticed as a remnant of running the Redfish based script, and one work around is currently to simply remove the machine if populating it a second time.
 
@@ -118,21 +131,22 @@ The `filtering/check_glpi_reservation.py` script queries the GLPI deployment for
 The `filtering/check_glpi_reservation.py` script queries the GLPI deployment for computers and prints a digest of computer fields. For usage information see the help message provided by the script.
 
 ### create_reservation_wrapper.py
-This is the recommended workflow for creating reservations using the REST API. One has the ability to manually manage reservations via the GUI (fine for an individual machine or to view the calendar), but for convenience there is an included wrapper around `reservation/create_glpi_reservation.py` which can take in a YAML file defining reservations of machines for given Jira tags (or other work item IDs). The wrapper takes in the API token as well as the reservation YAML file. Required for proper function are the Jira Epic tag, username for which to reserve the machine, start and end time in "YYYY-MM-DD HH:MM:SS" format, and servers by hostname. The global comment field will be added to the comment field below the Jira Epic tag if specified (omitted if set to None). If a server contains None (~) then it will use the global Jira Epic tag fields, otherwise they will be overwritten for that specific machine. Below is an explanation of the required YAML structure (also see `reservation/reservation_example.yaml`):
+This is the recommended workflow for creating reservations using the REST API. One has the ability to manually manage reservations via the GUI (fine for an individual machine or to view the calendar), but for convenience there is an included wrapper around `reservation/create_glpi_reservation.py` which can take in a YAML file defining reservations of machines. The wrapper takes in the API token as well as the reservation YAML file. Required for proper function are the username for which to reserve the machine, start and end time in "YYYY-MM-DD HH:MM:SS" format, and servers by hostname. You can optionally include a Jira Epic, which will be included as a comment if specified. The global comment field will be added to the comment field below the Jira Epic tag if specified (omitted if set to None). If a server contains None (~) then it will use the global fields, otherwise they will be overwritten for that specific machine. Below is an explanation of the required YAML structure (also see `reservation/reservation_example.yaml`):
 <pre>
-JIRA-0000:
-  username:example_user
-  start:"2021-09-30 23:59:59"
-  end:"2021-10-30 23:59:59"
-  comment:~
-  servers:
-    hostname-1:
-      ~
-    hostname-2:
-      username:overwritten_username
-      start:"2021-10-01 23:59:59"
-      end:"2021-10-31 23:59:59"
-      comment:"a comment overwriting the above global comment"
+username:example_user
+start:"2021-09-30 23:59:59"
+end:"2021-10-30 23:59:59"
+epic: "JIRA-0000"                  # (optional)
+comment:~                          # (optional)
+servers:
+  hostname-1:
+    ~
+  hostname-2:
+    username:overwritten_username  # (optional) override user
+    start:"2021-10-01 23:59:59"    # (optional) override start
+    end:"2021-10-31 23:59:59"      # (optional) override end
+    epic: "JIRA-0001"              # (optional) override Jira Epic, if defined above
+    comment:"a comment"            # (optional) override comment, if defined above
 </pre>
 For usage information see the help message provided by the script.
 
@@ -187,13 +201,19 @@ The `filtering/filter_reservations_by_project.py` will filter the reservations i
 
 ## Integrations
 
-### integrations/compare_sunbird_with_glpi.py
+### integrations/sunbird/compare_sunbird_with_glpi.py
 The `integrations/sunbird/compare_sunbird_with_glpi.py` script compares all machines in GLPI with all machines in Sunbird located in the labs specified by a user-provided YAML file. It returns a list of machines that are in GLPI, but not Sunbird, and vice versa.
 
 Example script usage: 
 
-`python3 compare_sunbird_with_glpi.py -i <GLPI URL> -t <GLPI TOKEN> -v -g <path to YAML file> -u <Sunbird USERNAME> -p <Sunbird PASSWORD> -s <Sunbird URL>`
+`python3 compare_sunbird_with_glpi.py -i <GLPI URL> -t <GLPI API TOKEN> -v -g <path to YAML file> -u <Sunbird USERNAME> -p <Sunbird PASSWORD> -s <Sunbird URL>`
 
 You can also email the output of this script to someone via optional flags:
 
-`python3 compare_sunbird_with_glpi.py -i <GLPI URL> -t <GLPI TOKEN> -v -g <path to YAML file> -u <Sunbird USERNAME> -p <Sunbird PASSWORD> -s <Sunbird URL> -r <RECIPIENT EMAIL> -S <SENDER EMAIL> -e <EMAIL SERVER>`
+`python3 compare_sunbird_with_glpi.py -i <GLPI URL> -t <GLPI API TOKEN> -v -g <path to YAML file> -u <Sunbird USERNAME> -p <Sunbird PASSWORD> -s <Sunbird URL> -r <RECIPIENT EMAIL> -S <SENDER EMAIL> -e <EMAIL SERVER>`
+
+### integrations/ldap/compare_ldap_with_glpi.py
+The `integrations/ldap/compare_ldap_with_glpi.py` script compares the LDAP groups specified in a user-provided YAML file to the groups in GLPI. It then adds any missing users to the relevant GLPI group. There is an example YAML file in the `integrations/ldap` folder. The script assumes that you have the `ldapsearch` CLI tool installed. You can install it with `dnf install openldap-clients`
+
+Example script usage:
+`python3 compare_ldap_with_glpi.py -i <GLPI URL> -t <GLPI API TOKEN> -v -c <path to YAML file> -l <LDAP server> -b <Base DN>`

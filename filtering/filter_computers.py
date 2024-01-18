@@ -15,21 +15,18 @@
 import sys
 
 sys.path.append("..")
-import argparse
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization
 from common.utils import (
     check_fields,
     check_field_without_range,
     print_final_help,
-    get_computers,
 )
-import json
+from common.parser import argparser
 import subprocess
 from typing import Tuple
 import yaml
 import operator
-
 
 # Suppress InsecureRequestWarning caused by REST access without
 # certificate validation.
@@ -41,26 +38,9 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 def main() -> None:
     """Main function"""
     # Get the command line arguments from the user.
-    parser = argparse.ArgumentParser(
-        description="GLPI Computer reservation weighted filter."
-    )
-    parser.add_argument(
-        "-i",
-        "--ip",
-        metavar="ip",
-        type=str,
-        required=True,
-        help='the IP of the GLPI instance (example: "127.0.0.1")',
-    )
-    parser.add_argument(
-        "-t",
-        "--token",
-        metavar="user_token",
-        type=str,
-        required=True,
-        help="the user token string for authentication with GLPI",
-    )
-    parser.add_argument(
+    parser = argparser()
+    parser.parser.description = "GLPI Computer reservation weighted filter."
+    parser.parser.add_argument(
         "-l",
         "--list",
         metavar="list",
@@ -69,7 +49,7 @@ def main() -> None:
         help="the path to the yaml file of machine resource requirements: "
         + "core_count,bytes_of_RAM,minimum_disk_space",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-a",
         "--all",
         default=False,
@@ -78,14 +58,8 @@ def main() -> None:
         help="a flag to request output of all reservable machines per "
         + "requirement, bypassing the weighted filtering.",
     )
-    parser.add_argument(
-        "-v",
-        "--no_verify",
-        action="store_true",
-        help="Use this flag if you want to not verify the SSL session if it fails",
-    )
 
-    args = parser.parse_args()
+    args = parser.parser.parse_args()
     ip = args.ip
     user_token = args.token
     list = args.list
@@ -98,8 +72,10 @@ def main() -> None:
     reservations = get_reservations(user_token, ip, no_verify)
 
     with SessionHandler(user_token, urls, no_verify) as session:
-        computers = get_computers(session, urls)
-        disks = get_disks(session, urls)
+        computers = check_fields(session, urls.COMPUTER_URL)
+        disks = check_fields(session, urls.DISK_ITEM_URL)
+        disks.sort(key=operator.itemgetter("totalsize"))
+
         available, final_choices = reservable(
             session, reservations, computers, disks, requirements
         )
@@ -160,31 +136,6 @@ def get_reservations(user_token: str, ip: str, no_verify: bool) -> list:
 
     print("Reservations parsed")
     return parsed_reservations
-
-
-def get_disks(user_token: str, urls: str) -> list:
-    """Get the disks from GLPI
-
-    Args:
-        user_token (str):                the user's GLPI API token
-        urls (UrlInitialization object): the URL object
-
-    Returns:
-        disks (list): the sorted disks from GLPI
-    """
-    print(
-        "------------------------------------------------------------------"
-        + "--------------\nGetting disk items\n-----------------"
-        + "---------------------------------------------------------------"
-    )
-    disks = []
-    disk_fields = check_fields(user_token, urls.DISK_ITEM_URL)
-    for disk_field in disk_fields:
-        for disk in disk_field.json():
-            disks.append(json.loads(json.dumps(disk)))
-
-    disks.sort(key=operator.itemgetter("totalsize"))
-    return disks
 
 
 def reservable(  # noqa: C901

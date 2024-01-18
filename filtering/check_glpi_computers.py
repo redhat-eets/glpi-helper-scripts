@@ -13,10 +13,10 @@
 import sys
 
 sys.path.append("..")
-import argparse
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization
-from common.utils import print_final_help, get_computers
+from common.utils import print_final_help, check_fields
+from common.parser import argparser
 
 # Suppress InsecureRequestWarning caused by REST access without
 # certificate validation.
@@ -28,26 +28,9 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 def main() -> None:
     """Main function"""
     # Get the command line arguments from the user.
-    parser = argparse.ArgumentParser(
-        description="GLPI Computer REST reservation check."
-    )
-    parser.add_argument(
-        "-i",
-        "--ip",
-        metavar="ip",
-        type=str,
-        required=True,
-        help='the IP of the GLPI instance (example: "127.0.0.1")',
-    )
-    parser.add_argument(
-        "-t",
-        "--token",
-        metavar="user_token",
-        type=str,
-        required=True,
-        help="the user token string for authentication with GLPI",
-    )
-    parser.add_argument(
+    parser = argparser()
+    parser.parser.description = "GLPI Computer REST reservation check."
+    parser.parser.add_argument(
         "-c",
         "--concise",
         default=False,
@@ -56,13 +39,7 @@ def main() -> None:
         help="a flag for concise output of only the yaml, useful for "
         + "programmatic parsing",
     )
-    parser.add_argument(
-        "-v",
-        "--no_verify",
-        action="store_true",
-        help="Use this flag if you want to not verify the SSL session if it fails",
-    )
-    args = parser.parse_args()
+    args = parser.parser.parse_args()
     ip = args.ip
     user_token = args.token
     global concise
@@ -72,7 +49,7 @@ def main() -> None:
     urls = UrlInitialization(ip)
 
     with SessionHandler(user_token, urls, no_verify) as session:
-        print(get_computers(session, urls))
+        print(check_fields(session, urls.COMPUTER_URL))
 
     if not concise:
         print_final_help()

@@ -16,7 +16,6 @@
 import sys
 
 sys.path.append("..")
-import argparse
 import pexpect
 import requests
 from common.utils import (
@@ -24,45 +23,26 @@ from common.utils import (
     check_and_post,
     check_and_post_processor,
     check_and_post_processor_item,
-    check_and_post_operating_system_item,
     check_and_post_network_port,
-    check_and_post_network_port_ethernet,
-    check_and_post_device_memory,
     check_and_post_device_memory_item,
-    check_and_post_nic,
-    check_and_post_nic_item,
-    check_and_post_disk_item,
+    check_fields,
 )
 import common.format_dicts as format_dicts
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization
 from common.switches import Switches
+from common.parser import argparser
 
 
 def main() -> None:
     """Main function"""
     # Get the command line arguments from the user.
-    parser = argparse.ArgumentParser(
-        description="GLPI Computer REST upload example. NOTE: needs to "
+    parser = argparser()
+    parser.parser.description = (
+        "GLPI Computer REST upload example. NOTE: needs to "
         + "be run with root priviledges."
     )
-    parser.add_argument(
-        "-i",
-        "--ip",
-        metavar="ip",
-        type=str,
-        required=True,
-        help='the IP/URL of the GLPI instance (example: "127.0.0.1")',
-    )
-    parser.add_argument(
-        "-t",
-        "--token",
-        metavar="user_token",
-        type=str,
-        required=True,
-        help="the user token string for authentication with GLPI",
-    )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-rsa",
         "--rsa_path",
         metavar="rsa_key_path",
@@ -70,7 +50,7 @@ def main() -> None:
         required=False,
         help="the path to the rsa key for ssh into the CoreOS node",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-userver",
         "--username_server",
         metavar="server_username",
@@ -78,7 +58,7 @@ def main() -> None:
         required=True,
         help="the username of the CoreOS node",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-ipserver",
         "--ip_server",
         metavar="server_ip",
@@ -86,31 +66,31 @@ def main() -> None:
         required=True,
         help="the ip of the CoreOS node",
     )
-    parser.add_argument(
-        "-v",
-        "--no_verify",
-        action="store_true",
-        help="Use this flag if you want to not verify the SSL session if it fails",
-    )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-c",
         "--switch_config",
         metavar="switch_config",
         help="optional path to switch config YAML file",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-e",
         "--experiment",
         action="store_true",
         help="Use this flag if you want to append '_TEST' to the serial number",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-p",
         "--put",
         action="store_true",
         help="Use this flag if you want to only use PUT requests",
     )
-    args = parser.parse_args()
+    parser.parser.add_argument(
+        "-o",
+        "--overwrite",
+        action="store_true",
+        help="Use this flag if you want to overwrite existing names",
+    )
+    args = parser.parser.parse_args()
 
     user_token = args.token
     rsa_key = args.rsa_path
@@ -123,12 +103,15 @@ def main() -> None:
     TEST = args.experiment
     global PUT
     PUT = args.put
+    overwrite = args.overwrite
 
     urls = UrlInitialization(ip)
     switch_info = Switches(switch_config)
 
     with SessionHandler(user_token, urls, no_verify) as session:
-        post_to_glpi(session, rsa_key, server_username, server_ip, urls, switch_info)
+        post_to_glpi(
+            session, rsa_key, server_username, server_ip, urls, switch_info, overwrite
+        )
 
     print_final_help()
 
@@ -142,6 +125,7 @@ def post_to_glpi(  # noqa: C901
     server_ip: str,
     urls: UrlInitialization,
     switch_info: Switches,
+    overwrite: bool,
 ) -> None:
     """A method to post the JSON created to GLPI. This method calls numerous helper
        functions which create different parts of the JSON required, get fields from
@@ -154,6 +138,7 @@ def post_to_glpi(  # noqa: C901
         server_ip (str): The ip of the CoreOS node
         urls (UrlInitialization object): the URL object
         switch_info (Switches object): Contains information about lab switches
+        overwrite (bool): Flagged to overwrite existing names
     """
     print("Getting machine information\n")
     ssh_command = "ssh -o StrictHostKeyChecking=no "
@@ -237,22 +222,28 @@ def post_to_glpi(  # noqa: C901
     # NOTE: Different helper functions exist because of different syntax,
     #       field names, and formatting in the API.
     computer_type_id = check_and_post(
-        session, hostnamectl_dict["Chassis"].capitalize(), urls.COMPUTER_TYPE_URL
+        session,
+        urls.COMPUTER_TYPE_URL,
+        {"name": hostnamectl_dict["Chassis"].capitalize()},
     )
-    manufacturers_id = check_and_post(session, computer_type, urls.MANUFACTURER_URL)
-    computer_model_id = check_and_post(session, computer_model, urls.COMPUTER_MODEL_URL)
+    manufacturers_id = check_and_post(
+        session, urls.MANUFACTURER_URL, {"name": computer_type}
+    )
+    computer_model_id = check_and_post(
+        session, urls.COMPUTER_MODEL_URL, {"name": computer_model}
+    )
     processors_id = check_and_post_processor(session, cpu_dict, urls.CPU_URL, urls)
     operating_system_id = check_and_post(
-        session, os_dict["NAME"], urls.OPERATING_SYSTEM_URL
+        session, urls.OPERATING_SYSTEM_URL, {"name": os_dict["NAME"]}
     )
     operating_system_version_id = check_and_post(
-        session, os_dict["VERSION"], urls.OPERATING_SYSTEM_VERSION_URL
+        session, urls.OPERATING_SYSTEM_VERSION_URL, {"name": os_dict["VERSION"]}
     )
     operating_system_architecture_id = check_and_post(
-        session, architecture, urls.OPERATING_SYSTEM_ARCHITECTURE_URL
+        session, urls.OPERATING_SYSTEM_ARCHITECTURE_URL, {"name": architecture}
     )
     operating_system_kernel_version_id = check_and_post(
-        session, kernel, urls.OPERATING_SYSTEM_KERNEL_VERSION_URL
+        session, urls.OPERATING_SYSTEM_KERNEL_VERSION_URL, {"name": kernel}
     )
 
     # The final dictionary for the machine JSON to post.
@@ -276,34 +267,17 @@ def post_to_glpi(  # noqa: C901
 
     # Get the list of computers and check the serial number. If the serial
     # number matches then use a PUT to modify the cooresponding computer by ID.
-    glpi_fields_list = []
-    api_range = 0
-    api_increment = 50
-    more_fields = True
-    # Fixing the issue of not getting all data without ranges.
-    while more_fields:
-        range_url = (
-            urls.COMPUTER_URL
-            + "?range="
-            + str(api_range)
-            + "-"
-            + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
-            more_fields = False
-        else:
-            glpi_fields_list.append(glpi_fields)
-            api_range += api_increment
+    glpi_fields_list = check_fields(session, urls.COMPUTER_URL)
 
-    for glpi_fields in glpi_fields_list:
-        for glpi_computer in glpi_fields.json():
-            if glpi_computer["serial"] == serial_number:
-                global PUT
-                global COMPUTER_ID
-                PUT = True
-                COMPUTER_ID = glpi_computer["id"]
-                break
+    for glpi_computer in glpi_fields_list:
+        if glpi_computer["serial"] == serial_number:
+            global PUT
+            global COMPUTER_ID
+            PUT = True
+            COMPUTER_ID = glpi_computer["id"]
+            if glpi_computer["name"] != glpi_post["name"] and not overwrite:
+                glpi_post["name"] = glpi_computer["name"]
+            break
 
     # If the PUT flag is set then PUT the data to GLPI to modify the existing
     # machine, otherwise POST it to create a new machine.
@@ -333,17 +307,20 @@ def post_to_glpi(  # noqa: C901
         int(cpu_dict["Socket(s)"]),
     )
 
-    operating_system_id = check_and_post_operating_system_item(
+    check_and_post(
         session,
         urls.OPERATING_SYSTEM_ITEM_URL,
-        operating_system_id,
-        operating_system_version_id,
-        operating_system_architecture_id,
-        operating_system_kernel_version_id,
-        COMPUTER_ID,
-        "Computer",
+        {
+            "items_id": COMPUTER_ID,
+            "itemtype": "Computer",
+            "operatingsystems_id": operating_system_id,
+        },
+        {
+            "operatingsystemversions_id": operating_system_version_id,
+            "operatingsystemarchitectures_id": operating_system_architecture_id,
+            "operatingsystemkernelversions_id": operating_system_kernel_version_id,
+        },
     )
-
     # Create network devices.
     nic_ids = {}
     for name in nics_dict:
@@ -354,29 +331,39 @@ def post_to_glpi(  # noqa: C901
         nic_model_id = 0
         if "product" in nics_dict[name]:
             nic_model_id = check_and_post(
-                session, nics_dict[name]["product"], urls.DEVICE_NETWORK_CARD_MODEL_URL
+                session,
+                urls.DEVICE_NETWORK_CARD_MODEL_URL,
+                {"name": nics_dict[name]["product"]},
             )
 
         vendor = 0
         if "vendor" in nics_dict[name]:
             vendor = nics_dict[name]["vendor"]
 
-        nic_id = check_and_post_nic(
+        manufacturers_id = vendor
+        if vendor:
+            manufacturers_id = check_and_post(
+                session, urls.MANUFACTURER_URL, {"name": vendor}
+            )
+        nic_id = check_and_post(
             session,
             urls.DEVICE_NETWORK_CARD_URL,
-            name,
-            bandwidth,
-            vendor,
-            nic_model_id,
-            urls,
+            {
+                "designation": name,
+                "bandwidth": bandwidth,
+                "manufacturers_id": manufacturers_id,
+                "devicenetworkcardmodels_id": nic_model_id,
+            },
         )
-        nic_item_id = check_and_post_nic_item(
+        nic_item_id = check_and_post(
             session,
             urls.DEVICE_NETWORK_CARD_ITEM_URL,
-            COMPUTER_ID,
-            "Computer",
-            nic_id,
-            nics_dict[name]["serial"],
+            {
+                "items_id": COMPUTER_ID,
+                "itemtype": "Computer",
+                "devicenetworkcards_id": nic_id,
+                "mac": nics_dict[name]["serial"],
+            },
         )
         nic_ids[name] = nic_item_id
 
@@ -414,25 +401,35 @@ def post_to_glpi(  # noqa: C901
         if name in nic_ids:
             nic_id = nic_ids[name]
 
-        check_and_post_network_port_ethernet(
-            session, urls.NETWORK_PORT_ETHERNET_URL, network_port_id, speed, nic_id
+        check_and_post(
+            session,
+            urls.NETWORK_PORT_ETHERNET_URL,
+            {
+                "networkports_id": network_port_id,
+                "items_devicenetworkcards_id": nic_id,
+                "speed": speed,
+            },
         )
         logical_number += 1
 
     # Create Memory types.
     if "MemTotal:" in ram_dict:
         memory_type_id = check_and_post(
-            session, "Unspecified", urls.DEVICE_MEMORY_TYPE_URL
+            session, urls.DEVICE_MEMORY_TYPE_URL, {"name": "Unspecified"}
         )
-        manufacturers_id = check_and_post(session, "Unspecified", urls.MANUFACTURER_URL)
-        memory_id = check_and_post_device_memory(
+        manufacturers_id = check_and_post(
+            session, urls.MANUFACTURER_URL, {"name": "Unspecified"}
+        )
+        memory_id = check_and_post(
             session,
             urls.DEVICE_MEMORY_URL,
-            "Unspecified",
-            "Unspecified",
-            manufacturers_id,
-            ram_dict["MemTotal:"],
-            memory_type_id,
+            {
+                "designation": "Unspecified",
+                "frequence": "Unspecified",
+                "manufacturers_id": manufacturers_id,
+                "size_default": ram_dict["MemTotal:"],
+                "devicememorytypes_id": memory_type_id,
+            },
         )
 
         # Create Memory Items.
@@ -463,8 +460,15 @@ def post_to_glpi(  # noqa: C901
         else:
             size = float(disk_dict[disk_id]["Size"][:-1])
 
-        check_and_post_disk_item(
-            session, urls.DISK_ITEM_URL, COMPUTER_ID, "Computer", disk_id, size
+        check_and_post(
+            session,
+            urls.DISK_ITEM_URL,
+            {
+                "items_id": COMPUTER_ID,
+                "itemtype": "Computer",
+                "name": disk_id,
+                "totalsize": size,
+            },
         )
 
     return

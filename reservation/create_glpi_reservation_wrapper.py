@@ -10,50 +10,42 @@
 |------------------------------------------------------------------------------|
 """
 # Imports.
-import argparse
 import subprocess
 import sys
 import yaml
+
+sys.path.append("..")
+from common.parser import argparser
 
 
 def main():
     """Main function"""
     # Get the command line arguments from the user.
-    parser = argparse.ArgumentParser(description="GLPI Computer reservation wrapper.")
-    parser.add_argument(
-        "-i",
-        "--ip",
-        metavar="ip",
-        type=str,
-        required=True,
-        help='the IP/URL of the GLPI instance (example: "127.0.0.1")',
-    )
-    parser.add_argument(
-        "-t",
-        "--token",
-        metavar="user_token",
-        type=str,
-        required=True,
-        help="the user token string for authentication with GLPI",
-    )
-    parser.add_argument(
+    parser = argparser()
+    parser.parser.description = "GLPI Computer reservation wrapper."
+    parser.parser.add_argument(
         "-l",
         "--list",
         metavar="list",
         type=str,
         required=True,
-        help="the path to the yaml file of machines to reserve: ipmi_ip,"
-        + "ipmi_user,ipmi_pass,public_ip,{HA or PE}",
+        help="the path to the yaml file of machines to reserve",
     )
-    args = parser.parse_args()
+    args = parser.parser.parse_args()
     ip = args.ip
     user_token = args.token
     list = args.list
+    no_verify = args.no_verify
 
-    parse_list(ip, user_token, list)
+    parse_list(ip, user_token, list, no_verify)
 
 
-def parse_list(ip: str, user_token: str, list: str) -> None:
+def parse_list(
+    ip: str,
+    user_token: str,
+    list: str,
+    no_verify: bool,
+) -> None:
     """Method for parsing the input reservation YAML and calling
        create_glpi_reservation.py.
 
@@ -61,7 +53,8 @@ def parse_list(ip: str, user_token: str, list: str) -> None:
         ip (str):         The IP or hostname of the GLPI session
         user_token (str): The user token to use with GLPI
         list (str):       The YAML file path
-
+        no_verify (bool): If present, this will not verify the SSL session if it fails,
+                          allowing the script to proceed
     Returns:
         None
     """
@@ -74,71 +67,76 @@ def parse_list(ip: str, user_token: str, list: str) -> None:
     except OSError:
         sys.exit("can't open or parse %s" % (list))
 
-    for epic in reservations:
-        print("Epic: " + epic)
-        username = reservations[epic]["username"]
-        start = reservations[epic]["start"]
-        end = reservations[epic]["end"]
-        comment = reservations[epic]["comment"]
+    username = reservations["username"]
+    start = reservations["start"]
+    end = reservations["end"]
+    comment = reservations["comment"]
+    epic = reservations.get("jira", "")
+    if comment is None:
+        comment = ""
+
+    for server in reservations["servers"]:
+        print("\tServer: " + server)
+        if reservations["servers"][server] is not None:
+            if (
+                "username" in reservations["servers"][server]
+                and reservations["servers"][server]["username"] is not None
+            ):
+                username = reservations["servers"][server]["username"]
+            if (
+                "start" in reservations["servers"][server]
+                and reservations["servers"][server]["start"] is not None
+            ):
+                start = reservations["servers"][server]["start"]
+            if (
+                "end" in reservations["servers"][server]
+                and reservations["servers"][server]["end"] is not None
+            ):
+                end = reservations["servers"][server]["end"]
+            if (
+                "comment" in reservations["servers"][server]
+                and reservations["servers"][server]["comment"] is not None
+            ):
+                comment = reservations["servers"][server]["comment"]
+            if (
+                "epic" in reservations["servers"][server]
+                and reservations["servers"][server]["epic"] is not None
+            ):
+                epic = reservations["servers"][server]["epic"]
+        print("Calling create_glpi_reservation:")
+        command = [
+            "./create_glpi_reservation.py",
+            "-i",
+            ip,
+            "-t",
+            user_token,
+            "-u",
+            username,
+            "-b",
+            str(start),
+            "-e",
+            str(end),
+            "-j",
+            epic,
+            "-c",
+            comment,
+            "-s",
+            server,
+        ]
+        if no_verify:
+            command.extend(["-v"])
+        output = subprocess.check_output(command)
+        print(output.decode("utf-8"))
+        print("\n")
+
+        # Reset potentially overwritten variables.
+        username = reservations["username"]
+        start = reservations["start"]
+        end = reservations["end"]
+        comment = reservations["comment"]
+        epic = reservations.get("jira", "")
         if comment is None:
             comment = ""
-
-        for server in reservations[epic]["servers"]:
-            print("\tServer: " + server)
-            if reservations[epic]["servers"][server] is not None:
-                if (
-                    "username" in reservations[epic]["servers"][server]
-                    and reservations[epic]["servers"][server]["username"] is not None
-                ):
-                    username = reservations[epic]["servers"][server]["username"]
-                if (
-                    "start" in reservations[epic]["servers"][server]
-                    and reservations[epic]["servers"][server]["start"] is not None
-                ):
-                    start = reservations[epic]["servers"][server]["start"]
-                if (
-                    "end" in reservations[epic]["servers"][server]
-                    and reservations[epic]["servers"][server]["end"] is not None
-                ):
-                    end = reservations[epic]["servers"][server]["end"]
-                if (
-                    "comment" in reservations[epic]["servers"][server]
-                    and reservations[epic]["servers"][server]["comment"] is not None
-                ):
-                    comment = reservations[epic]["servers"][server]["comment"]
-
-            print("Calling create_glpi_reservation:")
-            output = subprocess.check_output(
-                [
-                    "./create_glpi_reservation",
-                    "-i",
-                    ip,
-                    "-t",
-                    user_token,
-                    "-u",
-                    username,
-                    "-b",
-                    str(start),
-                    "-e",
-                    str(end),
-                    "-j",
-                    epic,
-                    "-c",
-                    comment,
-                    "-s",
-                    server,
-                ]
-            )
-            print(output.decode("utf-8"))
-            print("\n")
-
-            # Reset potentially overwritten variables.
-            username = reservations[epic]["username"]
-            start = reservations[epic]["start"]
-            end = reservations[epic]["end"]
-            comment = reservations[epic]["comment"]
-            if comment is None:
-                comment = ""
 
     return
 

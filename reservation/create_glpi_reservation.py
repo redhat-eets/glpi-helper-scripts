@@ -13,36 +13,30 @@
 import sys
 
 sys.path.append("..")
-import argparse
+import requests
+
+from common.parser import argparser
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization
-from common.utils import check_field, check_fields, error, print_final_help
-import requests
+from common.utils import (
+    check_field,
+    error,
+    print_final_help,
+)
+
+# Suppress InsecureRequestWarning caused by REST access without
+# certificate validation.
+import urllib3
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 def main() -> None:
     """Main function"""
     # Get the command line arguments from the user.
-    parser = argparse.ArgumentParser(
-        description="GLPI Computer REST reservation check."
-    )
-    parser.add_argument(
-        "-i",
-        "--ip",
-        metavar="ip",
-        type=str,
-        required=True,
-        help='the IP/URL of the GLPI instance (example: "127.0.0.1")',
-    )
-    parser.add_argument(
-        "-t",
-        "--token",
-        metavar="user_token",
-        type=str,
-        required=True,
-        help="the user token string for authentication with GLPI",
-    )
-    parser.add_argument(
+    parser = argparser()
+    parser.parser.description = "GLPI Computer REST reservation check."
+    parser.parser.add_argument(
         "-u",
         "--user",
         metavar="username",
@@ -50,7 +44,7 @@ def main() -> None:
         required=True,
         help="the username string associated with the reservation",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-b",
         "--begin",
         metavar="begin",
@@ -59,7 +53,7 @@ def main() -> None:
         help="the beginning time associated with the reservation in "
         + 'format "YYYY-MM-DD HH:MM:SS"',
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-e",
         "--end",
         metavar="end",
@@ -68,7 +62,7 @@ def main() -> None:
         help="the ending time associated with the reservation in "
         + 'format "YYYY-MM-DD HH:MM:SS"',
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-j",
         "--jira",
         metavar="jira_id",
@@ -76,7 +70,7 @@ def main() -> None:
         required=False,
         help="the Jira epic ID associated with the reservation",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-c",
         "--comment",
         metavar="comment",
@@ -85,7 +79,7 @@ def main() -> None:
         help="a comment appended to the Jira epic ID to be associated with "
         + "the reservation",
     )
-    parser.add_argument(
+    parser.parser.add_argument(
         "-s",
         "--server",
         metavar="hostname",
@@ -95,7 +89,7 @@ def main() -> None:
         + " reservation (for instance "
         + '"machine.example.com")',
     )
-    args = parser.parse_args()
+    args = parser.parser.parse_args()
     ip = args.ip
     user_token = args.token
     username = args.user
@@ -104,6 +98,7 @@ def main() -> None:
     jira_id = args.jira
     comment = args.comment
     hostname = args.server
+    no_verify = args.no_verify
 
     if jira_id:
         final_comment = jira_id
@@ -114,7 +109,7 @@ def main() -> None:
 
     urls = UrlInitialization(ip)
 
-    with SessionHandler(user_token, urls) as session:
+    with SessionHandler(user_token, urls, no_verify) as session:
         create_reservations(
             session, username, hostname, begin, end, final_comment, urls
         )
@@ -142,11 +137,11 @@ def create_reservations(
     """
     print("Creating reservation:\n")
 
-    user_id = check_field(session, username, urls.USER_URL)
+    user_id = check_field(session, urls.USER_URL, {"name": username})
     if user_id is None:
         error("User " + username + " is not present.")
 
-    computer_id = check_field(session, hostname, urls.COMPUTER_URL)
+    computer_id = check_field(session, urls.COMPUTER_URL, {"name": hostname})
     if computer_id is None:
         error("Computer " + hostname + " is not present.")
 
@@ -197,17 +192,10 @@ def check_reservation_item(
     """
     # Check if the field is present at the URL endpoint.
     print("Checking GLPI Reservation fields:")
-
-    glpi_fields_list = check_fields(session, url)
-
-    for glpi_fields in glpi_fields_list:
-        for glpi_field in glpi_fields.json():
-            if (
-                glpi_field["items_id"] == item_id
-                and glpi_field["itemtype"] == item_type
-            ):
-                return glpi_field["id"]
-    return None
+    id = check_field(
+        session, url, search_criteria={"items_id": item_id, "itemtype": item_type}
+    )
+    return id
 
 
 def post_reservation(

@@ -77,12 +77,18 @@ class UrlInitialization:
 
         # Disk
         self.DISK_ITEM_URL = self.BASE_URL + "Item_Disk/"
-        self.LOCATION_URL = self.BASE_URL + "Location/"
+
+        # Data Center/Rack
+        self.DATACENTER_URL = self.BASE_URL + "DataCenter"
+        self.DCROOM_URL = self.BASE_URL + "DCRoom"
+        self.RACK_URL = self.BASE_URL + "Rack"
+        self.ITEM_RACK_URL = self.BASE_URL + "Item_Rack"
 
         # MISC
         self.USER_URL = self.BASE_URL + "USER/"
         self.LOCATION_URL = self.BASE_URL + "Location/"
         self.BMC_URL = self.BASE_URL + "PluginFieldsComputerbmcaddres/"
+        self.GROUP_URL = self.BASE_URL + "Group/"
 
         # Redfish API URLS (Supermicro rev 1.0a)
         self.REDFISH_SYSTEM_GENERIC = "/redfish/v1/Systems"
