@@ -629,7 +629,7 @@ def post_to_glpi(  # noqa: C901
                 glpi_post["name"] = glpi_computer["name"]
             break
 
-    # Add BMC Address to the Computer if overwriting existing computer, 
+    # Add BMC Address to the Computer if overwriting existing computer,
     # or creating a new one.
     if overwrite or not PUT:
         plugin_response = check_fields(session, urls.BMC_URL)
