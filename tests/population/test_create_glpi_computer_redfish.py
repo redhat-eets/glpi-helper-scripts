@@ -7,7 +7,7 @@ import population.create_glpi_computer_redfish as redfish
 @pytest.mark.parametrize(
     "public_ip, sku, system_json, expected_result, expected_print",
     [
-        # DNS works 
+        # DNS works
         (
             "127.0.0.1",
             "ABC123",
