@@ -201,40 +201,22 @@ def main() -> None:
         timeout=20,
     )
 
-    REDFISH_OBJ.login(auth="session")
+    with redfish.redfish_client(
+        base_url=REDFISH_BASE_URL,
+        username=ipmi_username,
+        password=ipmi_password,
+        default_prefix="/redfish/v1",
+        timeout=20,
+    ) as REDFISH_OBJ:
+        update_redfish_system_uri(REDFISH_OBJ, urls)
 
-    update_redfish_system_uri(REDFISH_OBJ, urls)
+        system_json = get_redfish_system(REDFISH_OBJ)
+        cpu_list = get_processor(REDFISH_OBJ)
+        ram_list = get_memory(REDFISH_OBJ)
+        storage_list = get_storage(REDFISH_OBJ)
 
-    system_json = get_redfish_system(REDFISH_OBJ)
-    processor_output = get_processor(REDFISH_OBJ)
+        nic_list, port_list = get_network(REDFISH_OBJ)
 
-    if processor_output:
-        cpu_list = list(processor_output)
-    memory_output = get_memory(REDFISH_OBJ)
-    if memory_output:
-        ram_list = list(memory_output)
-    storage_output = get_storage(REDFISH_OBJ)
-    if storage_output:
-        storage_list = list(storage_output)
-    else:
-        storage_list = []
-
-    network_output = get_network(REDFISH_OBJ)
-    if network_output:
-        nic_output, port_output = network_output
-    else:
-        nic_output = False
-        port_output = False
-    if nic_output:
-        nic_list = list(nic_output)
-    else:
-        nic_list = []
-    if port_output:
-        port_list = list(port_output)
-    else:
-        port_list = []
-
-    REDFISH_OBJ.logout()
     if no_dns:
         hostname = no_dns
     else:
@@ -277,20 +259,6 @@ def main() -> None:
     print_final_help()
 
 
-def check_resp_redfish_api(response: redfish.rest.v1.RestResponse) -> int:
-    """Method for retrieving the status code for a Redfish API call
-
-    Args:
-        response (Redfish Rest Response object): The Redfish response object
-
-    Returns:
-        int: The status code of the redfish response
-    """
-    response = str(response)
-    response = response.split()
-    return int(response[0])
-
-
 def update_redfish_system_uri(
     redfish_session: redfish.rest.v1.HttpClient, urls: UrlInitialization
 ) -> None:
@@ -304,8 +272,8 @@ def update_redfish_system_uri(
     print("Getting Redfish system URI:")
     system_summary = redfish_session.get(urls.REDFISH_SYSTEM_GENERIC)
 
-    if check_resp_redfish_api(system_summary) != 200:
-        return False
+    if system_summary.status != 200:
+        return None
     else:
         system_json = json.loads(system_summary.text)
         global REDFISH_SYSTEM_URI
@@ -338,8 +306,8 @@ def get_redfish_system(redfish_session: redfish.rest.v1.HttpClient) -> dict:
     print("Getting Redfish system information:")
     system_summary = redfish_session.get(REDFISH_SYSTEM_URI)
 
-    if check_resp_redfish_api(system_summary) != 200:
-        return False
+    if system_summary.text != 200:
+        return {}
     else:
         return json.loads(system_summary.text)
 
@@ -356,15 +324,11 @@ def get_processor(redfish_session: redfish.rest.v1.HttpClient) -> list:
     print("Getting Redfish processor information:")
     processor_summary = redfish_session.get(REDFISH_PROCESSOR_URI)
     cpu_list = []
-    if "Members" in processor_summary.text:
+    if "Members" in processor_summary.text and processor_summary.status == 200:
         for cpu in json.loads(processor_summary.text)["Members"]:
             cpu_info = redfish_session.get(cpu["@odata.id"])
             cpu_list.append(cpu_info.text)
-
-    if check_resp_redfish_api(processor_summary) != 200:
-        return False
-    else:
-        return cpu_list
+    return cpu_list
 
 
 def get_memory(redfish_session: redfish.rest.v1.HttpClient) -> list:
@@ -379,15 +343,11 @@ def get_memory(redfish_session: redfish.rest.v1.HttpClient) -> list:
     print("Getting Redfish memory information:")
     memory_summary = redfish_session.get(REDFISH_MEMORY_URI)
     ram_list = []
-    if "Members" in memory_summary.text:
+    if "Members" in memory_summary.text and memory_summary.status != 200:
         for ram in json.loads(memory_summary.text)["Members"]:
             ram_info = redfish_session.get(ram["@odata.id"])
             ram_list.append(ram_info.text)
-
-    if check_resp_redfish_api(memory_summary) != 200:
-        return False
-    else:
-        return ram_list
+    return ram_list
 
 
 def get_storage(redfish_session: redfish.rest.v1.HttpClient) -> list:  # noqa: C901
@@ -402,11 +362,11 @@ def get_storage(redfish_session: redfish.rest.v1.HttpClient) -> list:  # noqa: C
     print("Getting Redfish storage information:")
     storage_summary = redfish_session.get(REDFISH_STORAGE_URI)
 
-    hp = False
     drive_list = []
     if (
         "Members" in storage_summary.text
         and json.loads(storage_summary.text)["Members"] != []
+        and storage_summary.status == 200
     ):
         for storage in json.loads(storage_summary.text)["Members"]:
             storage_info = redfish_session.get(storage["@odata.id"])
@@ -422,7 +382,6 @@ def get_storage(redfish_session: redfish.rest.v1.HttpClient) -> list:  # noqa: C
     system_summary = get_redfish_system(redfish_session)
     if "Oem" in system_summary:
         if "Hp" in system_summary["Oem"] or "Hpe" in system_summary["Oem"]:
-            hp = True
             smart_storage_info = None
             if "Hp" in system_summary["Oem"]:
                 if "Links" in system_summary["Oem"]["Hp"]:
@@ -466,11 +425,7 @@ def get_storage(redfish_session: redfish.rest.v1.HttpClient) -> list:  # noqa: C
                                                     hp_drive["@odata.id"]
                                                 )
                                                 drive_list.append(hp_drive_info.text)
-
-    if check_resp_redfish_api(storage_summary) != 200 and not hp:
-        return False
-    else:
-        return drive_list
+    return drive_list
 
 
 def get_network(redfish_session: redfish.rest.v1.HttpClient) -> list:
@@ -487,7 +442,7 @@ def get_network(redfish_session: redfish.rest.v1.HttpClient) -> list:
     nic_list = []
     port_list = []
     eth_list = []
-    if "Members" in network_summary.text:
+    if "Members" in network_summary.text and network_summary.status == 200:
         for nic in json.loads(network_summary.text)["Members"]:
             network_interface = redfish_session.get(nic["@odata.id"])
             if (
@@ -519,8 +474,6 @@ def get_network(redfish_session: redfish.rest.v1.HttpClient) -> list:
             ethernet_interface = redfish_session.get(eth["@odata.id"])
             eth_list.append(ethernet_interface.text)
 
-    if check_resp_redfish_api(network_summary) != 200:
-        return False
     else:
         if port_list:
             return nic_list, port_list
