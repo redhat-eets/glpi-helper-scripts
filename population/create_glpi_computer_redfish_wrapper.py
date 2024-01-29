@@ -146,9 +146,6 @@ def build_command(split_line: list, args: argparse.Namespace) -> list:
         split_line (list): Information about a machine, split into a list
         args (argparse.Namespace): Arguments passed in by the user via the CLI
     """
-    import logging
-
-    logging.warning(args)
     command = [
         "./create_glpi_computer_redfish.py",
         "-g",
