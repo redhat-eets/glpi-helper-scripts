@@ -12,9 +12,11 @@
 # Imports.
 import subprocess
 import sys
+import argparse
 
 sys.path.append("..")
 from common.parser import argparser
+from prettytable import PrettyTable
 
 
 def main():
@@ -93,86 +95,20 @@ def main():
         + "integration/sunbird/example_sunbird.yml",
     )
     args = parser.parser.parse_args()
-    general_config = args.general_config
-    user_token = args.token
-    list = args.list
-    no_dns = args.no_dns
-    sku = args.sku
-    ip = args.ip
-    switch_config = args.switch_config
-    no_verify = args.no_verify
-    put = args.put
-    test = args.experiment
-    overwrite = args.overwrite
-    sunbird_username = args.sunbird_username
-    sunbird_password = args.sunbird_password
-    sunbird_url = args.sunbird_url
-    sunbird_config = args.sunbird_config
-    parse_list(
-        general_config,
-        user_token,
-        list,
-        no_dns,
-        sku,
-        ip,
-        switch_config,
-        no_verify,
-        put,
-        test,
-        overwrite,
-        sunbird_username,
-        sunbird_password,
-        sunbird_url,
-        sunbird_config,
-    )
+    parse_list(args)
 
 
-def parse_list(
-    general_config: str,
-    user_token: str,
-    list: str,
-    no_dns: str,
-    sku: bool,
-    ip: str,
-    switch_config: str,
-    no_verify: bool,
-    put: bool,
-    experiment: bool,
-    overwrite: bool,
-    sunbird_username: str,
-    sunbird_password: str,
-    sunbird_url: str,
-    sunbird_config: str,
-):
+def parse_list(args: argparse.Namespace):
     """Method to create a REST session, getting the session_token and updating
     headers accrodingly. Return the session for further use.
 
     Args:
-        general_config (str): The path to the YAML for the general config
-        user_token (str): The user token string for authentication with GLPI
-        list (str): The path to the list of machines in the format: ipmi_ip,ipmi_user,
-                    ipmi_pass,public_ip,lab
-        no_dns (str): Name to use for system instead of hostname or serial number
-        sku (bool): Whether or not to use the SKU instead of the serial number of the
-                    system
-        ip (str): The IP of the GLPI instance
-        switch_config (str): The path to the YAML for the switch config
-        no_verify (bool): If present, this will not verify the SSL session if it fails,
-                          allowing the script to proceed
-        put (bool): If present, this will make the script only do PUT requests to GLPI
-        experiment (bool): If present, this will append '_TEST' to the serial number of
-                           the device
-        overwrite (bool): If present, flagged to overwrite existing names with the
-                          default hostname
-        sunbird_username (str): Sunbird username
-        sunbird_password (str): Sunbird password
-        sunbird_url (str): Sunbird URL
-        sunbird_config (str): The path to the YAML for the sunbird config
+        args (argparse.Namespace): Arguments passed in by the user via the CLI
     """
     print("Parsing machine file\n")
     machine_list = ""
     try:
-        f = open(list, "r")
+        f = open(args.list, "r")
         machine_list = f.readlines()
         f.close()
     except FileNotFoundError:
@@ -184,23 +120,7 @@ def parse_list(
             split_line = line.split(",")
             if len(split_line) == 5:
                 print("Calling create_glpi_computer_redfish for line: " + line)
-                command = build_command(
-                    split_line,
-                    general_config,
-                    user_token,
-                    ip,
-                    no_dns,
-                    sku,
-                    switch_config,
-                    no_verify,
-                    put,
-                    experiment,
-                    overwrite,
-                    sunbird_username,
-                    sunbird_password,
-                    sunbird_url,
-                    sunbird_config,
-                )
+                command = build_command(split_line, args)
                 try:
                     output = subprocess.check_output(command, stderr=subprocess.STDOUT)
                     print(output.decode("utf-8"))
@@ -208,7 +128,7 @@ def parse_list(
                 except subprocess.CalledProcessError as e:
                     # Capture the error message and add it to the list
                     full_error = e.output.decode().strip()
-                    print("Error:", full_error.splitlines()[-1])
+                    print("Error:", full_error)
                     error_messages[split_line[0].strip()] = full_error.splitlines()[-1]
                 print("\n")
             else:
@@ -218,54 +138,23 @@ def parse_list(
     return
 
 
-def build_command(
-    split_line: list,
-    general_config: str,
-    user_token: str,
-    ip: str,
-    no_dns: str,
-    sku: bool,
-    switch_config: str,
-    no_verify: bool,
-    put: bool,
-    experiment: bool,
-    overwrite: bool,
-    sunbird_username: str,
-    sunbird_password: str,
-    sunbird_url: str,
-    sunbird_config: str,
-) -> list:
+def build_command(split_line: list, args: argparse.Namespace) -> list:
     """Method to create a REST session, getting the session_token and updating
     headers accrodingly. Return the session for further use.
 
     Args:
         split_line (list): Information about a machine, split into a list
-        general_config (str): The path to the YAML for the general config
-        user_token (str): The user token string for authentication with GLPI
-        ip (str): The IP of the GLPI instance
-
-        no_dns (str): Name to use for system instead of hostname or serial number
-        sku (bool): Whether or not to use the SKU instead of the serial number of the
-                    system
-        switch_config (str): The path to the YAML for the switch config
-        no_verify (bool): If present, this will not verify the SSL session if it fails,
-                          allowing the script to proceed
-        put (bool): If present, this will make the script only do PUT requests to GLPI
-        experiment (bool): If present, this will append '_TEST' to the serial number of
-                           the device
-        overwrite (bool): If present, flagged to overwrite existing names with the
-                          default hostname
-        sunbird_username (str): Sunbird username
-        sunbird_password (str): Sunbird password
-        sunbird_url (str): Sunbird URL
-        sunbird_config (str): The path to the YAML for the sunbird config
+        args (argparse.Namespace): Arguments passed in by the user via the CLI
     """
+    import logging
+
+    logging.warning(args)
     command = [
         "./create_glpi_computer_redfish.py",
         "-g",
-        general_config,
+        args.general_config,
         "-t",
-        user_token,
+        args.token,
         "--ipmi_ip",
         split_line[0].strip(),
         "--ipmi_user",
@@ -277,35 +166,35 @@ def build_command(
         "--lab",
         split_line[4].strip(),
         "-i",
-        ip,
+        args.ip,
     ]
-    if no_dns:
-        command.extend(["-n", no_dns])
-    if sku:
+    if args.no_dns:
+        command.extend(["-n", args.no_dns])
+    if args.sku:
         command.extend(["-s"])
-    if switch_config:
-        command.extend(["-c", switch_config])
-    if no_verify:
+    if args.switch_config:
+        command.extend(["-c", args.switch_config])
+    if args.no_verify:
         command.extend(["-v"])
-    if put:
+    if args.put:
         command.extend(["-p"])
-    if experiment:
+    if args.experiment:
         command.extend(["-e"])
-    if overwrite:
+    if args.overwrite:
         command.extend(["-o"])
-    if sunbird_username and sunbird_password and sunbird_url:
+    if args.sunbird_username and args.sunbird_password and args.sunbird_url:
         command.extend(
             [
                 "-U",
-                sunbird_username,
+                args.sunbird_username,
                 "-P",
-                sunbird_password,
+                args.sunbird_password,
                 "-S",
-                sunbird_url,
+                args.sunbird_url,
             ]
         )
-    if sunbird_config:
-        command.extend(["-C", sunbird_config])
+    if args.sunbird_config:
+        command.extend(["-C", args.sunbird_config])
     return command
 
 
@@ -317,28 +206,11 @@ def print_error_table(error_messages: dict) -> None:
         error_messages (dict[str, str]): Dictionary of BMC IP's and their errors
     """
     if error_messages:
-        max_message_length = max(len(error_messages[ip]) for ip in error_messages)
-        max_bmc_ip = max(len(ip) for ip in error_messages)
-        table_width = max(max_message_length + max_bmc_ip + 9, 54)
-
-        print("\nErrors:")
-        print("+" + "-" * table_width + "+")
-        print(
-            (
-                f"| {'BMC IP':^{max_bmc_ip + 2}} | "
-                f"{'Error Message':^{max_message_length + 2}} |"
-            )
-        )
-        print("+" + "-" * table_width + "+")
+        table = PrettyTable()
+        table.field_names = ["BMC IP", "Error Message"]
         for error in error_messages:
-            print(
-                (
-                    f"| {error:^{max_bmc_ip + 2}} | "
-                    f"{error_messages[error]:^{max_message_length + 2}} |"
-                )
-            )
-
-        print("+" + "-" * table_width + "+")
+            table.add_row([error, error_messages[error]])
+        print(table)
     else:
         print("No errors detected!")
         print("\n")

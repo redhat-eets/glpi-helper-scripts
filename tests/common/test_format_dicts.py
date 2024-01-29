@@ -1,7 +1,3 @@
-import sys
-
-sys.path.append("..")
-
 from pytest import mark
 
 import common.format_dicts as format_dicts

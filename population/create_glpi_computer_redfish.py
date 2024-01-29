@@ -233,8 +233,10 @@ def main() -> None:
         port_list = list(port_output)
     else:
         port_list = []
-
-    REDFISH_OBJ.logout()
+    try:
+        REDFISH_OBJ.logout()
+    except redfish.rest.v1.BadRequestError:
+        pass
     if no_dns:
         hostname = no_dns
     else:
