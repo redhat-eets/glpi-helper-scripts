@@ -1,8 +1,8 @@
 # Use ubi9-minimal as base image
 FROM redhat/ubi9-minimal
 
-# Install dnf pkgs needed for ldap and nslookup
-RUN microdnf -y install python3-pip openldap-clients bind-utils
+# Install dnf pkgs needed for ldap 
+RUN microdnf -y install python3-pip openldap-clients
 
 # Set the working directory in the container
 WORKDIR /usr/src/app
