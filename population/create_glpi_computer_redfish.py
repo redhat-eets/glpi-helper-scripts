@@ -193,14 +193,6 @@ def main() -> None:
     global REDFISH_BASE_URL
     REDFISH_BASE_URL = "https://" + ipmi_ip
 
-    REDFISH_OBJ = redfish.redfish_client(
-        base_url=REDFISH_BASE_URL,
-        username=ipmi_username,
-        password=ipmi_password,
-        default_prefix="/redfish/v1",
-        timeout=20,
-    )
-
     with redfish.redfish_client(
         base_url=REDFISH_BASE_URL,
         username=ipmi_username,
@@ -306,7 +298,7 @@ def get_redfish_system(redfish_session: redfish.rest.v1.HttpClient) -> dict:
     print("Getting Redfish system information:")
     system_summary = redfish_session.get(REDFISH_SYSTEM_URI)
 
-    if system_summary.text != 200:
+    if system_summary.status != 200:
         return {}
     else:
         return json.loads(system_summary.text)
@@ -322,10 +314,11 @@ def get_processor(redfish_session: redfish.rest.v1.HttpClient) -> list:
         cpu_list: Information about processors
     """
     print("Getting Redfish processor information:")
-    processor_summary = redfish_session.get(REDFISH_PROCESSOR_URI)
+    processor_response = redfish_session.get(REDFISH_PROCESSOR_URI)
     cpu_list = []
-    if "Members" in processor_summary.text and processor_summary.status == 200:
-        for cpu in json.loads(processor_summary.text)["Members"]:
+    if processor_response.status == 200:
+        processor_summary = processor_response.dict
+        for cpu in processor_summary.get("Members", []):
             cpu_info = redfish_session.get(cpu["@odata.id"])
             cpu_list.append(cpu_info.text)
     return cpu_list
@@ -341,10 +334,11 @@ def get_memory(redfish_session: redfish.rest.v1.HttpClient) -> list:
         ram_list: Information about RAM
     """
     print("Getting Redfish memory information:")
-    memory_summary = redfish_session.get(REDFISH_MEMORY_URI)
+    memory_response = redfish_session.get(REDFISH_MEMORY_URI)
     ram_list = []
-    if "Members" in memory_summary.text and memory_summary.status != 200:
-        for ram in json.loads(memory_summary.text)["Members"]:
+    if memory_response.status != 200:
+        memory_summary = memory_response.dict
+        for ram in memory_summary.get("Members", []):
             ram_info = redfish_session.get(ram["@odata.id"])
             ram_list.append(ram_info.text)
     return ram_list
