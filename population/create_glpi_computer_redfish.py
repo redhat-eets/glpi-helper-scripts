@@ -17,6 +17,7 @@ import sys
 
 sys.path.append("..")
 import json
+import re
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization, validate_url
 from common.utils import (
@@ -628,11 +629,15 @@ def post_to_glpi(  # noqa: C901
                 glpi_post["name"] = glpi_computer["name"]
             break
 
-    # Add BMC Address to the Computer
-    plugin_response = check_fields(session, urls.BMC_URL)
-    glpi_post = update_bmc_address(
-        glpi_post, plugin_response, COMPUTER_ID, REDFISH_BASE_URL, comment, PUT
-    )
+    # Add BMC Address to the Computer if overwriting existing computer,
+    # or creating a new one.
+    if overwrite or not PUT:
+        plugin_response = check_fields(session, urls.BMC_URL)
+        glpi_post = update_bmc_address(
+            glpi_post, plugin_response, REDFISH_BASE_URL, comment
+        )
+    else:
+        print("Leaving 'BMC Address' field unchanged...")
 
     # If the PUT flag is set then PUT the data to GLPI to modify the existing
     # machine, otherwise POST it to create a new machine.
@@ -884,20 +889,16 @@ def post_to_glpi(  # noqa: C901
 def update_bmc_address(
     glpi_post: dict,
     plugin_response: list,
-    computer_id: int,
     redfish_base_url: str,
     comment: str,
-    put: bool,
 ) -> dict:
     """Add BMC address to glpi_post
 
     Args:
         glpi_post (dict): Contains information about a Computer to be passed to GLPI
         plugin_response (list): list of requests objects returned by BMC API endpoint
-        computer_id (int): ID of the computer associated with the BMC Address
         redfish_base_url (str): URL used to connect to Redfish
         comment (str): Comment of computer in GLPI. None if this field is empty
-        put (bool): If this computer already exists in GLPI
 
     Returns:
         glpi_post (dict): Contains information about a Computer to be passed to GLPI
@@ -909,10 +910,8 @@ def update_bmc_address(
             + "adding the BMC address to the comments."
         )
     else:
-        print("Checking the 'BMC Address' field...")
-        glpi_post = set_bmc_address_field(
-            glpi_post, plugin_response, computer_id, redfish_base_url, put
-        )
+        print("Setting the 'BMC Address' field...")
+        glpi_post = set_bmc_address_field(glpi_post, redfish_base_url)
 
     return glpi_post
 
@@ -935,6 +934,12 @@ def add_bmc_address_to_comments(
             glpi_post["comment"] = (
                 comment + "\nBMC Address: " + redfish_base_url.partition("https://")[2]
             )
+        else:
+            # replace IP address within comment body
+            pattern = r"BMC Address: (\d+\.\d+\.\d+\.\d+)"
+            replacement = f'BMC Address: {redfish_base_url.partition("https://")[2]}'
+            updated_text = re.sub(pattern, replacement, comment)
+            glpi_post["comment"] = updated_text
     else:
         glpi_post["comment"] = (
             "BMC Address: " + redfish_base_url.partition("https://")[2]
@@ -945,29 +950,16 @@ def add_bmc_address_to_comments(
 
 def set_bmc_address_field(
     glpi_post: dict,
-    plugin_response: list,
-    computer_id: int,
     redfish_base_url: str,
-    put: bool,
 ) -> dict:
-    """Set BMC address field of GLPI post if it's empty.
-
+    """Set BMC address field of GLPI post
     Args:
         glpi_post (dict): Contains information about a Computer to be passed to GLPI
-        plugin_response (list): list of requests objects returned by  BMC API endpoint
-        computer_id (int): ID of the computer associated with the BMC Address
         redfish_base_url (str): URL used to connect to Redfish
-        put (bool): If this computer already exists in GLPI
 
     Returns:
         glpi_post (dict): Contains information about a Computer to be passed to GLPI
     """
-    if put:
-        for computer in plugin_response:
-            if computer["items_id"] == computer_id:
-                if computer["bmcaddressfield"]:
-                    print("Leaving 'BMC Address' field unchanged...")
-                    return glpi_post
     glpi_post["bmcaddressfield"] = redfish_base_url.partition("https://")[2]
     print("Updating BMC Address Field...")
     return glpi_post
