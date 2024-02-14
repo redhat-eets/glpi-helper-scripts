@@ -1,7 +1,6 @@
 from pytest import mark
 
 import common.format_dicts as format_dicts
-from pytest import mark
 
 
 def test_strip_dict():
