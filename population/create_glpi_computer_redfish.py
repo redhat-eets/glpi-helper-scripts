@@ -52,7 +52,7 @@ def main() -> None:
         "-g",
         "--general_config",
         metavar="general_config",
-        help="path to general config YAML file, " + "see general_config_example.yaml",
+        help="path to general config YAML file, see general_config_example.yaml",
         required=True,
     )
     parser.parser.add_argument(
