@@ -207,7 +207,6 @@ def main() -> None:
         cpu_list = get_processor(REDFISH_OBJ)
         ram_list = get_memory(REDFISH_OBJ)
         storage_list = get_storage(REDFISH_OBJ)
-
         nic_list, port_list = get_network(REDFISH_OBJ)
 
     if no_dns:
