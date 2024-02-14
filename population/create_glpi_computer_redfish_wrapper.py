@@ -43,7 +43,7 @@ def main():
         metavar="no_dns",
         type=str,
         help="Use this flag if you want to use a custom string as the"
-        + "name of this machine instead of using its DNS via nslookup",
+        + "name of this machine instead of using DNS",
     )
     parser.parser.add_argument(
         "-s",
