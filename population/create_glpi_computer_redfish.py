@@ -14,9 +14,11 @@
 """
 # Imports.
 import sys
+import socket
 
 sys.path.append("..")
 import json
+import re
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization, validate_url
 from common.utils import (
@@ -30,7 +32,6 @@ from common.switches import Switches
 from common.parser import argparser
 import redfish
 import requests
-import subprocess
 import yaml
 
 # Suppress InsecureRequestWarning caused by REST access to Redfish without
@@ -52,7 +53,7 @@ def main() -> None:
         "-g",
         "--general_config",
         metavar="general_config",
-        help="path to general config YAML file, " + "see general_config_example.yaml",
+        help="path to general config YAML file, see general_config_example.yaml",
         required=True,
     )
     parser.parser.add_argument(
@@ -96,7 +97,7 @@ def main() -> None:
         metavar="no_dns",
         type=str,
         help="Use this flag if you want to use a custom string as the"
-        + "name of this machine instead of using its DNS via nslookup",
+        + "name of this machine instead of using DNS",
     )
     parser.parser.add_argument(
         "-s",
@@ -193,66 +194,25 @@ def main() -> None:
     global REDFISH_BASE_URL
     REDFISH_BASE_URL = "https://" + ipmi_ip
 
-    REDFISH_OBJ = redfish.redfish_client(
+    with redfish.redfish_client(
         base_url=REDFISH_BASE_URL,
         username=ipmi_username,
         password=ipmi_password,
         default_prefix="/redfish/v1",
         timeout=20,
-    )
+    ) as REDFISH_OBJ:
+        update_redfish_system_uri(REDFISH_OBJ, urls)
 
-    REDFISH_OBJ.login(auth="session")
+        system_json = get_redfish_system(REDFISH_OBJ)
+        cpu_list = get_processor(REDFISH_OBJ)
+        ram_list = get_memory(REDFISH_OBJ)
+        storage_list = get_storage(REDFISH_OBJ)
+        nic_list, port_list = get_network(REDFISH_OBJ)
 
-    update_redfish_system_uri(REDFISH_OBJ, urls)
-
-    system_json = get_redfish_system(REDFISH_OBJ)
-    processor_output = get_processor(REDFISH_OBJ)
-
-    if processor_output:
-        cpu_list = list(processor_output)
-    memory_output = get_memory(REDFISH_OBJ)
-    if memory_output:
-        ram_list = list(memory_output)
-    storage_output = get_storage(REDFISH_OBJ)
-    if storage_output:
-        storage_list = list(storage_output)
-    else:
-        storage_list = []
-
-    network_output = get_network(REDFISH_OBJ)
-    if network_output:
-        nic_output, port_output = network_output
-    else:
-        nic_output = False
-        port_output = False
-    if nic_output:
-        nic_list = list(nic_output)
-    else:
-        nic_list = []
-    if port_output:
-        port_list = list(port_output)
-    else:
-        port_list = []
-    REDFISH_OBJ.logout()
     if no_dns:
         hostname = no_dns
     else:
-        try:
-            hostname_raw = str(subprocess.check_output(["nslookup", public_ip]))
-        except subprocess.CalledProcessError:
-            if (
-                sku
-                and "dell" in system_json["Manufacturer"].lower()
-                and "SKU" in system_json
-            ):
-                print("nslookup not working, using SKU as name instead")
-                hostname = system_json["SKU"]
-            else:
-                print("nslookup not working, using SerialNumber as name instead")
-                hostname = system_json["SerialNumber"]
-        else:
-            # NOTE: Not a typo, there are escaped newlines in nslookup apparently.
-            hostname = strip_hostname(hostname_raw.split("\\n"))
+        hostname = get_hostname(public_ip, sku, system_json)
 
     with SessionHandler(user_token, urls, no_verify) as session:
         post_to_glpi(
@@ -276,20 +236,6 @@ def main() -> None:
     print_final_help()
 
 
-def check_resp_redfish_api(response: redfish.rest.v1.RestResponse) -> int:
-    """Method for retrieving the status code for a Redfish API call
-
-    Args:
-        response (Redfish Rest Response object): The Redfish response object
-
-    Returns:
-        int: The status code of the redfish response
-    """
-    response = str(response)
-    response = response.split()
-    return int(response[0])
-
-
 def update_redfish_system_uri(
     redfish_session: redfish.rest.v1.HttpClient, urls: UrlInitialization
 ) -> None:
@@ -303,8 +249,8 @@ def update_redfish_system_uri(
     print("Getting Redfish system URI:")
     system_summary = redfish_session.get(urls.REDFISH_SYSTEM_GENERIC)
 
-    if check_resp_redfish_api(system_summary) != 200:
-        return False
+    if system_summary.status != 200:
+        return None
     else:
         system_json = json.loads(system_summary.text)
         global REDFISH_SYSTEM_URI
@@ -337,8 +283,8 @@ def get_redfish_system(redfish_session: redfish.rest.v1.HttpClient) -> dict:
     print("Getting Redfish system information:")
     system_summary = redfish_session.get(REDFISH_SYSTEM_URI)
 
-    if check_resp_redfish_api(system_summary) != 200:
-        return False
+    if system_summary.status != 200:
+        return {}
     else:
         return json.loads(system_summary.text)
 
@@ -353,17 +299,14 @@ def get_processor(redfish_session: redfish.rest.v1.HttpClient) -> list:
         cpu_list: Information about processors
     """
     print("Getting Redfish processor information:")
-    processor_summary = redfish_session.get(REDFISH_PROCESSOR_URI)
+    processor_response = redfish_session.get(REDFISH_PROCESSOR_URI)
     cpu_list = []
-    if "Members" in processor_summary.text:
-        for cpu in json.loads(processor_summary.text)["Members"]:
+    if processor_response.status == 200:
+        processor_summary = processor_response.dict
+        for cpu in processor_summary.get("Members", []):
             cpu_info = redfish_session.get(cpu["@odata.id"])
             cpu_list.append(cpu_info.text)
-
-    if check_resp_redfish_api(processor_summary) != 200:
-        return False
-    else:
-        return cpu_list
+    return cpu_list
 
 
 def get_memory(redfish_session: redfish.rest.v1.HttpClient) -> list:
@@ -376,17 +319,14 @@ def get_memory(redfish_session: redfish.rest.v1.HttpClient) -> list:
         ram_list: Information about RAM
     """
     print("Getting Redfish memory information:")
-    memory_summary = redfish_session.get(REDFISH_MEMORY_URI)
+    memory_response = redfish_session.get(REDFISH_MEMORY_URI)
     ram_list = []
-    if "Members" in memory_summary.text:
-        for ram in json.loads(memory_summary.text)["Members"]:
+    if memory_response.status != 200:
+        memory_summary = memory_response.dict
+        for ram in memory_summary.get("Members", []):
             ram_info = redfish_session.get(ram["@odata.id"])
             ram_list.append(ram_info.text)
-
-    if check_resp_redfish_api(memory_summary) != 200:
-        return False
-    else:
-        return ram_list
+    return ram_list
 
 
 def get_storage(redfish_session: redfish.rest.v1.HttpClient) -> list:  # noqa: C901
@@ -401,11 +341,11 @@ def get_storage(redfish_session: redfish.rest.v1.HttpClient) -> list:  # noqa: C
     print("Getting Redfish storage information:")
     storage_summary = redfish_session.get(REDFISH_STORAGE_URI)
 
-    hp = False
     drive_list = []
     if (
         "Members" in storage_summary.text
         and json.loads(storage_summary.text)["Members"] != []
+        and storage_summary.status == 200
     ):
         for storage in json.loads(storage_summary.text)["Members"]:
             storage_info = redfish_session.get(storage["@odata.id"])
@@ -421,7 +361,6 @@ def get_storage(redfish_session: redfish.rest.v1.HttpClient) -> list:  # noqa: C
     system_summary = get_redfish_system(redfish_session)
     if "Oem" in system_summary:
         if "Hp" in system_summary["Oem"] or "Hpe" in system_summary["Oem"]:
-            hp = True
             smart_storage_info = None
             if "Hp" in system_summary["Oem"]:
                 if "Links" in system_summary["Oem"]["Hp"]:
@@ -465,11 +404,7 @@ def get_storage(redfish_session: redfish.rest.v1.HttpClient) -> list:  # noqa: C
                                                     hp_drive["@odata.id"]
                                                 )
                                                 drive_list.append(hp_drive_info.text)
-
-    if check_resp_redfish_api(storage_summary) != 200 and not hp:
-        return False
-    else:
-        return drive_list
+    return drive_list
 
 
 def get_network(redfish_session: redfish.rest.v1.HttpClient) -> list:
@@ -486,7 +421,7 @@ def get_network(redfish_session: redfish.rest.v1.HttpClient) -> list:
     nic_list = []
     port_list = []
     eth_list = []
-    if "Members" in network_summary.text:
+    if "Members" in network_summary.text and network_summary.status == 200:
         for nic in json.loads(network_summary.text)["Members"]:
             network_interface = redfish_session.get(nic["@odata.id"])
             if (
@@ -518,13 +453,28 @@ def get_network(redfish_session: redfish.rest.v1.HttpClient) -> list:
             ethernet_interface = redfish_session.get(eth["@odata.id"])
             eth_list.append(ethernet_interface.text)
 
-    if check_resp_redfish_api(network_summary) != 200:
-        return False
     else:
         if port_list:
             return nic_list, port_list
         else:
             return nic_list, eth_list
+
+
+def get_hostname(public_ip, sku, system_json):
+    try:
+        hostname = socket.gethostbyaddr(public_ip)[0]
+    except socket.herror:
+        if (
+            sku
+            and "dell" in system_json["Manufacturer"].lower()
+            and "SKU" in system_json
+        ):
+            print("DNS not working, using SKU as name instead")
+            hostname = system_json["SKU"]
+        else:
+            print("DNS not working, using SerialNumber as name instead")
+            hostname = system_json["SerialNumber"]
+    return hostname
 
 
 def post_to_glpi(  # noqa: C901
@@ -627,11 +577,15 @@ def post_to_glpi(  # noqa: C901
                 glpi_post["name"] = glpi_computer["name"]
             break
 
-    # Add BMC Address to the Computer
-    plugin_response = check_fields(session, urls.BMC_URL)
-    glpi_post = update_bmc_address(
-        glpi_post, plugin_response, COMPUTER_ID, REDFISH_BASE_URL, comment, PUT
-    )
+    # Add BMC Address to the Computer if overwriting existing computer,
+    # or creating a new one.
+    if overwrite or not PUT:
+        plugin_response = check_fields(session, urls.BMC_URL)
+        glpi_post = update_bmc_address(
+            glpi_post, plugin_response, REDFISH_BASE_URL, comment
+        )
+    else:
+        print("Leaving 'BMC Address' field unchanged...")
 
     # If the PUT flag is set then PUT the data to GLPI to modify the existing
     # machine, otherwise POST it to create a new machine.
@@ -883,20 +837,16 @@ def post_to_glpi(  # noqa: C901
 def update_bmc_address(
     glpi_post: dict,
     plugin_response: list,
-    computer_id: int,
     redfish_base_url: str,
     comment: str,
-    put: bool,
 ) -> dict:
     """Add BMC address to glpi_post
 
     Args:
         glpi_post (dict): Contains information about a Computer to be passed to GLPI
         plugin_response (list): list of requests objects returned by BMC API endpoint
-        computer_id (int): ID of the computer associated with the BMC Address
         redfish_base_url (str): URL used to connect to Redfish
         comment (str): Comment of computer in GLPI. None if this field is empty
-        put (bool): If this computer already exists in GLPI
 
     Returns:
         glpi_post (dict): Contains information about a Computer to be passed to GLPI
@@ -908,10 +858,8 @@ def update_bmc_address(
             + "adding the BMC address to the comments."
         )
     else:
-        print("Checking the 'BMC Address' field...")
-        glpi_post = set_bmc_address_field(
-            glpi_post, plugin_response, computer_id, redfish_base_url, put
-        )
+        print("Setting the 'BMC Address' field...")
+        glpi_post = set_bmc_address_field(glpi_post, redfish_base_url)
 
     return glpi_post
 
@@ -934,6 +882,12 @@ def add_bmc_address_to_comments(
             glpi_post["comment"] = (
                 comment + "\nBMC Address: " + redfish_base_url.partition("https://")[2]
             )
+        else:
+            # replace IP address within comment body
+            pattern = r"BMC Address: (\d+\.\d+\.\d+\.\d+)"
+            replacement = f'BMC Address: {redfish_base_url.partition("https://")[2]}'
+            updated_text = re.sub(pattern, replacement, comment)
+            glpi_post["comment"] = updated_text
     else:
         glpi_post["comment"] = (
             "BMC Address: " + redfish_base_url.partition("https://")[2]
@@ -944,48 +898,19 @@ def add_bmc_address_to_comments(
 
 def set_bmc_address_field(
     glpi_post: dict,
-    plugin_response: list,
-    computer_id: int,
     redfish_base_url: str,
-    put: bool,
 ) -> dict:
-    """Set BMC address field of GLPI post if it's empty.
-
+    """Set BMC address field of GLPI post
     Args:
         glpi_post (dict): Contains information about a Computer to be passed to GLPI
-        plugin_response (list): list of requests objects returned by  BMC API endpoint
-        computer_id (int): ID of the computer associated with the BMC Address
         redfish_base_url (str): URL used to connect to Redfish
-        put (bool): If this computer already exists in GLPI
 
     Returns:
         glpi_post (dict): Contains information about a Computer to be passed to GLPI
     """
-    if put:
-        for computer in plugin_response:
-            if computer["items_id"] == computer_id:
-                if computer["bmcaddressfield"]:
-                    print("Leaving 'BMC Address' field unchanged...")
-                    return glpi_post
     glpi_post["bmcaddressfield"] = redfish_base_url.partition("https://")[2]
     print("Updating BMC Address Field...")
     return glpi_post
-
-
-def strip_hostname(nslookup_output: list) -> str:
-    """Get hostname from raw nslookup output
-
-    Args:
-        nslookup_output (list): Raw output of nslookup, split on '\\n'
-
-    Returns:
-        name (str): Hostname of asset
-    """
-    for line in nslookup_output:
-        if "name = " in line:
-            name_index = line.index("name = ")
-            name = line[name_index + len("name = ") : -1]
-            return name
 
 
 def add_rack_location_from_sunbird(
