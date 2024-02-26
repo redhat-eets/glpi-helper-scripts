@@ -325,7 +325,7 @@ def get_memory(redfish_session: redfish.rest.v1.HttpClient) -> list:
         memory_summary = memory_response.dict
         for ram in memory_summary.get("Members", []):
             ram_info = redfish_session.get(ram["@odata.id"])
-            ram_list.append(ram_info.text)
+            ram_list.append(ram_info.dict)
     return ram_list
 
 
@@ -739,7 +739,6 @@ def post_to_glpi(  # noqa: C901
     # Create Memory types.
     memory_item_dict = {}
     for ram in ram_list:
-        ram = json.loads(ram)
         if ("Status" in ram and ram["Status"]["State"] == "Enabled") or (
             "DIMMStatus" in ram and ram["DIMMStatus"] == "GoodInUse"
         ):
