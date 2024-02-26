@@ -744,62 +744,47 @@ def post_to_glpi(  # noqa: C901
         if ("Status" in ram and ram["Status"]["State"] == "Enabled") or (
             "DIMMStatus" in ram and ram["DIMMStatus"] == "GoodInUse"
         ):
-            if "MemoryDeviceType" in ram:
-                memory_type_id = check_and_post(
-                    session,
-                    urls.DEVICE_MEMORY_TYPE_URL,
-                    {"name": ram["MemoryDeviceType"]},
-                )
-            elif "DIMMType" in ram:  # HP field
-                memory_type_id = check_and_post(
-                    session, urls.DEVICE_MEMORY_TYPE_URL, {"name": ram["DIMMType"]}
-                )
-            else:
-                memory_type_id = check_and_post(
-                    session, urls.DEVICE_MEMORY_TYPE_URL, {"name": "Unspecified"}
-                )
+            memory_device_type = (
+                ram.get("MemoryDeviceType") or ram.get("DIMMType") or "Unspecified"
+            )
+            memory_type_id = check_and_post(
+                session,
+                urls.DEVICE_MEMORY_TYPE_URL,
+                {"name": memory_device_type},
+            )
             manufacturers_id = check_and_post(
                 session, urls.MANUFACTURER_URL, {"name": ram["Manufacturer"].strip()}
             )
-            if "TotalSystemMemoryGiB" in system_json["MemorySummary"]:
-                total_system_memory = (
-                    int(system_json["MemorySummary"]["TotalSystemMemoryGiB"]) * 1000
-                )
-            else:
-                total_system_memory = ""
-            if "OperatingSpeedMhz" in ram:
-                memory_id = check_and_post(
-                    session,
-                    urls.DEVICE_MEMORY_URL,
-                    {
-                        "designation": ram["PartNumber"],
-                        "frequence": str(ram["OperatingSpeedMhz"]),
-                        "manufacturers_id": manufacturers_id,
-                        "size_default": total_system_memory,
-                        "devicememorytypes_id": memory_type_id,
-                    },
-                )
-            elif "MaximumFrequencyMHz" in ram:  # HP field
-                memory_id = check_and_post(
-                    session,
-                    urls.DEVICE_MEMORY_URL,
-                    {
-                        "designation": ram["PartNumber"],
-                        "frequence": str(ram["MaximumFrequencyMHz"]),
-                        "manufacturers_id": manufacturers_id,
-                        "size_default": total_system_memory,
-                        "devicememorytypes_id": memory_type_id,
-                    },
-                )
+
+            total_system_memory = system_json["MemorySummary"].get(
+                "TotalSystemMemoryGiB", ""
+            )
+            if total_system_memory is not "":
+                total_system_memory = int(total_system_memory) * 1000
+
+            operating_speed = ram.get("OperatingSpeedMhz") or ram.get(
+                "MaximumFrequencyMHz", ""
+            )
+            memory_id = check_and_post(
+                session,
+                urls.DEVICE_MEMORY_URL,
+                {
+                    "designation": ram["PartNumber"],
+                    "frequence": str(operating_speed),
+                    "manufacturers_id": manufacturers_id,
+                    "size_default": total_system_memory,
+                    "devicememorytypes_id": memory_type_id,
+                },
+            )
+
             if memory_id in memory_item_dict:
                 memory_item_dict[memory_id]["quantity"] += 1
             else:
                 memory_item_dict[memory_id] = {}
                 memory_item_dict[memory_id]["quantity"] = 1
-                if "CapacityMiB" in ram:
-                    memory_item_dict[memory_id]["size"] = ram["CapacityMiB"]
-                elif "SizeMB" in ram:  # HP field
-                    memory_item_dict[memory_id]["size"] = ram["SizeMB"]
+                memory_item_dict[memory_id]["size"] = ram.get("CapacityMiB") or ram.get(
+                    "SizeMB"
+                )
     # Create Memory Items.
     for memory_id in memory_item_dict:
         check_and_post_device_memory_item(
