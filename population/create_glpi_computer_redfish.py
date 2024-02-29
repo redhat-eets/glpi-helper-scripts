@@ -305,7 +305,7 @@ def get_processor(redfish_session: redfish.rest.v1.HttpClient) -> list:
         processor_summary = processor_response.dict
         for cpu in processor_summary.get("Members", []):
             cpu_info = redfish_session.get(cpu["@odata.id"])
-            cpu_list.append(cpu_info.text)
+            cpu_list.append(cpu_info.dict)
     return cpu_list
 
 
@@ -1184,7 +1184,7 @@ def check_and_post_processor(
     Returns:
         id (int): GLPI ID of system processor
     """
-    field = json.loads(field[0])
+    field = field[0]
     if field["ProcessorType"] == "CPU":
         print("Checking GLPI CPU fields:")
         # Check if the field is present at the URL endpoint.
@@ -1240,7 +1240,7 @@ def check_and_post_processor_item(
         item_type (str): Type of item associated with processor, usually "Computer"
         sockets (int): Number of processors associated with the computer
     """
-    field = json.loads(field[0])
+    field = field[0]
     if field["ProcessorType"] == "CPU":
         # Check if the field is present at the URL endpoint.
         print("Checking GLPI Processor fields:")
