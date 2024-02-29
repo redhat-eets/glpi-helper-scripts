@@ -699,9 +699,7 @@ def post_to_glpi(  # noqa: C901
         }
 
         if "AssociatedNetworkAddresses" in name:
-            additional_information = {
-                "mac": name["AssociatedNetworkAddresses"][0]
-            }
+            additional_information = {"mac": name["AssociatedNetworkAddresses"][0]}
         elif "MACAddress" in name:
             additional_information = {"mac": name["MACAddress"]}
         else:
