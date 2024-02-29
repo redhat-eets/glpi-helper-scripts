@@ -435,7 +435,7 @@ def get_network(redfish_session: redfish.rest.v1.HttpClient) -> list:
                 nic_info = redfish_session.get(network_adapter_endpoint)
                 nic_list.append(nic_info.dict)
                 network_ports = nic_info.dict.get("NetworkPorts")
-                if type(network_ports) == list:
+                if isinstance(network_ports, list):
                     ports_info = redfish_session.get(
                         nic_info.dict["NetworkPorts"][0]["@odata.id"]
                     )
