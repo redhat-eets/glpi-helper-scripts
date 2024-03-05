@@ -339,23 +339,16 @@ def get_storage(redfish_session: redfish.rest.v1.HttpClient) -> list:  # noqa: C
         drive_list (list): Information about drives
     """
     print("Getting Redfish storage information:")
-    storage_summary = redfish_session.get(REDFISH_STORAGE_URI)
+    storage_response = redfish_session.get(REDFISH_STORAGE_URI)
 
     drive_list = []
-    if (
-        "Members" in storage_summary.text
-        and json.loads(storage_summary.text)["Members"] != []
-        and storage_summary.status == 200
-    ):
-        for storage in json.loads(storage_summary.text)["Members"]:
+    if storage_response.status == 200:
+        storage_summary = storage_response.dict
+        for storage in storage_summary.get("Members", []):
             storage_info = redfish_session.get(storage["@odata.id"])
-            if (
-                "Drives" in storage_info.text
-                and json.loads(storage_info.text)["Drives"] != []
-            ):
-                for drive in json.loads(storage_info.text)["Drives"]:
-                    drive_info = redfish_session.get(drive["@odata.id"])
-                    drive_list.append(drive_info.text)
+            for drive in storage_info.dict.get("Drives", []):
+                drive_info = redfish_session.get(drive["@odata.id"])
+                drive_list.append(drive_info.dict)
 
     # Get HP-specific disks
     system_summary = get_redfish_system(redfish_session)
@@ -403,7 +396,7 @@ def get_storage(redfish_session: redfish.rest.v1.HttpClient) -> list:  # noqa: C
                                                 hp_drive_info = redfish_session.get(
                                                     hp_drive["@odata.id"]
                                                 )
-                                                drive_list.append(hp_drive_info.text)
+                                                drive_list.append(hp_drive_info.dict)
     return drive_list
 
 
@@ -812,7 +805,6 @@ def post_to_glpi(  # noqa: C901
 
     # Create Disk items.
     for disk_id in drive_list:
-        disk_id = json.loads(disk_id)
         size = 0
         if "CapacityBytes" in disk_id:
             size = round(float(disk_id["CapacityBytes"]) / 1000000)
