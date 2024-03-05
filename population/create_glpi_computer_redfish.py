@@ -410,41 +410,40 @@ def get_network(redfish_session: redfish.rest.v1.HttpClient) -> list:
         nic_list, port_list (tuple): Information about network cards and ports
     """
     print("Getting Redfish network information:")
-    network_summary = redfish_session.get(REDFISH_NETWORK_URI)
+    network_response = redfish_session.get(REDFISH_NETWORK_URI)
     nic_list = []
     port_list = []
     eth_list = []
-    if "Members" in network_summary.text and network_summary.status == 200:
-        for nic in json.loads(network_summary.text)["Members"]:
+    if network_response.status == 200:
+        network_summary = network_response.dict
+        for nic in network_summary.get("Members", []):
             network_interface = redfish_session.get(nic["@odata.id"])
             if (
-                "Links" in network_interface.text
+                "Links" in network_interface.dict
                 and "NetworkAdapter" in network_interface.dict["Links"]
             ):
                 network_adapter_endpoint = network_interface.dict["Links"][
                     "NetworkAdapter"
                 ]["@odata.id"]
                 nic_info = redfish_session.get(network_adapter_endpoint)
-                nic_list.append(nic_info.text)
-                if "NetworkPorts" in nic_info.text:
-                    if type(json.loads(nic_info.text)["NetworkPorts"]) == list:
-                        ports_info = redfish_session.get(
-                            json.loads(nic_info.text)["NetworkPorts"][0]["@odata.id"]
-                        )
-                    else:
-                        ports_info = redfish_session.get(
-                            json.loads(nic_info.text)["NetworkPorts"]["@odata.id"]
-                        )
-                    if "Members" in ports_info.text:
-                        for port in json.loads(ports_info.text)["Members"]:
-                            if "@odata.id" in port:
-                                port_info = redfish_session.get(port["@odata.id"])
-                                port_list.append(port_info.text)
+                nic_list.append(nic_info.dict)
+                network_ports = nic_info.dict.get("NetworkPorts")
+                if isinstance(network_ports, list):
+                    ports_info = redfish_session.get(
+                        nic_info.dict["NetworkPorts"][0]["@odata.id"]
+                    )
+                elif network_ports is not None:
+                    ports_info = redfish_session.get(
+                        nic_info.dict["NetworkPorts"]["@odata.id"]
+                    )
+                for port in ports_info.dict.get("Members", []):
+                    if "@odata.id" in port:
+                        port_info = redfish_session.get(port["@odata.id"])
+                        port_list.append(port_info.dict)
     ethernet_summary = redfish_session.get(REDFISH_SYSTEMS_ETHERNET_INTERFACES_URI)
-    if "Members" in ethernet_summary.text:
-        for eth in json.loads(ethernet_summary.text)["Members"]:
-            ethernet_interface = redfish_session.get(eth["@odata.id"])
-            eth_list.append(ethernet_interface.text)
+    for eth in ethernet_summary.dict.get("Members", []):
+        ethernet_interface = redfish_session.get(eth["@odata.id"])
+        eth_list.append(ethernet_interface.dict)
 
     if port_list:
         return nic_list, port_list
@@ -640,17 +639,17 @@ def post_to_glpi(  # noqa: C901
             nic_model_id = check_and_post(
                 session,
                 urls.DEVICE_NETWORK_CARD_MODEL_URL,
-                {"name": json.loads(name)["Model"]},
+                {"name": name["Model"]},
             )
 
         vendor = 0
         if "Manufacturer" in name:
-            if json.loads(name)["Manufacturer"]:
-                vendor = json.loads(name)["Manufacturer"]
+            if name["Manufacturer"]:
+                vendor = name["Manufacturer"]
             else:
                 vendor = "None"
 
-        if "Id" in json.loads(name):
+        if "Id" in name:
             manufacturers_id = vendor
             if vendor:
                 manufacturers_id = check_and_post(
@@ -660,7 +659,7 @@ def post_to_glpi(  # noqa: C901
                 session,
                 urls.DEVICE_NETWORK_CARD_URL,
                 {
-                    "designation": json.loads(name)["Id"],
+                    "designation": name["Id"],
                     "bandwidth": bandwidth,
                     "manufacturers_id": manufacturers_id,
                     "devicenetworkcardmodels_id": nic_model_id,
@@ -676,7 +675,7 @@ def post_to_glpi(  # noqa: C901
                     "mac": "",
                 },
             )
-            nic_ids[json.loads(name)["Id"]] = nic_item_id
+            nic_ids[name["Id"]] = nic_item_id
 
     # Create network ports by logical number based off the networks dictionary
     # queried from the machine.
@@ -688,32 +687,30 @@ def post_to_glpi(  # noqa: C901
             "items_id": COMPUTER_ID,
             "itemtype": "Computer",
             "logical_number": logical_number,
-            "name": json.loads(name)["Id"],
+            "name": name["Id"],
             "instantiation_type": "NetworkPortEthernet",
         }
 
-        if "AssociatedNetworkAddresses" in json.loads(name):
-            additional_information = {
-                "mac": json.loads(name)["AssociatedNetworkAddresses"][0]
-            }
-        elif "MACAddress" in json.loads(name):
-            additional_information = {"mac": json.loads(name)["MACAddress"]}
+        if "AssociatedNetworkAddresses" in name:
+            additional_information = {"mac": name["AssociatedNetworkAddresses"][0]}
+        elif "MACAddress" in name:
+            additional_information = {"mac": name["MACAddress"]}
         else:
             additional_information = None
         network_port_id = check_and_post(
             session, urls.NETWORK_PORT_URL, search_criteria, additional_information
         )
         try:
-            speed = json.loads(name)["SpeedMbps"]
+            speed = name["SpeedMbps"]
         except KeyError:
             pass
         try:
-            speed = json.loads(name)["SupportedLinkCapabilities"][0]["LinkSpeedMbps"]
+            speed = name["SupportedLinkCapabilities"][0]["LinkSpeedMbps"]
         except KeyError:
             speed = 0
         nic_id = ""
-        if json.loads(name)["Id"] in nic_ids:
-            nic_id = nic_ids[json.loads(name)["Id"]]
+        if name["Id"] in nic_ids:
+            nic_id = nic_ids[name["Id"]]
         else:
             nic_id = 0
         check_and_post(
