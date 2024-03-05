@@ -252,7 +252,7 @@ def update_redfish_system_uri(
     if system_summary.status != 200:
         return None
     else:
-        system_json = json.loads(system_summary.text)
+        system_json = system_summary.dict
         global REDFISH_SYSTEM_URI
         REDFISH_SYSTEM_URI = system_json["Members"][0]["@odata.id"]
         global REDFISH_PROCESSOR_URI
@@ -286,7 +286,7 @@ def get_redfish_system(redfish_session: redfish.rest.v1.HttpClient) -> dict:
     if system_summary.status != 200:
         return {}
     else:
-        return json.loads(system_summary.text)
+        return system_summary.dict
 
 
 def get_processor(redfish_session: redfish.rest.v1.HttpClient) -> list:
@@ -325,7 +325,7 @@ def get_memory(redfish_session: redfish.rest.v1.HttpClient) -> list:
         memory_summary = memory_response.dict
         for ram in memory_summary.get("Members", []):
             ram_info = redfish_session.get(ram["@odata.id"])
-            ram_list.append(ram_info.text)
+            ram_list.append(ram_info.dict)
     return ram_list
 
 
@@ -453,11 +453,10 @@ def get_network(redfish_session: redfish.rest.v1.HttpClient) -> list:
             ethernet_interface = redfish_session.get(eth["@odata.id"])
             eth_list.append(ethernet_interface.text)
 
+    if port_list:
+        return nic_list, port_list
     else:
-        if port_list:
-            return nic_list, port_list
-        else:
-            return nic_list, eth_list
+        return nic_list, eth_list
 
 
 def get_hostname(public_ip, sku, system_json):
@@ -740,7 +739,6 @@ def post_to_glpi(  # noqa: C901
     # Create Memory types.
     memory_item_dict = {}
     for ram in ram_list:
-        ram = json.loads(ram)
         if ("Status" in ram and ram["Status"]["State"] == "Enabled") or (
             "DIMMStatus" in ram and ram["DIMMStatus"] == "GoodInUse"
         ):
