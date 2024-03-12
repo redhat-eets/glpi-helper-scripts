@@ -17,7 +17,6 @@ import sys
 import socket
 
 sys.path.append("..")
-import json
 import re
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization, validate_url
@@ -436,10 +435,13 @@ def get_network(redfish_session: redfish.rest.v1.HttpClient) -> list:
                     ports_info = redfish_session.get(
                         nic_info.dict["NetworkPorts"]["@odata.id"]
                     )
-                for port in ports_info.dict.get("Members", []):
-                    if "@odata.id" in port:
-                        port_info = redfish_session.get(port["@odata.id"])
-                        port_list.append(port_info.dict)
+                else:
+                    ports_info = None
+                if ports_info is not None:
+                    for port in ports_info.dict.get("Members", []):
+                        if "@odata.id" in port:
+                            port_info = redfish_session.get(port["@odata.id"])
+                            port_list.append(port_info.dict)
     ethernet_summary = redfish_session.get(REDFISH_SYSTEMS_ETHERNET_INTERFACES_URI)
     for eth in ethernet_summary.dict.get("Members", []):
         ethernet_interface = redfish_session.get(eth["@odata.id"])
