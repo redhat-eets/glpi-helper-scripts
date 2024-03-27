@@ -1,6 +1,7 @@
 import subprocess
 import sys
 import re
+import os
 
 import yaml
 import requests
@@ -26,8 +27,8 @@ def main():
         "--ldap_config",
         metavar="ldap_config",
         help=(
-            "path to LDAP config YAML file,"
-            "see integration/ldap/general_ldap_example.yaml"
+            "path to LDAP config YAML file or env var that contains config data "
+            "as a string, see integration/ldap/general_ldap_example.yaml"
         ),
         required=True,
     )
@@ -52,8 +53,14 @@ def main():
     base_dn = args.base_dn
 
     # Process General Config
-    with open(args.ldap_config, "r") as config_path:
-        group_map = yaml.safe_load(config_path)
+    if os.path.isfile(args.ldap_config):
+        # Process YAML file
+        with open(args.ldap_config, "r") as config_path:
+            group_map = yaml.safe_load(config_path)
+    else:
+        # Process YAML env var
+        yaml_content = os.getenv(args.ldap_config, "{}")
+        group_map = yaml.safe_load(yaml_content)
 
     ldap_server = args.ldap_server
 
