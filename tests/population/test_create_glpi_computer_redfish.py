@@ -61,16 +61,16 @@ def test_get_processor(mocker):
 
     create_redfish.REDFISH_PROCESSOR_URI = "test"  # set global
     response = {
-        "@odata.context": "/redfish/v1/$metadata#ProcessorCollection.ProcessorCollection", # noqa: E501
+        "@odata.context": "/redfish/v1/$metadata#ProcessorCollection.ProcessorCollection",  # noqa: E501
         "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Processors",
         "@odata.type": "#ProcessorCollection.ProcessorCollection",
         "Description": "Collection of Processors for this System",
         "Members": [
             {
-                "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Processors/CPU.Socket.2" # noqa: E501
+                "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Processors/CPU.Socket.2"  # noqa: E501
             },
             {
-                "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Processors/CPU.Socket.1" # noqa: E501
+                "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Processors/CPU.Socket.1"  # noqa: E501
             },
         ],
         "Members@odata.count": 2,
@@ -135,10 +135,10 @@ def test_get_memory(mocker):
         "Description": "Collection of memory devices for this system",
         "Members": [
             {
-                "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Memory/DIMM.Socket.A1" # noqa: E501
+                "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Memory/DIMM.Socket.A1"  # noqa: E501
             },
             {
-                "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Memory/DIMM.Socket.A6" # noqa: E501
+                "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Memory/DIMM.Socket.A6"  # noqa: E501
             },
         ],
         "Members@odata.count": 2,
