@@ -17,7 +17,6 @@ import sys
 import socket
 
 sys.path.append("..")
-import json
 import re
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization, validate_url
@@ -249,7 +248,7 @@ def update_redfish_system_uri(
     print("Getting Redfish system URI:")
     system_summary = redfish_session.get(urls.REDFISH_SYSTEM_GENERIC)
 
-    if system_summary.status != 200:
+    if system_summary.status == 200:
         return None
     else:
         system_json = system_summary.dict
