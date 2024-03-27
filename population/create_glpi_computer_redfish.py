@@ -210,7 +210,7 @@ def main() -> None:
     nic_list, port_list = get_network(REDFISH_OBJ)
     try:
         REDFISH_OBJ.logout()
-    except:
+    except redfish.rest.v1.RetriesExhaustedError:
         pass
     if no_dns:
         hostname = no_dns
