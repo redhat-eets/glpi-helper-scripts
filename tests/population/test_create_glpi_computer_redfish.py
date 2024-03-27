@@ -1,7 +1,7 @@
 import socket
 
 import pytest
-import population.create_glpi_computer_redfish as redfish
+import population.create_glpi_computer_redfish as create_redfish
 
 
 @pytest.mark.parametrize(
@@ -48,9 +48,161 @@ def test_get_hostname(
         else None
     )
 
-    hostname = redfish.get_hostname(public_ip, sku, system_json)
+    hostname = create_redfish.get_hostname(public_ip, sku, system_json)
 
     mock_socket.assert_called_once_with(public_ip)
     assert hostname == expected_result
     if expected_print:
         assert capsys.readouterr().out.strip() == expected_print
+
+
+def test_get_processor(mocker):
+    mock_cpu = mocker.patch("redfish.rest.v1.HttpClient")
+
+    create_redfish.REDFISH_PROCESSOR_URI = "test"  # set global
+    response = {
+        "@odata.context": "/redfish/v1/$metadata#ProcessorCollection.ProcessorCollection",
+        "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Processors",
+        "@odata.type": "#ProcessorCollection.ProcessorCollection",
+        "Description": "Collection of Processors for this System",
+        "Members": [
+            {
+                "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Processors/CPU.Socket.2"
+            },
+            {
+                "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Processors/CPU.Socket.1"
+            },
+        ],
+        "Members@odata.count": 2,
+        "Name": "ProcessorsCollection",
+    }
+
+    mock_cpu.get.side_effect = [
+        mocker.MagicMock(status=200, dict=response),
+        mocker.MagicMock(
+            status=200,
+            dict={
+                "ProcessorType": "CPU",
+                "Socket": "CPU.Socket.1",
+                "Status": {"Health": "OK", "State": "Enabled"},
+                "TotalCores": 26,
+                "TotalEnabledCores": 26,
+                "TotalThreads": 52,
+            },
+        ),
+        mocker.MagicMock(
+            status=200,
+            dict={
+                "ProcessorType": "CPU",
+                "Socket": "CPU.Socket.2",
+                "Status": {"Health": "OK", "State": "Enabled"},
+                "TotalCores": 26,
+                "TotalEnabledCores": 26,
+                "TotalThreads": 52,
+            },
+        ),
+    ]
+
+    cpu_list = create_redfish.get_processor(mock_cpu)
+    assert cpu_list == [
+        {
+            "ProcessorType": "CPU",
+            "Socket": "CPU.Socket.1",
+            "Status": {"Health": "OK", "State": "Enabled"},
+            "TotalCores": 26,
+            "TotalEnabledCores": 26,
+            "TotalThreads": 52,
+        },
+        {
+            "ProcessorType": "CPU",
+            "Socket": "CPU.Socket.2",
+            "Status": {"Health": "OK", "State": "Enabled"},
+            "TotalCores": 26,
+            "TotalEnabledCores": 26,
+            "TotalThreads": 52,
+        },
+    ]
+
+
+def test_get_memory(mocker):
+    mock_ram = mocker.patch("redfish.rest.v1.HttpClient")
+
+    create_redfish.REDFISH_MEMORY_URI = "test"  # set global
+    response = {
+        "@odata.context": "/redfish/v1/$metadata#MemoryCollection.MemoryCollection",
+        "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Memory",
+        "@odata.type": "#MemoryCollection.MemoryCollection",
+        "Description": "Collection of memory devices for this system",
+        "Members": [
+            {
+                "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Memory/DIMM.Socket.A1"
+            },
+            {
+                "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Memory/DIMM.Socket.A6"
+            },
+        ],
+        "Members@odata.count": 2,
+        "Name": "Memory Devices Collection",
+    }
+
+    mock_ram.get.side_effect = [
+        mocker.MagicMock(status=200, dict=response),
+        mocker.MagicMock(
+            status=200,
+            dict={
+                "AllowedSpeedsMHz": [2666],
+                "AllowedSpeedsMHz@odata.count": 1,
+                "BaseModuleType": "RDIMM",
+                "BusWidthBits": 72,
+                "CacheSizeMiB": 0,
+                "CapacityMiB": 8192,
+                "DataWidthBits": 64,
+                "Description": "DIMM A1",
+                "DeviceLocator": "DIMM A1",
+                "Enabled": True,
+            },
+        ),
+        mocker.MagicMock(
+            status=200,
+            dict={
+                "AllowedSpeedsMHz": [2666],
+                "AllowedSpeedsMHz@odata.count": 1,
+                "BaseModuleType": "RDIMM",
+                "BusWidthBits": 72,
+                "CacheSizeMiB": 0,
+                "CapacityMiB": 8192,
+                "DataWidthBits": 64,
+                "Description": "DIMM A6",
+                "DeviceLocator": "DIMM A6",
+                "Enabled": True,
+            },
+        ),
+    ]
+
+    ram_list = create_redfish.get_processor(mock_ram)
+    assert ram_list == [
+        {
+            "AllowedSpeedsMHz": [2666],
+            "AllowedSpeedsMHz@odata.count": 1,
+            "BaseModuleType": "RDIMM",
+            "BusWidthBits": 72,
+            "CacheSizeMiB": 0,
+            "CapacityMiB": 8192,
+            "DataWidthBits": 64,
+            "Description": "DIMM A1",
+            "DeviceLocator": "DIMM A1",
+            "Enabled": True,
+        },
+        {
+            "AllowedSpeedsMHz": [2666],
+            "AllowedSpeedsMHz@odata.count": 1,
+            "BaseModuleType": "RDIMM",
+            "BusWidthBits": 72,
+            "CacheSizeMiB": 0,
+            "CapacityMiB": 8192,
+            "DataWidthBits": 64,
+            "Description": "DIMM A6",
+            "DeviceLocator": "DIMM A6",
+            "Enabled": True,
+        },
+    ]
