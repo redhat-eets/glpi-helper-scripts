@@ -17,7 +17,6 @@ import sys
 import socket
 
 sys.path.append("..")
-import json
 import re
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization, validate_url
