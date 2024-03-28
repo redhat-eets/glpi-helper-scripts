@@ -103,7 +103,7 @@ def main() -> None:
         "-s",
         "--sku",
         action="store_true",
-        help="Use this flag if you want to use the SKU of this Dell machine"
+        help="Use this flag if you want to use the SKU of this machine"
         + "instead of its serial number",
     )
     parser.parser.add_argument(
@@ -456,9 +456,7 @@ def get_hostname(public_ip, sku, system_json):
         hostname = socket.gethostbyaddr(public_ip)[0]
     except socket.herror:
         if (
-            sku
-            and "dell" in system_json["Manufacturer"].lower()
-            and "SKU" in system_json
+            sku and "SKU" in system_json
         ):
             print("DNS not working, using SKU as name instead")
             hostname = system_json["SKU"]
@@ -507,7 +505,7 @@ def post_to_glpi(  # noqa: C901
         sunbird_url (str): Sunbird URL
         sunbird_config (dict): a user-provided dictionary of lab locations and cabinets
     """
-    if sku and "dell" in system_json["Manufacturer"].lower() and "SKU" in system_json:
+    if sku and "SKU" in system_json:
         serial_number = system_json["SKU"]
     else:
         serial_number = system_json["SerialNumber"]
