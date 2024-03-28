@@ -51,7 +51,7 @@ def main():
         "-s",
         "--sku",
         action="store_true",
-        help="Use this flag if you want to use the SKU of this Dell machine"
+        help="Use this flag if you want to use the SKU of this machine"
         + "instead of its serial number",
     )
     parser.parser.add_argument(
