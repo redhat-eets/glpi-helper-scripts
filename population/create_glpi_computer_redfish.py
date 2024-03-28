@@ -462,9 +462,16 @@ def get_hostname(public_ip, sku, system_json):
         ):
             print("DNS not working, using SKU as name instead")
             hostname = system_json["SKU"]
-        else:
+        elif system_json["SerialNumber"]:
             print("DNS not working, using SerialNumber as name instead")
             hostname = system_json["SerialNumber"]
+        else:
+            raise Exception(
+                "The machine's serial number is not present in the redfish response. "
+                "Please use the SKU as the serial number "
+                "using the -s option, or manually specify a hostname using "
+                "the -n option."
+            )
     return hostname
 
 
@@ -510,7 +517,10 @@ def post_to_glpi(  # noqa: C901
     if sku and "dell" in system_json["Manufacturer"].lower() and "SKU" in system_json:
         serial_number = system_json["SKU"]
     else:
-        serial_number = system_json["SerialNumber"]
+        if serial_number:
+            serial_number = system_json["SerialNumber"]
+        else:
+            serial_number = hostname
     # Append TEST to the serial number if the TEST flag is set.
     if TEST:
         serial_number = serial_number + "_TEST"
