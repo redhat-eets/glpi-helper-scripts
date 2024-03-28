@@ -455,9 +455,7 @@ def get_hostname(public_ip, sku, system_json):
     try:
         hostname = socket.gethostbyaddr(public_ip)[0]
     except socket.herror:
-        if (
-            sku and "SKU" in system_json
-        ):
+        if sku and "SKU" in system_json:
             print("DNS not working, using SKU as name instead")
             hostname = system_json["SKU"]
         else:
