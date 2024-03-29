@@ -193,21 +193,25 @@ def main() -> None:
     global REDFISH_BASE_URL
     REDFISH_BASE_URL = "https://" + ipmi_ip
 
-    with redfish.redfish_client(
+    REDFISH_OBJ = redfish.redfish_client(
         base_url=REDFISH_BASE_URL,
         username=ipmi_username,
         password=ipmi_password,
         default_prefix="/redfish/v1",
         timeout=20,
-    ) as REDFISH_OBJ:
-        update_redfish_system_uri(REDFISH_OBJ, urls)
+    )
+    REDFISH_OBJ.login(auth="session")
+    update_redfish_system_uri(REDFISH_OBJ, urls)
 
-        system_json = get_redfish_system(REDFISH_OBJ)
-        cpu_list = get_processor(REDFISH_OBJ)
-        ram_list = get_memory(REDFISH_OBJ)
-        storage_list = get_storage(REDFISH_OBJ)
-        nic_list, port_list = get_network(REDFISH_OBJ)
-
+    system_json = get_redfish_system(REDFISH_OBJ)
+    cpu_list = get_processor(REDFISH_OBJ)
+    ram_list = get_memory(REDFISH_OBJ)
+    storage_list = get_storage(REDFISH_OBJ)
+    nic_list, port_list = get_network(REDFISH_OBJ)
+    try:
+        REDFISH_OBJ.logout()
+    except redfish.rest.v1.RetriesExhaustedError:
+        pass
     if no_dns:
         hostname = no_dns
     else:
