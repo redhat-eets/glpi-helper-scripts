@@ -99,8 +99,8 @@ def main():
 
 
 def parse_list(args: argparse.Namespace):
-    """Method to create a REST session, getting the session_token and updating
-    headers accrodingly. Return the session for further use.
+    """Reads machine information from the provided list and CLI args and runs the
+    relevant command
 
     Args:
         args (argparse.Namespace): Arguments passed in by the user via the CLI
