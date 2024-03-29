@@ -324,7 +324,7 @@ def get_memory(redfish_session: redfish.rest.v1.HttpClient) -> list:
     print("Getting Redfish memory information:")
     memory_response = redfish_session.get(REDFISH_MEMORY_URI)
     ram_list = []
-    if memory_response.status != 200:
+    if memory_response.status == 200:
         memory_summary = memory_response.dict
         for ram in memory_summary.get("Members", []):
             ram_info = redfish_session.get(ram["@odata.id"])
