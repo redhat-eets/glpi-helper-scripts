@@ -246,7 +246,7 @@ def add_missing_users_to_group(
             set(group_map[group["completename"]]["users"]) - set(users_in_group)
         )
         if not users_to_add:
-            print(f"no users to add for {group['completename']}, proceeding to next group")
+            print(f"no new users for {group['completename']}, proceeding to next group")
         for user in all_users:
             if user["name"] in users_to_add:
                 print(
