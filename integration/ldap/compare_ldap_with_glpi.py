@@ -2,6 +2,7 @@ import subprocess
 import sys
 import re
 import os
+import json
 
 import yaml
 import requests
@@ -27,10 +28,11 @@ def main():
         "--ldap_config",
         metavar="ldap_config",
         help=(
-            "path to LDAP config YAML file or env var that contains config data "
-            "as a string, see integration/ldap/general_ldap_example.yaml"
+            "path to LDAP config YAML/JSON file or env var that contains config data "
+            "as a string, see integration/ldap/general_ldap_example.yaml. "
+            "ex: -c ldap.yaml or -c ldap_config, if ldap_config is an env var that "
+            "contains the config. (NOT -c $ldap_config)"
         ),
-        required=True,
     )
     parser.parser.add_argument(
         "-l",
@@ -58,9 +60,11 @@ def main():
         with open(args.ldap_config, "r") as config_path:
             group_map = yaml.safe_load(config_path)
     else:
-        # Process YAML env var
+        # Process env var
         yaml_content = os.getenv(args.ldap_config, "{}")
         group_map = yaml.safe_load(yaml_content)
+    if isinstance(group_map, str):
+        group_map = json.loads(group_map)
 
     ldap_server = args.ldap_server
 
@@ -241,6 +245,8 @@ def add_missing_users_to_group(
         users_to_add = list(
             set(group_map[group["completename"]]["users"]) - set(users_in_group)
         )
+        if not users_to_add:
+            print(f"no users to add for {group['completename']}, proceeding to next group")
         for user in all_users:
             if user["name"] in users_to_add:
                 print(
