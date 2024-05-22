@@ -94,6 +94,11 @@ def main():
         help="path to sunbird config YAML file, see "
         + "integration/sunbird/example_sunbird.yml",
     )
+    parser.parser.add_argument(
+        "--sku_for_dell",
+        action="store_false",
+        help="use this flag if you want to use sku's for dells, and serial_numbers for everything else"
+    )
     args = parser.parser.parse_args()
     parse_list(args)
 
@@ -192,6 +197,8 @@ def build_command(split_line: list, args: argparse.Namespace) -> list:
         )
     if args.sunbird_config:
         command.extend(["-C", args.sunbird_config])
+    if args.sku_for_dell:
+        command.extend(["--sku_for_dell"])
     return command
 
 
