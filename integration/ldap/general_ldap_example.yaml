@@ -1,9 +1,12 @@
 ---
 Group 1: # Name of group in GLPI
-  ldap: group1-users # Name of group in LDAP
+  ldap: 
+  - group1-users # Name of group in LDAP
 
 # The ">" is how descendant groups are denoted in GLPI. 
 # So in this example Group 2 is a subset of Group 1, 
 # and group2-users will be mapped to only Group 2 of GLPI. 
 Group 1 > Group 2:
-  ldap: group2-users
+  ldap: 
+  - group2-users
+  - group3-users
