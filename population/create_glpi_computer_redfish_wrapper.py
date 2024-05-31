@@ -94,6 +94,12 @@ def main():
         help="path to sunbird config YAML file, see "
         + "integration/sunbird/example_sunbird.yml",
     )
+    parser.parser.add_argument(
+        "--interactive",
+        action="store_true",
+        help="Use this flag if you want to choose the name of the machine "
+        + "interactively, given the UUID, Serial Number, SKU, hostname, and BMC IP.",
+    )
     args = parser.parser.parse_args()
     parse_list(args)
 
@@ -192,6 +198,8 @@ def build_command(split_line: list, args: argparse.Namespace) -> list:
         )
     if args.sunbird_config:
         command.extend(["-C", args.sunbird_config])
+    if args.interactive:
+        command.extend(["--interactive"])
     return command
 
 

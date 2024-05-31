@@ -145,6 +145,12 @@ def main() -> None:
         help="path to sunbird config YAML file, see "
         + "integration/sunbird/example_sunbird.yml as an example",
     )
+    parser.parser.add_argument(
+        "--interactive",
+        action="store_true",
+        help="Use this flag if you want to choose the name of the machine "
+        + "interactively, given the UUID, Serial Number, SKU, hostname, and BMC IP.",
+    )
     args = parser.parser.parse_args()
 
     # Process General Config
@@ -186,7 +192,7 @@ def main() -> None:
     global PUT
     PUT = args.put
     overwrite = args.overwrite
-
+    interactive = args.interactive
     urls = UrlInitialization(ip)
     Switches(switch_config)
 
@@ -214,8 +220,10 @@ def main() -> None:
         pass
     if no_dns:
         hostname = no_dns
+    elif interactive:
+        hostname = get_custom_hostname(public_ip, system_json, ipmi_ip)
     else:
-        hostname = get_hostname(public_ip, sku, system_json)
+        hostname = get_hostname(public_ip, sku, system_json, ipmi_ip)
 
     with SessionHandler(user_token, urls, no_verify) as session:
         post_to_glpi(
@@ -237,6 +245,48 @@ def main() -> None:
         )
 
     print_final_help()
+
+
+def get_custom_hostname(public_ip, system_json, ipmi_ip):
+    try:
+        dns_name = socket.gethostbyaddr(public_ip)[0]
+    except socket.herror:
+        dns_name = "Hostname not Available."
+    while True:
+        try:
+            choice = int(
+                input(
+                    (
+                        "Please choose what you'd like this machine to be called in GLPI."
+                        f"Enter 1 for UUID: {system_json["UUID"]}."
+                        f"Enter 2 for Serial Number: {system_json["SerialNumber"]}"
+                        f"Enter 3 for SKU: {system_json["SKU"]}"
+                        f"Enter 4 for BMC IP: {ipmi_ip}"
+                        f"Enter 5 for DNS name: {dns_name}"
+                        f"Enter 6 for a custom name. You will be prompted again."
+                    )
+                )
+            )
+            if choice not in [1, 2, 3, 4, 5, 6]:
+                raise ValueError
+            if choice == 1:
+                hostname = system_json["UUID"]
+            elif choice == 2:
+                hostname = system_json["SerialNumber"]
+            elif choice == 3:
+                hostname = system_json["SKU"]
+            elif choice == 4:
+                hostname = ipmi_ip
+            elif choice == 5:
+                hostname = dns_name
+            if choice == 6:
+                hostname = input("Please enter what you'd like to call this machine.")
+            break
+        except ValueError:
+            print(
+                "Sorry, something went wrong with your input. Please make sure to enter an integer from 1 through 6."
+            )
+    return hostname
 
 
 def update_redfish_system_uri(
@@ -464,9 +514,16 @@ def get_hostname(public_ip, sku, system_json):
         if sku and "SKU" in system_json:
             print("DNS not working, using SKU as name instead")
             hostname = system_json["SKU"]
-        else:
+        elif system_json["SerialNumber"]:
             print("DNS not working, using SerialNumber as name instead")
             hostname = system_json["SerialNumber"]
+        else:
+            raise Exception(
+                "The machine's serial number is not present in the redfish response. "
+                "Please use the SKU as the serial number "
+                "using the -s option, or manually specify a hostname using "
+                "the -n option."
+            )
     return hostname
 
 
@@ -512,7 +569,10 @@ def post_to_glpi(  # noqa: C901
     if sku and "SKU" in system_json:
         serial_number = system_json["SKU"]
     else:
-        serial_number = system_json["SerialNumber"]
+        if system_json["SerialNumber"]:
+            serial_number = system_json["SerialNumber"]
+        else:
+            serial_number = hostname
     # Append TEST to the serial number if the TEST flag is set.
     if TEST:
         serial_number = serial_number + "_TEST"
