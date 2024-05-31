@@ -2,7 +2,6 @@ import subprocess
 import sys
 import re
 import os
-import json
 
 import yaml
 import requests
@@ -28,7 +27,7 @@ def main():
         "--ldap_config",
         metavar="ldap_config",
         help=(
-            "path to LDAP config YAML/JSON file or env var that contains config data "
+            "path to LDAP config YAML/JSON file or name of env var that contains config data "
             "as a string, see integration/ldap/general_ldap_example.yaml. "
             "ex: -c ldap.yaml or -c ldap_config, if ldap_config is an env var that "
             "contains the config. (NOT -c $ldap_config)"
@@ -56,15 +55,13 @@ def main():
 
     # Process General Config
     if os.path.isfile(args.ldap_config):
-        # Process YAML file
+        # Process YAML/JSON file
         with open(args.ldap_config, "r") as config_path:
             group_map = yaml.safe_load(config_path)
     else:
         # Process env var
         yaml_content = os.getenv(args.ldap_config, "{}")
         group_map = yaml.safe_load(yaml_content)
-    if isinstance(group_map, str):
-        group_map = json.loads(group_map)
 
     ldap_server = args.ldap_server
 
