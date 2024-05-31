@@ -5,11 +5,11 @@ end: 2023-11-02 00:00:00                    # universal end (YYYY-MM-DD HH-MM-SS
 comment:                                    # universal comment or empty (~)
 epic: JIRA-0000                             # (optional) reservation tag (JIRA Epic prepended to comment)
 servers:
-  hostname:                                 # hostname
+  identifier:                               # identifier in GLPI (i.e. serial number, service tag, or hostname)
     username: user_2                        # (optional) override user
     start: 2022-10-30 00:00:00              # (optional) override start
     end: 2023-11-02 00:00:00                # (optional) override end
     comment: comment_2                      # (optional) override comment
     epic: JIRA-0001                         # (optional) override reservation tag (JIRA Epic prepended to comment)
-  hostname_2:                               # hostname
+  identifier_2:                             # identifier in GLPI (i.e. serial number, service tag, or hostname)
     ~                                       # empty (use universal values above)

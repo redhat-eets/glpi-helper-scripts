@@ -82,12 +82,12 @@ def main() -> None:
     parser.parser.add_argument(
         "-s",
         "--server",
-        metavar="hostname",
+        metavar="identifier",
         type=str,
         required=True,
-        help="the fully qualified hostname of the server associated with the "
-        + " reservation (for instance "
-        + '"machine.example.com")',
+        help="the identifier of the server associated with the "
+        + " reservation (for instance the service tag, serial number, or "
+        + "hostname)",
     )
     args = parser.parser.parse_args()
     ip = args.ip
@@ -97,7 +97,7 @@ def main() -> None:
     end = args.end
     jira_id = args.jira
     comment = args.comment
-    hostname = args.server
+    identifier = args.server
     no_verify = args.no_verify
 
     if jira_id:
@@ -111,7 +111,7 @@ def main() -> None:
 
     with SessionHandler(user_token, urls, no_verify) as session:
         create_reservations(
-            session, username, hostname, begin, end, final_comment, urls
+            session, username, identifier, begin, end, final_comment, urls
         )
 
     print_final_help()
@@ -120,7 +120,7 @@ def main() -> None:
 def create_reservations(
     session: requests.sessions.Session,
     username: str,
-    hostname: str,
+    identifier: str,
     begin: str,
     end: str,
     final_comment: str,
@@ -141,15 +141,15 @@ def create_reservations(
     if user_id is None:
         error("User " + username + " is not present.")
 
-    computer_id = check_field(session, urls.COMPUTER_URL, {"name": hostname})
+    computer_id = check_field(session, urls.COMPUTER_URL, {"name": identifier})
     if computer_id is None:
-        error("Computer " + hostname + " is not present.")
+        error("Computer " + identifier + " is not present.")
 
     reservation_item_id = check_reservation_item(
         session, urls.RESERVATION_ITEM_URL, "Computer", computer_id
     )
     if reservation_item_id is None:
-        error("Computer " + hostname + " is not reservable.")
+        error("Computer " + identifier + " is not reservable.")
 
     reservation_id = post_reservation(
         session,
@@ -163,7 +163,7 @@ def create_reservations(
     if reservation_id is False:
         error(
             "Unable to reserve "
-            + hostname
+            + identifier
             + " for "
             + username
             + ". This "
