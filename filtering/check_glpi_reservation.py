@@ -43,10 +43,10 @@ def main() -> None:
         + "programmatic parsing",
     )
     parser.parser.add_argument(
-        "-H",
-        "--hostname",
+        "-I",
+        "--identifier",
         type=str,
-        help="Use this flag if you want to list reservations for a specific machine",
+        help="Use this flag if you want to list reservations for a specific machine identifier",
     )
     parser.parser.add_argument(
         "-u",
@@ -60,12 +60,12 @@ def main() -> None:
     global concise
     concise = args.yaml
     no_verify = args.no_verify
-    hostname = args.hostname
+    identifier = args.identifier
     user = args.user
     urls = UrlInitialization(ip)
 
     with SessionHandler(user_token, urls, no_verify) as session:
-        print(get_reservations(session, urls, hostname, user))
+        print(get_reservations(session, urls, identifier, user))
 
     if not concise:
         print_final_help()
