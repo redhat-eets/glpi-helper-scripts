@@ -46,7 +46,8 @@ def main() -> None:
         "-I",
         "--identifier",
         type=str,
-        help="Use this flag if you want to list reservations for a specific machine identifier",
+        help="Use this flag if you want to list reservations for a specific "
+        + "machine identifier",
     )
     parser.parser.add_argument(
         "-u",
