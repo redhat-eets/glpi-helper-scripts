@@ -27,8 +27,8 @@ def main():
         "--ldap_config",
         metavar="ldap_config",
         help=(
-            "path to LDAP config YAML/JSON file or name of env var that contains config data "
-            "as a string, see integration/ldap/general_ldap_example.yaml. "
+            "path to LDAP config YAML/JSON file or name of env var that contains config"
+            "data as a string, see integration/ldap/general_ldap_example.yaml. "
             "ex: -c ldap.yaml or -c ldap_config, if ldap_config is an env var that "
             "contains the config. (NOT -c $ldap_config)"
         ),
@@ -213,7 +213,7 @@ def update_group_comments(
         group_map (dict): User-defined dictionary w/ ldap groups to search
     """
     comment = ""
-    for ldap_group in group_map[group['completename']]['ldap']:
+    for ldap_group in group_map[group["completename"]]["ldap"]:
         if ldap_group not in group["comment"]:
             comment += f"Rover: {ldap_group}\n"
             print(f"Adding '{ldap_group}' to group comment")
