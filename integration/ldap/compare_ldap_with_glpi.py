@@ -90,7 +90,8 @@ def gather_ldap_users(group_map: dict, ldap_server: str, base_dn: str) -> dict:
     """
     ldap_search_filter = "(|"
     for group in group_map:
-        ldap_search_filter += f"(cn={group_map[group]['ldap']})"
+        for ldap_group in group_map[group]["ldap"]:
+            ldap_search_filter += f"(cn={ldap_group})"
     ldap_search_filter += ")"
     ldap_username = ""
     ldap_password = ""
@@ -144,13 +145,15 @@ def parse_ldap(result: str, group_map: dict) -> dict:
             # Extract the distinguished name
             dn = dn_match.group(1)
             for mapping_name, mapping_info in group_map.items():
-                if mapping_info["ldap"] == dn:
-                    # Find all owners and members for this group
-                    owners = owner_pattern.findall(group)
-                    members = member_pattern.findall(group)
-                    # Store the results in the group_map
-                    group_map[mapping_name]["users"] = list(set(owners + members))
-
+                for ldap_group in mapping_info["ldap"]:
+                    if ldap_group == dn:
+                        # Find all owners and members for this group
+                        owners = owner_pattern.findall(group)
+                        members = member_pattern.findall(group)
+                        # Store the results in the group_map
+                        if "users" not in group_map[mapping_name]:
+                            group_map[mapping_name]["users"] = []
+                        group_map[mapping_name]["users"] += list(set(owners + members))
     return group_map
 
 
@@ -212,15 +215,19 @@ def update_group_comments(
         group (dict): GLPI group and its related fields that will be modified
         group_map (dict): User-defined dictionary w/ ldap groups to search
     """
-    if group["comment"] is None or "Rover" not in group["comment"]:
-        comment_post = {"comment": f"Rover: {group_map[group['completename']]['ldap']}"}
-        if group["comment"] is not None:
-            comment_post["comment"] += f"\n{group['comment']}"
-        print(f"Adding '{group_map[group['completename']]['ldap']}' to group comment")
-        session.put(
-            group_url + str(group["id"]),
-            json={"input": comment_post},
-        )
+    comment = ""
+    for ldap_group in group_map[group['completename']]['ldap']:
+        if ldap_group not in group["comment"]:
+            comment += f"Rover: {ldap_group}\n"
+            print(f"Adding '{ldap_group}' to group comment")
+    if group["comment"] is not None:
+        # Append pre-existing comment
+        comment += f"{group['comment']}"
+    comment_post = {"comment": comment}
+    session.put(
+        group_url + str(group["id"]),
+        json={"input": comment_post},
+    )
 
 
 def add_missing_users_to_group(
