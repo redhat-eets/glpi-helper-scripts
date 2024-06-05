@@ -197,7 +197,7 @@ def build_command(split_line: list, args: argparse.Namespace) -> list:
         )
     if args.sunbird_config:
         command.extend(["-C", args.sunbird_config])
-    if args.sku_for_dell:
+    if not args.sku_for_dell:
         command.extend(["--sku_for_dell"])
     return command
 
