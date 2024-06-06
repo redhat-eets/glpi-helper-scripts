@@ -15,6 +15,8 @@
 # Imports.
 import sys
 import socket
+import argparse
+import traceback
 
 sys.path.append("..")
 import re
@@ -26,6 +28,7 @@ from common.utils import (
     check_and_post_device_memory_item,
     check_fields,
     check_field,
+    print_error_table,
 )
 from common.switches import Switches
 from common.parser import argparser
@@ -59,35 +62,30 @@ def main() -> None:
         "-l",
         "--lab",
         action="store",
-        required=True,
         help="the lab in which this server resides",
     )
     parser.parser.add_argument(
         "--ipmi_ip",
         metavar="ipmi_ip",
         type=str,
-        required=True,
         help="the IPMI IP address of the server",
     )
     parser.parser.add_argument(
         "--ipmi_user",
         metavar="ipmi_user",
         type=str,
-        required=True,
         help="the IPMI username",
     )
     parser.parser.add_argument(
         "--ipmi_pass",
         metavar="ipmi_pass",
         type=str,
-        required=True,
         help="the IPMI password",
     )
     parser.parser.add_argument(
         "--public_ip",
         metavar="public_ip",
         type=str,
-        required=True,
         help="the public IP address of the server",
     )
     parser.parser.add_argument(
@@ -145,6 +143,12 @@ def main() -> None:
         help="path to sunbird config YAML file, see "
         + "integration/sunbird/example_sunbird.yml as an example",
     )
+    parser.parser.add_argument(
+        "-m",
+        "--machine_list",
+        metavar="machine_list",
+        help="path to file that contains information of multiple machines. Use this flag if you would like to import multiple machines",
+    )
     args = parser.parser.parse_args()
 
     # Process General Config
@@ -162,8 +166,7 @@ def main() -> None:
     else:
         sunbird_config = args.sunbird_config
 
-    global LAB_CHOICE
-    LAB_CHOICE = args.lab
+    lab_choice = args.lab
 
     user_token = args.token
     ip = args.ip
@@ -181,6 +184,26 @@ def main() -> None:
         sunbird_url = validate_url(args.sunbird_url)
     else:
         sunbird_url = None
+    if all(
+        parameter is not None
+        for parameter in [ipmi_ip, ipmi_username, ipmi_password, public_ip, lab_choice]
+    ):
+        machines = [
+            {
+                "ipmi_ip": ipmi_ip,
+                "ipmi_username": ipmi_username,
+                "ipmi_password": ipmi_password,
+                "public_ip": public_ip,
+                "lab_choice": lab_choice,
+            }
+        ]
+    else:
+        machines = []
+    if args.machine_list:
+        machines = parse_list(args, machines)
+    elif not machines:
+        raise Exception("You need to specify a machine for import, either through "
+                        "the commmand line flags, or via a csv file with -m.")
     global TEST
     TEST = args.experiment
     global PUT
@@ -189,52 +212,63 @@ def main() -> None:
 
     urls = UrlInitialization(ip)
     Switches(switch_config)
+    error_messages = {}
+    for machine in machines:
+        print(f"Importing {machine["ipmi_ip"]}")
+        try:
+            global REDFISH_BASE_URL
+            REDFISH_BASE_URL = "https://" + machine["ipmi_ip"]
 
-    global REDFISH_BASE_URL
-    REDFISH_BASE_URL = "https://" + ipmi_ip
+            REDFISH_OBJ = redfish.redfish_client(
+                base_url=REDFISH_BASE_URL,
+                username=machine["ipmi_username"],
+                password=machine["ipmi_password"],
+                default_prefix="/redfish/v1",
+                timeout=20,
+            )
+            REDFISH_OBJ.login(auth="session")
+            update_redfish_system_uri(REDFISH_OBJ, urls)
 
-    REDFISH_OBJ = redfish.redfish_client(
-        base_url=REDFISH_BASE_URL,
-        username=ipmi_username,
-        password=ipmi_password,
-        default_prefix="/redfish/v1",
-        timeout=20,
-    )
-    REDFISH_OBJ.login(auth="session")
-    update_redfish_system_uri(REDFISH_OBJ, urls)
+            system_json = get_redfish_system(REDFISH_OBJ)
+            cpu_list = get_processor(REDFISH_OBJ)
+            ram_list = get_memory(REDFISH_OBJ)
+            storage_list = get_storage(REDFISH_OBJ)
+            nic_list, port_list = get_network(REDFISH_OBJ)
+            try:
+                REDFISH_OBJ.logout()
+            except redfish.rest.v1.RetriesExhaustedError:
+                pass
+            if no_dns:
+                hostname = no_dns
+            else:
+                hostname = get_hostname(machine["public_ip"], sku, system_json)
 
-    system_json = get_redfish_system(REDFISH_OBJ)
-    cpu_list = get_processor(REDFISH_OBJ)
-    ram_list = get_memory(REDFISH_OBJ)
-    storage_list = get_storage(REDFISH_OBJ)
-    nic_list, port_list = get_network(REDFISH_OBJ)
-    try:
-        REDFISH_OBJ.logout()
-    except redfish.rest.v1.RetriesExhaustedError:
-        pass
-    if no_dns:
-        hostname = no_dns
-    else:
-        hostname = get_hostname(public_ip, sku, system_json)
+            with SessionHandler(user_token, urls, no_verify) as session:
+                post_to_glpi(
+                    session,
+                    system_json,
+                    cpu_list,
+                    hostname,
+                    ram_list,
+                    storage_list,
+                    nic_list,
+                    port_list,
+                    sku,
+                    urls,
+                    overwrite,
+                    sunbird_username,
+                    sunbird_password,
+                    sunbird_url,
+                    sunbird_config,
+                    machine["lab_choice"],
+                )
+        except Exception:
+            # Print error message and move on to next machine
+            error_message = traceback.format_exc()
+            print(error_message)
+            error_messages[machine["ipmi_ip"]] = error_message
 
-    with SessionHandler(user_token, urls, no_verify) as session:
-        post_to_glpi(
-            session,
-            system_json,
-            cpu_list,
-            hostname,
-            ram_list,
-            storage_list,
-            nic_list,
-            port_list,
-            sku,
-            urls,
-            overwrite,
-            sunbird_username,
-            sunbird_password,
-            sunbird_url,
-            sunbird_config,
-        )
+    print_error_table(error_messages)
 
     print_final_help()
 
@@ -486,6 +520,7 @@ def post_to_glpi(  # noqa: C901
     sunbird_password: str,
     sunbird_url: str,
     sunbird_config: dict,
+    lab_choice: str,
 ) -> None:
     """A method to post the JSON created to GLPI. This method calls numerous helper
        functions which create different parts of the JSON required, get fields from
@@ -508,6 +543,7 @@ def post_to_glpi(  # noqa: C901
         sunbird_password (str): Sunbird password
         sunbird_url (str): Sunbird URL
         sunbird_config (dict): a user-provided dictionary of lab locations and cabinets
+        lab_choice (str): The lab that the machine is located in
     """
     if sku and "SKU" in system_json:
         serial_number = system_json["SKU"]
@@ -534,7 +570,7 @@ def post_to_glpi(  # noqa: C901
         session, urls.COMPUTER_MODEL_URL, {"name": system_json["Model"]}
     )
     processors_id = check_and_post_processor(session, cpu_list, urls.CPU_URL, urls)
-    locations_id = check_and_post(session, urls.LOCATION_URL, {"name": LAB_CHOICE})
+    locations_id = check_and_post(session, urls.LOCATION_URL, {"name": lab_choice})
 
     # The final dictionary for the machine JSON to post.
     glpi_post = {}
@@ -1262,6 +1298,41 @@ def check_and_post_processor_item(
             print(str(post_response) + "\n")
 
         return
+
+
+def parse_list(args: argparse.Namespace, machines: list):
+    """Reads machine information from the provided list and CLI args and runs the
+    relevant command
+
+    Args:
+        args (argparse.Namespace): Arguments passed in by the user via the CLI
+    """
+    print("Parsing machine file\n")
+    machine_list = ""
+    try:
+        f = open(args.machine_list, "r")
+        machine_list = f.readlines()
+        f.close()
+    except FileNotFoundError:
+        sys.exit("can't open %s" % (machine_list))
+
+    for line in machine_list:
+        if line[0] != "#":
+            split_line = line.split(",")
+            if len(split_line) == 5:
+                machines.append(
+                    {
+                        "ipmi_ip": split_line[0],
+                        "ipmi_username": split_line[1],
+                        "ipmi_password": split_line[2],
+                        "public_ip": split_line[3],
+                        "lab_choice": split_line[4],
+                    }
+                )
+            else:
+                print("Line formatting incorrect, length is not 5:\n\t")
+                print(split_line)
+    return machines
 
 
 # Executes main if run as a script.
