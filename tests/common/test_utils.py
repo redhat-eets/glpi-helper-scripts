@@ -6,6 +6,7 @@ from pytest import mark
 
 import common.utils as utils
 
+
 @mark.skip("Not written")
 def test_check_field():
     pass
@@ -79,6 +80,7 @@ def test_get_switch_ports():
 @mark.skip("Not written")
 def test_error():
     pass
+
 
 @mark.parametrize(
     "error_messages, expected_output",

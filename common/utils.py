@@ -696,7 +696,7 @@ def print_error_table(error_messages: dict) -> None:
         table.field_names = ["BMC IP", "Error Message"]
         for error in error_messages:
             table.add_row([error, error_messages[error]])
-        table.align ="l"
+        table.align = "l"
         print(table)
     else:
         print("No errors detected!")
