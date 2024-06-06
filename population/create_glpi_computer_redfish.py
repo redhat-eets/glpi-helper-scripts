@@ -148,7 +148,8 @@ def main() -> None:
     parser.parser.add_argument(
         "--sku_for_dell",
         action="store_false",
-        help="use this flag if you want to use sku's for dells, and serial_numbers for everything else"
+        help="use this flag if you want to use sku's for dells, and serial_numbers for"
+        + "everything else",
     )
     args = parser.parser.parse_args()
 
@@ -240,7 +241,7 @@ def main() -> None:
             sunbird_password,
             sunbird_url,
             sunbird_config,
-            sku_for_dell
+            sku_for_dell,
         )
 
     print_final_help()
@@ -493,7 +494,7 @@ def post_to_glpi(  # noqa: C901
     sunbird_password: str,
     sunbird_url: str,
     sunbird_config: dict,
-    sku_for_dell: bool
+    sku_for_dell: bool,
 ) -> None:
     """A method to post the JSON created to GLPI. This method calls numerous helper
        functions which create different parts of the JSON required, get fields from

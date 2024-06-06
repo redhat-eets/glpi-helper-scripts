@@ -97,7 +97,8 @@ def main():
     parser.parser.add_argument(
         "--sku_for_dell",
         action="store_false",
-        help="use this flag if you want to use sku's for dells, and serial_numbers for everything else"
+        help="use this flag if you want to use sku's for dells, and serial_numbers for"
+        + "everything else",
     )
     args = parser.parser.parse_args()
     parse_list(args)
