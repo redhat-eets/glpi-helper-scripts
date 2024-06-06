@@ -22,6 +22,7 @@ import argparse
                 sunbird_password=None,
                 sunbird_url=None,
                 sunbird_config=None,
+                sku_for_dell=True
             ),
             [
                 "./create_glpi_computer_redfish.py",
@@ -59,6 +60,7 @@ import argparse
                 sunbird_password=None,
                 sunbird_url=None,
                 sunbird_config=None,
+                sku_for_dell=False
             ),
             [
                 "./create_glpi_computer_redfish.py",
@@ -81,6 +83,7 @@ import argparse
                 "-n",
                 "test",
                 "-s",
+                "--sku_for_dell"
             ],
         ),
         (
@@ -99,6 +102,7 @@ import argparse
                 sunbird_password="sb_pass",
                 sunbird_url="sb_url",
                 sunbird_config=None,
+                sku_for_dell=True
             ),
             [
                 "./create_glpi_computer_redfish.py",
