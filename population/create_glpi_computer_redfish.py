@@ -147,7 +147,8 @@ def main() -> None:
         "-m",
         "--machine_list",
         metavar="machine_list",
-        help="path to file that contains information of multiple machines. Use this flag if you would like to import multiple machines",
+        help="path to file that contains information of multiple machines."
+        + "Use this flag if you would like to import multiple machines",
     )
     args = parser.parser.parse_args()
 
@@ -202,8 +203,10 @@ def main() -> None:
     if args.machine_list:
         machines = parse_list(args, machines)
     elif not machines:
-        raise Exception("You need to specify a machine for import, either through "
-                        "the commmand line flags, or via a csv file with -m.")
+        raise Exception(
+            "You need to specify a machine for import, either through "
+            "the commmand line flags, or via a csv file with -m."
+        )
     global TEST
     TEST = args.experiment
     global PUT
