@@ -217,7 +217,7 @@ def main() -> None:
     Switches(switch_config)
     error_messages = {}
     for machine in machines:
-        print(f"Importing {machine["ipmi_ip"]}")
+        print(f"Importing {machine['ipmi_ip']}")
         try:
             global REDFISH_BASE_URL
             REDFISH_BASE_URL = "https://" + machine["ipmi_ip"]
