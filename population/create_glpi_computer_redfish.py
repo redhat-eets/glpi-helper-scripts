@@ -549,7 +549,8 @@ def post_to_glpi(  # noqa: C901
     computer_model_id = check_and_post(
         session, urls.COMPUTER_MODEL_URL, {"name": system_json["Model"]}
     )
-    processors_id = check_and_post_processor(session, cpu_list, urls.CPU_URL, urls)
+    if cpu_list:
+        processors_id = check_and_post_processor(session, cpu_list, urls.CPU_URL, urls)
     locations_id = check_and_post(session, urls.LOCATION_URL, {"name": LAB_CHOICE})
 
     # The final dictionary for the machine JSON to post.
@@ -639,15 +640,16 @@ def post_to_glpi(  # noqa: C901
     # NOTE: The 'check_and_post' style helper methods called below (for the
     # processor(s), operating system, switches, memory, and network) come after
     # the PUT/POST of the machine itself because they require the computer's ID.
-    check_and_post_processor_item(
-        session,
-        cpu_list,
-        urls.CPU_ITEM_URL,
-        COMPUTER_ID,
-        processors_id,
-        "Computer",
-        len(cpu_list),
-    )
+    if cpu_list:
+        check_and_post_processor_item(
+            session,
+            cpu_list,
+            urls.CPU_ITEM_URL,
+            COMPUTER_ID,
+            processors_id,
+            "Computer",
+            len(cpu_list),
+        )
     # Create network devices.
     nic_ids = {}
     for name in nics_dict:
