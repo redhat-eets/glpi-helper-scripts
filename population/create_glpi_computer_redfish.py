@@ -145,6 +145,12 @@ def main() -> None:
         help="path to sunbird config YAML file, see "
         + "integration/sunbird/example_sunbird.yml as an example",
     )
+    parser.parser.add_argument(
+        "--sku_for_dell",
+        action="store_false",
+        help="use this flag if you want to use sku's for dells, and serial_numbers for"
+        + "everything else",
+    )
     args = parser.parser.parse_args()
 
     # Process General Config
@@ -173,6 +179,7 @@ def main() -> None:
     public_ip = args.public_ip
     no_dns = args.no_dns
     sku = args.sku
+    sku_for_dell = args.sku_for_dell
     switch_config = args.switch_config
     no_verify = args.no_verify
     sunbird_username = args.sunbird_username
@@ -234,6 +241,7 @@ def main() -> None:
             sunbird_password,
             sunbird_url,
             sunbird_config,
+            sku_for_dell,
         )
 
     print_final_help()
@@ -486,6 +494,7 @@ def post_to_glpi(  # noqa: C901
     sunbird_password: str,
     sunbird_url: str,
     sunbird_config: dict,
+    sku_for_dell: bool,
 ) -> None:
     """A method to post the JSON created to GLPI. This method calls numerous helper
        functions which create different parts of the JSON required, get fields from
@@ -508,11 +517,18 @@ def post_to_glpi(  # noqa: C901
         sunbird_password (str): Sunbird password
         sunbird_url (str): Sunbird URL
         sunbird_config (dict): a user-provided dictionary of lab locations and cabinets
+        sku_for_dell (bool): If sku's should be used for dell's
     """
-    if sku and "SKU" in system_json:
-        serial_number = system_json["SKU"]
+    if sku_for_dell:
+        if "dell" in system_json["Manufacturer"].lower():
+            serial_number = system_json["SKU"]
+        else:
+            serial_number = system_json["SerialNumber"]
     else:
-        serial_number = system_json["SerialNumber"]
+        if sku and "SKU" in system_json:
+            serial_number = system_json["SKU"]
+        else:
+            serial_number = system_json["SerialNumber"]
     # Append TEST to the serial number if the TEST flag is set.
     if TEST:
         serial_number = serial_number + "_TEST"
