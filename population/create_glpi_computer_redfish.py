@@ -577,7 +577,7 @@ def post_to_glpi(  # noqa: C901
     comment = None
     COMPUTER_ID = None
     for glpi_computer in glpi_fields_list:
-        if glpi_computer["serial"] == serial_number:
+        if glpi_computer["serial"] == serial_number and glpi_computer["uuid"] == uuid:
             global PUT
             PUT = True
             COMPUTER_ID = glpi_computer["id"]
