@@ -171,10 +171,6 @@ def main() -> None:
 
     user_token = args.token
     ip = args.ip
-    ipmi_ip = args.ipmi_ip
-    ipmi_username = args.ipmi_user
-    ipmi_password = args.ipmi_pass
-    public_ip = args.public_ip
     no_dns = args.no_dns
     sku = args.sku
     switch_config = args.switch_config
@@ -185,34 +181,7 @@ def main() -> None:
         sunbird_url = validate_url(args.sunbird_url)
     else:
         sunbird_url = None
-    machines = []
-    missing_flags = []
-    flags = {
-        "ipmi_ip": ipmi_ip,
-        "ipmi_username": ipmi_username,
-        "ipmi_password": ipmi_password,
-        "public_ip": public_ip,
-        "lab_choice": lab_choice,
-    }
-    for flag, value in flags.items():
-        if not value:
-            missing_flags.append(flag)
-    if missing_flags:
-        print(
-            f"You haven't specified all of the flags to import a machine - you are "
-            + f"missing the following flags: {', '.join(missing_flags)}. Checking for a "
-            + "config file with machines to be imported..."
-        )
-    else:
-        machines.append(flags)
-    if args.machine_list:
-        machines = parse_list(args, machines)
-    elif not machines:
-        raise Exception(
-            "You need to specify a machine for import, either through "
-            + "the commmand line flags --ipmi_ip, --ipmi_user, --ipmi_pass,"
-            + "--public_ip, and -l/--lab, or via a csv file with -m."
-        )
+    machines = parse_machine_flags(args)
     global TEST
     TEST = args.experiment
     global PUT
@@ -1310,7 +1279,7 @@ def check_and_post_processor_item(
         return
 
 
-def parse_list(args: argparse.Namespace, machines: list):
+def parse_list(args: argparse.Namespace, machines: list) -> list:
     """Reads machine information from the provided list and CLI args and runs the
     relevant command
 
@@ -1344,6 +1313,45 @@ def parse_list(args: argparse.Namespace, machines: list):
                 print(split_line)
     return machines
 
+def parse_machine_flags(args: argparse.Namespace) -> list:
+    """Parses flags that specify machine information and creates list of machines to be
+    imported
+
+    Args:
+        args (argparse.Namespace): Arguments passed in by the user via the CLI
+
+    Returns:
+        list: machines to be imported
+    """
+    machines = []
+    missing_flags = []
+    flags = {
+        "ipmi_ip": args.ipmi_ip,
+        "ipmi_username": args.ipmi_user,
+        "ipmi_password": args.ipmi_pass,
+        "public_ip": args.public_ip,
+        "lab_choice": args.lab,
+    }
+    for flag, value in flags.items():
+        if not value:
+            missing_flags.append(flag)
+    if missing_flags:
+        print(
+            f"You haven't specified all of the flags to import a machine - you are "
+            + f"missing the following flags: {', '.join(missing_flags)}. Checking for a "
+            + "config file with machines to be imported..."
+        )
+    else:
+        machines.append(flags)
+    if args.machine_list:
+        machines = parse_list(args, machines)
+    elif not machines:
+        raise Exception(
+            "You need to specify a machine for import, either through "
+            + "the commmand line flags --ipmi_ip, --ipmi_user, --ipmi_pass,"
+            + "--public_ip, and -l/--lab, or via a csv file with -m."
+        )
+    return machines
 
 # Executes main if run as a script.
 if __name__ == "__main__":
