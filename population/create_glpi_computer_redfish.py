@@ -185,27 +185,33 @@ def main() -> None:
         sunbird_url = validate_url(args.sunbird_url)
     else:
         sunbird_url = None
-    if all(
-        parameter is not None
-        for parameter in [ipmi_ip, ipmi_username, ipmi_password, public_ip, lab_choice]
-    ):
-        machines = [
-            {
-                "ipmi_ip": ipmi_ip,
-                "ipmi_username": ipmi_username,
-                "ipmi_password": ipmi_password,
-                "public_ip": public_ip,
-                "lab_choice": lab_choice,
-            }
-        ]
+    machines = []
+    missing_flags = []
+    flags = {
+        "ipmi_ip": ipmi_ip,
+        "ipmi_username": ipmi_username,
+        "ipmi_password": ipmi_password,
+        "public_ip": public_ip,
+        "lab_choice": lab_choice,
+    }
+    for flag, value in flags.items():
+        if not value:
+            missing_flags.append(flag)
+    if missing_flags:
+        print(
+            f"You haven't specified all of the flags to import a machine - you are "
+            + f"missing the following flags: {', '.join(missing_flags)}. Checking for a "
+            + "config file with machines to be imported..."
+        )
     else:
-        machines = []
+        machines.append(flags)
     if args.machine_list:
         machines = parse_list(args, machines)
     elif not machines:
         raise Exception(
             "You need to specify a machine for import, either through "
-            "the commmand line flags, or via a csv file with -m."
+            + "the commmand line flags --ipmi_ip, --ipmi_user, --ipmi_pass,"
+            + "--public_ip, and -l/--lab, or via a csv file with -m."
         )
     global TEST
     TEST = args.experiment
