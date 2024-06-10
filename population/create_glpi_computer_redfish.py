@@ -167,8 +167,6 @@ def main() -> None:
     else:
         sunbird_config = args.sunbird_config
 
-    lab_choice = args.lab
-
     user_token = args.token
     ip = args.ip
     no_dns = args.no_dns
@@ -1313,6 +1311,7 @@ def parse_list(args: argparse.Namespace, machines: list) -> list:
                 print(split_line)
     return machines
 
+
 def parse_machine_flags(args: argparse.Namespace) -> list:
     """Parses flags that specify machine information and creates list of machines to be
     imported
@@ -1337,9 +1336,9 @@ def parse_machine_flags(args: argparse.Namespace) -> list:
             missing_flags.append(flag)
     if missing_flags:
         print(
-            f"You haven't specified all of the flags to import a machine - you are "
-            + f"missing the following flags: {', '.join(missing_flags)}. Checking for a "
-            + "config file with machines to be imported..."
+            "You haven't specified all of the flags to import a machine - you are "
+            + f"missing the following flags: {', '.join(missing_flags)}. Checking for "
+            + "a config file with machines to be imported..."
         )
     else:
         machines.append(flags)
@@ -1352,6 +1351,7 @@ def parse_machine_flags(args: argparse.Namespace) -> list:
             + "--public_ip, and -l/--lab, or via a csv file with -m."
         )
     return machines
+
 
 # Executes main if run as a script.
 if __name__ == "__main__":
