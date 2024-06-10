@@ -144,6 +144,12 @@ def main() -> None:
         + "integration/sunbird/example_sunbird.yml as an example",
     )
     parser.parser.add_argument(
+        "--sku_for_dell",
+        action="store_false",
+        help="use this flag if you want to use sku's for dells, and serial_numbers for"
+        + "everything else",
+    )
+    parser.parser.add_argument(
         "-m",
         "--machine_list",
         metavar="machine_list",
@@ -171,6 +177,7 @@ def main() -> None:
     ip = args.ip
     no_dns = args.no_dns
     sku = args.sku
+    sku_for_dell = args.sku_for_dell
     switch_config = args.switch_config
     no_verify = args.no_verify
     sunbird_username = args.sunbird_username
@@ -237,6 +244,7 @@ def main() -> None:
                     sunbird_password,
                     sunbird_url,
                     sunbird_config,
+                    sku_for_dell,
                     machine["lab_choice"],
                 )
         except Exception:
@@ -497,6 +505,7 @@ def post_to_glpi(  # noqa: C901
     sunbird_password: str,
     sunbird_url: str,
     sunbird_config: dict,
+    sku_for_dell: bool,
     lab_choice: str,
 ) -> None:
     """A method to post the JSON created to GLPI. This method calls numerous helper
@@ -520,12 +529,19 @@ def post_to_glpi(  # noqa: C901
         sunbird_password (str): Sunbird password
         sunbird_url (str): Sunbird URL
         sunbird_config (dict): a user-provided dictionary of lab locations and cabinets
+        sku_for_dell (bool): If sku's should be used for dell's
         lab_choice (str): The lab that the machine is located in
     """
-    if sku and "SKU" in system_json:
-        serial_number = system_json["SKU"]
+    if sku_for_dell:
+        if "dell" in system_json["Manufacturer"].lower():
+            serial_number = system_json["SKU"]
+        else:
+            serial_number = system_json["SerialNumber"]
     else:
-        serial_number = system_json["SerialNumber"]
+        if sku and "SKU" in system_json:
+            serial_number = system_json["SKU"]
+        else:
+            serial_number = system_json["SerialNumber"]
     # Append TEST to the serial number if the TEST flag is set.
     if TEST:
         serial_number = serial_number + "_TEST"
@@ -546,7 +562,8 @@ def post_to_glpi(  # noqa: C901
     computer_model_id = check_and_post(
         session, urls.COMPUTER_MODEL_URL, {"name": system_json["Model"]}
     )
-    processors_id = check_and_post_processor(session, cpu_list, urls.CPU_URL, urls)
+    if cpu_list:
+        processors_id = check_and_post_processor(session, cpu_list, urls.CPU_URL, urls)
     locations_id = check_and_post(session, urls.LOCATION_URL, {"name": lab_choice})
 
     # The final dictionary for the machine JSON to post.
@@ -573,7 +590,7 @@ def post_to_glpi(  # noqa: C901
     comment = None
     COMPUTER_ID = None
     for glpi_computer in glpi_fields_list:
-        if glpi_computer["serial"] == serial_number:
+        if glpi_computer["serial"] == serial_number and glpi_computer["uuid"] == uuid:
             global PUT
             PUT = True
             COMPUTER_ID = glpi_computer["id"]
@@ -636,15 +653,16 @@ def post_to_glpi(  # noqa: C901
     # NOTE: The 'check_and_post' style helper methods called below (for the
     # processor(s), operating system, switches, memory, and network) come after
     # the PUT/POST of the machine itself because they require the computer's ID.
-    check_and_post_processor_item(
-        session,
-        cpu_list,
-        urls.CPU_ITEM_URL,
-        COMPUTER_ID,
-        processors_id,
-        "Computer",
-        len(cpu_list),
-    )
+    if cpu_list:
+        check_and_post_processor_item(
+            session,
+            cpu_list,
+            urls.CPU_ITEM_URL,
+            COMPUTER_ID,
+            processors_id,
+            "Computer",
+            len(cpu_list),
+        )
     # Create network devices.
     nic_ids = {}
     for name in nics_dict:

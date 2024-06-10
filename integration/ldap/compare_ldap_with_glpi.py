@@ -27,10 +27,11 @@ def main():
         "--ldap_config",
         metavar="ldap_config",
         help=(
-            "path to LDAP config YAML file or env var that contains config data "
-            "as a string, see integration/ldap/general_ldap_example.yaml"
+            "path to LDAP config YAML/JSON file or name of env var that contains config"
+            "data as a string, see integration/ldap/general_ldap_example.yaml. "
+            "ex: -c ldap.yaml or -c ldap_config, if ldap_config is an env var that "
+            "contains the config. (NOT -c $ldap_config)"
         ),
-        required=True,
     )
     parser.parser.add_argument(
         "-l",
@@ -54,11 +55,11 @@ def main():
 
     # Process General Config
     if os.path.isfile(args.ldap_config):
-        # Process YAML file
+        # Process YAML/JSON file
         with open(args.ldap_config, "r") as config_path:
             group_map = yaml.safe_load(config_path)
     else:
-        # Process YAML env var
+        # Process env var
         yaml_content = os.getenv(args.ldap_config, "{}")
         group_map = yaml.safe_load(yaml_content)
 
@@ -212,7 +213,7 @@ def update_group_comments(
         group_map (dict): User-defined dictionary w/ ldap groups to search
     """
     comment = ""
-    for ldap_group in group_map[group['completename']]['ldap']:
+    for ldap_group in group_map[group["completename"]]["ldap"]:
         if ldap_group not in group["comment"]:
             comment += f"Rover: {ldap_group}\n"
             print(f"Adding '{ldap_group}' to group comment")
@@ -248,6 +249,8 @@ def add_missing_users_to_group(
         users_to_add = list(
             set(group_map[group["completename"]]["users"]) - set(users_in_group)
         )
+        if not users_to_add:
+            print(f"no new users for {group['completename']}, proceeding to next group")
         for user in all_users:
             if user["name"] in users_to_add:
                 print(
