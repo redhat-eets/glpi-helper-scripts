@@ -4,23 +4,7 @@ sys.path.append("..")
 
 from pytest import mark
 
-from common.utils import (  # noqa: F401
-    check_field,
-    check_fields,
-    check_field_without_range,
-    check_and_post,
-    check_and_post_processor,
-    check_and_post_processor_item,
-    check_and_post_network_port,
-    check_and_post_network_port_network_port,
-    check_and_post_device_memory_item,
-    get_unspecified_device_memory,
-    check_and_remove_unspecified_device_memory_item,
-    print_final_help,
-    get_reservations,
-    get_switch_ports,
-    error,
-)
+import common.utils as utils
 
 
 @mark.skip("Not written")
@@ -96,3 +80,26 @@ def test_get_switch_ports():
 @mark.skip("Not written")
 def test_error():
     pass
+
+
+@mark.parametrize(
+    "error_messages, expected_output",
+    [
+        ({}, "No errors detected!\n"),
+        (
+            {"127.0.0.1": "Connection Error", "127.0.0.2": "Timeout"},
+            (
+                "+-----------+------------------+\n"
+                "| BMC IP    | Error Message    |\n"
+                "+-----------+------------------+\n"
+                "| 127.0.0.1 | Connection Error |\n"
+                "| 127.0.0.2 | Timeout          |\n"
+                "+-----------+------------------+"
+            ),
+        ),
+    ],
+)
+def test_print_error_table(capsys, error_messages, expected_output):
+    utils.print_error_table(error_messages)
+    captured = capsys.readouterr()
+    assert captured.out.strip() == expected_output.strip()

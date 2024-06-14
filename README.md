@@ -92,7 +92,7 @@ NOTE: Useful for importing many machines sequentially, and those that do not hav
     - Python3
     - pip3
     - All packages listed in `requirements.txt` (you can install them by running `pip3 install -r requirements.txt` in your terminal)
-3. Call the `population/create_computer_redfish_wrapper.py` script, passing in the GLPI API token to `-t`, the URL of your GLPI instance to `-i`, and the list from step 1. to `-l`. If you would like to use a custom name for a machine instead of relying on DNS, pass in your custom name to `-n`. If you would like to use the service tag / SKU for Dell Machines rather than the serial number, use `-s`. For other options see the script's help message.
+3. Call the `population/create_computer_redfish.py` script, passing in the GLPI API token to `-t`, the URL of your GLPI instance to `-i`, and the list from step 1. to `-m`. If you would like to use a custom name for a machine instead of relying on DNS, pass in your custom name to `-n`. If you would like to use the service tag / SKU for Dell Machines rather than the serial number, use `-s`. NOTE: You can also add a machine's details via the `--ipmi_ip`, `--ipmi_user`, `--ipmi_pass`, `--public_ip`, and `--lab` flags. This machine will be imported along with any machines you've passed in via `-m`. For other options see the script's help message.
 4. Continue from step 6. of the RHEL, CentOS, Fedora workflow section above.
 
 ### CoreOS Workflow (Directly on Target CLI):
