@@ -24,7 +24,6 @@ from common.utils import (
     get_reservations,
 )
 from common.parser import argparser
-import subprocess
 from typing import Tuple
 import yaml
 import operator
