@@ -21,6 +21,7 @@ from common.utils import (
     check_fields,
     check_field_without_range,
     print_final_help,
+    get_reservations,
 )
 from common.parser import argparser
 import subprocess
@@ -69,9 +70,8 @@ def main() -> None:
 
     requirements = parse_list(list)
 
-    reservations = get_reservations(user_token, ip, no_verify)
-
     with SessionHandler(user_token, urls, no_verify) as session:
+        reservations = yaml.safe_load(get_reservations(session, urls))
         computers = check_fields(session, urls.COMPUTER_URL)
         disks = check_fields(session, urls.DISK_ITEM_URL)
         disks.sort(key=operator.itemgetter("totalsize"))
@@ -109,33 +109,6 @@ def parse_list(list: str) -> list:
 
     print("Requirements yaml parsed")
     return requirements
-
-
-def get_reservations(user_token: str, ip: str, no_verify: bool) -> list:
-    """Get the reservations from GLPI
-
-    Args:
-        user_token (str): the user's GLPI API token
-        ip (str):         the GLPI IP address
-        no_verify (bool): if present, this will not verify the SSL session
-
-    Returns:
-        parsed_reservations (list): the reservations from GLPI
-    """
-    print(
-        "------------------------------------------------------------------"
-        + "--------------\nGetting and parsing reservations\n-----------------"
-        + "---------------------------------------------------------------"
-    )
-
-    command = ["./check_glpi_reservation.py", "-i", ip, "-t", user_token, "-y"]
-    if no_verify:
-        command.extend(["-v"])
-    reservation_output = subprocess.check_output(command)
-    parsed_reservations = yaml.safe_load(reservation_output)
-
-    print("Reservations parsed")
-    return parsed_reservations
 
 
 def reservable(  # noqa: C901
