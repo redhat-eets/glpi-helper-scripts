@@ -53,7 +53,7 @@ def main() -> None:
         "-u",
         "--user",
         type=str,
-        help="Use this flag if you want to list reservations made by a specific user"
+        help="Use this flag if you want to list reservations made by a specific user",
     )
     args = parser.parser.parse_args()
     user_token = args.token

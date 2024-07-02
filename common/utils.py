@@ -702,6 +702,7 @@ def print_error_table(error_messages: dict) -> None:
         print("No errors detected!")
         print("\n")
 
+
 def check_computer_reservable(session: str, link: str) -> bool:
     """Check that computer is reservable
 

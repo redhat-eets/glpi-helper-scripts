@@ -8,7 +8,7 @@ from common.utils import (
     check_field_without_range,
     print_final_help,
     check_and_post,
-    check_computer_reservable
+    check_computer_reservable,
 )
 from common.parser import argparser
 
