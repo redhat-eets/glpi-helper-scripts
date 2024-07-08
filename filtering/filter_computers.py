@@ -21,13 +21,14 @@ from common.utils import (
     check_fields,
     check_field_without_range,
     print_final_help,
-    check_computer_reservable
+    check_computer_reservable,
+    get_reservations,
 )
 from common.parser import argparser
-import subprocess
 from typing import Tuple
 import yaml
 import operator
+import requests
 
 # Suppress InsecureRequestWarning caused by REST access without
 # certificate validation.
@@ -70,9 +71,8 @@ def main() -> None:
 
     requirements = parse_list(list)
 
-    reservations = get_reservations(user_token, ip, no_verify)
-
     with SessionHandler(user_token, urls, no_verify) as session:
+        reservations = yaml.safe_load(get_reservations(session, urls))
         computers = check_fields(session, urls.COMPUTER_URL)
         disks = check_fields(session, urls.DISK_ITEM_URL)
         disks.sort(key=operator.itemgetter("totalsize"))
@@ -112,35 +112,8 @@ def parse_list(list: str) -> list:
     return requirements
 
 
-def get_reservations(user_token: str, ip: str, no_verify: bool) -> list:
-    """Get the reservations from GLPI
-
-    Args:
-        user_token (str): the user's GLPI API token
-        ip (str):         the GLPI IP address
-        no_verify (bool): if present, this will not verify the SSL session
-
-    Returns:
-        parsed_reservations (list): the reservations from GLPI
-    """
-    print(
-        "------------------------------------------------------------------"
-        + "--------------\nGetting and parsing reservations\n-----------------"
-        + "---------------------------------------------------------------"
-    )
-
-    command = ["./check_glpi_reservation.py", "-i", ip, "-t", user_token, "-y"]
-    if no_verify:
-        command.extend(["-v"])
-    reservation_output = subprocess.check_output(command)
-    parsed_reservations = yaml.safe_load(reservation_output)
-
-    print("Reservations parsed")
-    return parsed_reservations
-
-
 def reservable(  # noqa: C901
-    user_token: str,
+    session: requests.sessions.Session,
     reservations: list,
     computers: list,
     disks: list,
@@ -150,7 +123,7 @@ def reservable(  # noqa: C901
        close to the requirements as possible
 
     Args:
-        user_token (str):    the user's GLPI API token
+        session (requests.sessions.Session):    The requests session object
         reservations (list): the list of GLPI reservations
         computers (list):    the list of GLPI computers
         disks (list):        the list of GLPI disks
@@ -171,7 +144,6 @@ def reservable(  # noqa: C901
     curr_round = 0
     for requirement in requirements:
         for computer in computers:
-            computer = yaml.safe_load(computer)
             cpu_weight = None
             core_weight = None
             memory_weight = None
@@ -192,24 +164,24 @@ def reservable(  # noqa: C901
             # goes into filtering
             for link in computer["links"]:
                 if link["rel"] == "ReservationItem":
-                    computer_reservable = check_computer_reservable(user_token, link)
+                    computer_reservable = check_computer_reservable(session, link)
             if not computer_reservable:
                 continue
 
             for link in computer["links"]:
                 if link["rel"] == "Item_DeviceProcessor":
                     cpu_weight = check_cpus(
-                        user_token, link, requirements[requirement]["cpu"]
+                        session, link, requirements[requirement]["cpu"]
                     )
                     core_weight = check_cores(
-                        user_token, link, requirements[requirement]["cores"]
+                        session, link, requirements[requirement]["cores"]
                     )
                     if not (cpu_weight or core_weight):
                         break
 
                 elif link["rel"] == "Item_DeviceMemory":
                     memory_weight = check_memory(
-                        user_token, link, requirements[requirement]["ram"]
+                        session, link, requirements[requirement]["ram"]
                     )
                     if not memory_weight:
                         break
@@ -219,15 +191,13 @@ def reservable(  # noqa: C901
                     and link["rel"] == "Item_DeviceGraphicCard"
                 ):
                     gpu = check_graphics(
-                        user_token, link, requirements[requirement]["gpu"]
+                        session, link, requirements[requirement]["gpu"]
                     )
                 elif (
                     "nic" in requirements[requirement]
                     and link["rel"] == "Item_DeviceNetworkCard"
                 ):
-                    nic = check_network(
-                        user_token, link, requirements[requirement]["nic"]
-                    )
+                    nic = check_network(session, link, requirements[requirement]["nic"])
             if (
                 not computer_reservable
                 or not (cpu_weight or core_weight)
@@ -375,11 +345,11 @@ def print_final_decision(
 
 # NOTE: Need to replace this added glpi in the path.
 #       Why is that there in the href?
-def check_cpus(user_token: str, link: str, req_cpu: int) -> int:
+def check_cpus(session: requests.sessions.Session, link: str, req_cpu: int) -> int:
     """Check cpu requirements for a computer
 
     Args:
-        user_token (str): the user's GLPI API token
+        session (requests.sessions.Session): The requests session object
         link (str):       the GLPI link to the machine to check
         req_cpu (int):    the amount of cpus required
 
@@ -387,18 +357,18 @@ def check_cpus(user_token: str, link: str, req_cpu: int) -> int:
         int:  on success returns the ratio of total cpus to required cpus
         None: otherwise
     """
-    cpus = check_field_without_range(user_token, link["href"].replace("/glpi", ""))
+    cpus = check_field_without_range(session, link["href"].replace("/glpi", ""))
     if len(cpus) >= req_cpu:
         return len(cpus) / req_cpu
 
     return None
 
 
-def check_cores(user_token: str, link: str, req_cores: int) -> int:
+def check_cores(session: requests.sessions.Session, link: str, req_cores: int) -> int:
     """Check core requirements for a computer
 
     Args:
-        user_token (str): the user's GLPI API token
+        session (requests.sessions.Session): The requests session object
         link (str):       the GLPI link to the machine to check
         req_cores (int):  the amount of cores required
 
@@ -406,7 +376,7 @@ def check_cores(user_token: str, link: str, req_cores: int) -> int:
         int:  on success returns the ratio of total cores to required cores
         None: otherwise
     """
-    cpus = check_field_without_range(user_token, link["href"].replace("/glpi", ""))
+    cpus = check_field_without_range(session, link["href"].replace("/glpi", ""))
     total_cores = 0
     for cpu in cpus:
         total_cores += int(cpu["nbcores"])
@@ -416,11 +386,11 @@ def check_cores(user_token: str, link: str, req_cores: int) -> int:
     return None
 
 
-def check_memory(user_token: str, link: str, req_memory: int) -> int:
+def check_memory(session: requests.sessions.Session, link: str, req_memory: int) -> int:
     """Check memory requirements for a computer
 
     Args:
-        user_token (str): the user's GLPI API token
+        session (requests.sessions.Session): The requests session object
         link (str):       the GLPI link to the machine to check
         req_memory (int): the amount of memory required (MB)
 
@@ -428,7 +398,7 @@ def check_memory(user_token: str, link: str, req_memory: int) -> int:
         int:  on success returns the ratio of total ram to required ram
         None: otherwise
     """
-    memory = check_field_without_range(user_token, link["href"].replace("/glpi", ""))
+    memory = check_field_without_range(session, link["href"].replace("/glpi", ""))
     total_ram = 0
     for dimm in memory:
         total_ram += int(dimm["size"])
@@ -438,23 +408,23 @@ def check_memory(user_token: str, link: str, req_memory: int) -> int:
     return None
 
 
-def check_graphics(user_token: str, link: str, req_gpu: str) -> bool:
+def check_graphics(session: requests.sessions.Session, link: str, req_gpu: str) -> bool:
     """Check graphics requirements for a computer
 
     Args:
-        user_token (str): the user's GLPI API token
+        session (requests.sessions.Session): The requests session object
         link (str):       the GLPI link to the machine to check
         req_gpu (str):    the name of the gpu to check
 
     Returns:
         True: on nic meeting requirements, None otherwise
     """
-    graphics = check_field_without_range(user_token, link["href"].replace("/glpi", ""))
+    graphics = check_field_without_range(session, link["href"].replace("/glpi", ""))
     for gpu in graphics:
         for link in gpu["links"]:
             if link["rel"] == "DeviceGraphicCard":
                 gpu_info = check_field_without_range(
-                    user_token, link["href"].replace("/glpi", "")
+                    session, link["href"].replace("/glpi", "")
                 )
                 if req_gpu in gpu_info["designation"]:
                     return True
@@ -462,28 +432,28 @@ def check_graphics(user_token: str, link: str, req_gpu: str) -> bool:
     return None
 
 
-def check_network(user_token: str, link: str, req_nic: str) -> bool:
+def check_network(session: requests.sessions.Session, link: str, req_nic: str) -> bool:
     """Check network requirements for a computer
 
     Args:
-        user_token (str): the user's GLPI API token
+        session (requests.sessions.Session): The requests session object
         link (str):       the GLPI link to the machine to check
         req_nic (str):    the name of the nic to check
 
     Returns:
         True: on nic meeting requirements, None otherwise
     """
-    nics = check_field_without_range(user_token, link["href"].replace("/glpi", ""))
+    nics = check_field_without_range(session, link["href"].replace("/glpi", ""))
     for nic in nics:
         for link in nic["links"]:
             if link["rel"] == "DeviceNetworkCard":
                 nic_info = check_field_without_range(
-                    user_token, link["href"].replace("/glpi", "")
+                    session, link["href"].replace("/glpi", "")
                 )
                 for model_link in nic_info["links"]:
                     if model_link["rel"] == "DeviceNetworkCardModel":
                         model_info = check_field_without_range(
-                            user_token, model_link["href"].replace("/glpi", "")
+                            session, model_link["href"].replace("/glpi", "")
                         )
                         if model_info["name"] and req_nic in model_info["name"]:
                             return True
@@ -528,7 +498,7 @@ def check_disks(computer_id: str, disks: list, req_disks: list) -> bool:
     else:
         return True
 
-
+ 
 # Executes main if run as a script.
 if __name__ == "__main__":
     main()
