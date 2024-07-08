@@ -498,7 +498,7 @@ def check_disks(computer_id: str, disks: list, req_disks: list) -> bool:
     else:
         return True
 
- 
+
 # Executes main if run as a script.
 if __name__ == "__main__":
     main()
