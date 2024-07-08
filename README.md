@@ -217,3 +217,13 @@ The `integrations/ldap/compare_ldap_with_glpi.py` script compares the LDAP group
 
 Example script usage:
 `python3 compare_ldap_with_glpi.py -i <GLPI URL> -t <GLPI API TOKEN> -v -c <path to YAML file> -l <LDAP server> -b <Base DN>`
+
+## Utilities
+
+### utilities/tag_unreservable_machines.py
+NOTE: This script requires the "[Tag Management](https://github.com/pluginsGLPI/tag)" plugin.
+
+This script tags all unreservable machines with a specified tag.
+
+Example script usage:
+`python3 tag_unreservable_machines.py -i <GLPI URL> -t <GLPI API TOKEN> -v -n <TAG NAME>`

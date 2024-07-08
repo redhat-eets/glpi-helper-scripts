@@ -701,3 +701,24 @@ def print_error_table(error_messages: dict) -> None:
     else:
         print("No errors detected!")
         print("\n")
+
+
+def check_computer_reservable(session: str, link: str) -> bool:
+    """Check that computer is reservable
+
+    Args:
+        session (str): the user's GLPI API token
+        link (str):       the GLPI link to the machine to check
+
+    Returns:
+        True: on reservable, False otherwise
+    """
+    computer_reservable = check_field_without_range(
+        session, link["href"].replace("/glpi", "")
+    )
+    if computer_reservable:
+        for reservation_info in computer_reservable:
+            if reservation_info["is_active"]:
+                return True
+
+    return False

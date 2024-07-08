@@ -21,6 +21,7 @@ from common.utils import (
     check_fields,
     check_field_without_range,
     print_final_help,
+    check_computer_reservable,
     get_reservations,
 )
 from common.parser import argparser
@@ -496,27 +497,6 @@ def check_disks(computer_id: str, disks: list, req_disks: list) -> bool:
         return False
     else:
         return True
-
-
-def check_computer_reservable(session: str, link: str) -> bool:
-    """Check that computer is reservable
-
-    Args:
-        session (str): The requests session object
-        link (str):       the GLPI link to the machine to check
-
-    Returns:
-        True: on reservable, False otherwise
-    """
-    computer_reservable = check_field_without_range(
-        session, link["href"].replace("/glpi", "")
-    )
-    if computer_reservable:
-        for reservation_info in computer_reservable:
-            if reservation_info["is_active"]:
-                return True
-
-    return False
 
 
 # Executes main if run as a script.
