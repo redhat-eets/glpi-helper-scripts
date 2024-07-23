@@ -18,6 +18,7 @@ import urllib3
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+
 def main() -> None:
     """Main Function"""
     # Get the command line arguments from the user
