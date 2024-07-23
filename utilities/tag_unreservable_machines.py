@@ -12,6 +12,11 @@ from common.utils import (
 )
 from common.parser import argparser
 
+# Suppress InsecureRequestWarning caused by REST access to Redfish without
+# certificate validation.
+import urllib3
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 def main() -> None:
     """Main Function"""
