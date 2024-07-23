@@ -114,7 +114,6 @@ def gather_ldap_users(
     ldap_username = ""
     ldap_password = ""
     ldap_search_base = f"ou=adhoc,ou=managedGroups,dc={base_dn},dc=com"
-    ldap_attributes = ["owner", "uniqueMember"]
 
     cmd = [
         "ldapsearch",
