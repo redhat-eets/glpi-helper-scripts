@@ -2,6 +2,7 @@ import subprocess
 import sys
 import re
 import os
+import argparse
 
 import yaml
 import requests
@@ -54,14 +55,7 @@ def main():
     base_dn = args.base_dn
 
     # Process General Config
-    if os.path.isfile(args.ldap_config):
-        # Process YAML/JSON file
-        with open(args.ldap_config, "r") as config_path:
-            group_map = yaml.safe_load(config_path)
-    else:
-        # Process env var
-        yaml_content = os.getenv(args.ldap_config, "{}")
-        group_map = yaml.safe_load(yaml_content)
+    group_map = parse_config_yaml(args)
 
     ldap_server = args.ldap_server
 
@@ -74,7 +68,34 @@ def main():
     print_final_help()
 
 
-def gather_ldap_users(group_map: dict, ldap_server: str, base_dn: str) -> dict:
+def parse_config_yaml(args: argparse.Namespace) -> dict:
+    """Process the config file, which can be passed as an env var or as a file
+
+    Args:
+        args (argparse.Namespace): Args passed in from the CLI
+
+    Returns:
+        dict: Config file transformed into python dictionary
+    """
+    # Process General Config
+    if os.path.isfile(args.ldap_config):
+        # Process YAML/JSON file
+        with open(args.ldap_config, "r") as config_path:
+            group_map = yaml.safe_load(config_path)
+    else:
+        # Process env var
+        yaml_content = os.getenv(args.ldap_config, "{}")
+        group_map = yaml.safe_load(yaml_content)
+
+    return group_map
+
+
+def gather_ldap_users(
+    group_map: dict,
+    ldap_server: str,
+    base_dn: str,
+    ldap_attributes: list[str] = ["owner", "uniqueMember"],
+) -> dict:
     """Use ldapsearch to get all users from the specified LDAP groups
 
     Args:
@@ -93,7 +114,6 @@ def gather_ldap_users(group_map: dict, ldap_server: str, base_dn: str) -> dict:
     ldap_username = ""
     ldap_password = ""
     ldap_search_base = f"ou=adhoc,ou=managedGroups,dc={base_dn},dc=com"
-    ldap_attributes = ["owner", "uniqueMember"]
 
     cmd = [
         "ldapsearch",
