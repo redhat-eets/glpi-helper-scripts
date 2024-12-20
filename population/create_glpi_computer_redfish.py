@@ -217,6 +217,7 @@ def main() -> None:
             ram_list = get_memory(REDFISH_OBJ)
             storage_list = get_storage(REDFISH_OBJ)
             nic_list, port_list = get_network(REDFISH_OBJ)
+            accelerators = get_accelerators(REDFISH_OBJ, system_json, cpu_list)
             try:
                 REDFISH_OBJ.logout()
             except redfish.rest.v1.RetriesExhaustedError:
@@ -246,6 +247,7 @@ def main() -> None:
                     sunbird_config,
                     sku_for_dell,
                     machine["lab_choice"],
+                    accelerators,
                 )
         except Exception:
             # Print error message and move on to next machine
@@ -489,6 +491,109 @@ def get_hostname(public_ip, sku, system_json):
     return hostname
 
 
+def get_accelerators(
+    redfish_session: redfish.rest.v1.HttpClient, system_json: dict, processors: dict
+) -> list:
+    """Get nic and network port information from Redfish
+
+    Args:
+        redfish_session (Redfish HTTP Client): The Redfish client object
+        system_json (dict): General information about the system
+        processors (dict): Processors that belong to the system
+
+    Returns:
+        accelerators: Information about accelerators
+    """
+    print("Getting Redfish accelerator information:")
+    accelerators = []
+    # check under Processors
+    for processor in processors:
+        if processor.get("ProcessorType") == "FPGA":
+            processor_pcie_functions = processor.get("Links", {}).get(
+                "PCIeFunctions", []
+            )
+            if processor_pcie_functions:
+                processor_pcie_function = redfish_session.get(
+                    processor_pcie_functions[0]["@odata.id"]
+                ).dict
+
+                accelerators.append(
+                    {
+                        "name": processor["FPGA"]["Model"],
+                        "manufacturer": processor["Manufacturer"],
+                        "device_id": processor_pcie_function.get("DeviceId", ""),
+                        "subsystem_device_id": processor_pcie_function.get(
+                            "SubsystemDeviceId", ""
+                        ),
+                        "subsystem_vendor_id": processor_pcie_function.get(
+                            "SubsystemVendorId", ""
+                        ),
+                        "vendor_id": processor_pcie_function.get("VendorId", ""),
+                    }
+                )
+
+    # check under PCIDevices
+    oem = system_json.get("Oem", {})
+    links = {}
+    if "Hpe" in oem:
+        links = oem.get("Hpe", {}).get("Links", {})
+    elif "Hp" in oem:
+        links = oem.get("Hp", {}).get("Links", {})
+
+    for link in links:
+        if "PCIDevices" in link:
+            pci_devices_response = redfish_session.get(links[link][0]["@odata.id"])
+            pci_devices = pci_devices_response.dict
+            for pci_device in pci_devices.get("Members", []):
+                pci_device_response = redfish_session.get(pci_device["@odata.id"])
+                pci_device = pci_device_response.dict
+                pci_device_name = pci_device.get("Name", "")
+                if "Accelerator" in pci_device_name or "GPU" in pci_device_name:
+                    accelerators.append(
+                        {
+                            "name": pci_device_name,
+                            # Use first word of device name as manufacturer
+                            "manufacturer": pci_device_name.split(" ")[0],
+                            # HP devices use 'ID' instead of 'Id'
+                            "device_id": pci_device.get("DeviceID", ""),
+                            "subsystem_device_id": pci_device.get(
+                                "SubsystemDeviceID", ""
+                            ),
+                            "subsystem_vendor_id": pci_device.get(
+                                "SubsystemVendorID", ""
+                            ),
+                            "vendor_id": pci_device.get("VendorID", ""),
+                        }
+                    )
+    if not accelerators:
+        # Avoid double-counting, check under PCIeFunctions if no accelerators elsewhere
+        pcie_functions = system_json.get("PCIeFunctions", {})
+        for pcie_function in pcie_functions:
+            pcie_function_response = redfish_session.get(pcie_function["@odata.id"])
+            pcie_function_info = pcie_function_response.dict
+            if "ProcessingAccelerators" in pcie_function_info.get("DeviceClass", ""):
+                if pcie_function_info["Status"]["State"] == "Enabled":
+                    pcie_device_response = redfish_session.get(
+                        pcie_function_info["Links"]["PCIeDevice"]["@odata.id"]
+                    )
+                    pcie_device = pcie_device_response.dict
+                    accelerators.append(
+                        {
+                            "name": pcie_function_info.get("DeviceId", ""),
+                            "manufacturer": pcie_device.get("Manufacturer", ""),
+                            "device_id": pcie_function_info.get("DeviceId", ""),
+                            "subsystem_device_id": pcie_function_info.get(
+                                "SubsystemDeviceId", ""
+                            ),
+                            "subsystem_vendor_id": pcie_function_info.get(
+                                "SubsystemVendorId", ""
+                            ),
+                            "vendor_id": pcie_function_info.get("VendorId", ""),
+                        }
+                    )
+    return accelerators
+
+
 def post_to_glpi(  # noqa: C901
     session: requests.sessions.Session,
     system_json: dict,
@@ -531,6 +636,7 @@ def post_to_glpi(  # noqa: C901
         sunbird_config (dict): a user-provided dictionary of lab locations and cabinets
         sku_for_dell (bool): If sku's should be used for dell's
         lab_choice (str): The lab that the machine is located in
+        accelerators (list): Information about accelerators in system
     """
     if sku_for_dell:
         if "dell" in system_json["Manufacturer"].lower():
@@ -851,7 +957,8 @@ def post_to_glpi(  # noqa: C901
             },
         )
 
-    return
+    # Create accelerators
+    post_accelerators(session, urls, accelerators, ACCELERATOR_IDS, COMPUTER_ID)
 
 
 def update_bmc_address(

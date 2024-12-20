@@ -1,6 +1,10 @@
 # Optional
 ACCELERATOR_IDS:
     '0d5c': 
-        'ACC100' 
+        'Intel(R) vRAN ACC100 Adpr' 
     '0d8f': 
-        'N3000'
+        'Intel(R) FPGA PAC N3000'
+    '0b30':
+        'Intel(R) FPGA PAC N3000'
+    '0b32':
+        'Intel(R) FPGA PAC N3000'
