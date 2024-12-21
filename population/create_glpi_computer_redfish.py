@@ -737,10 +737,11 @@ def post_to_glpi(  # noqa: C901
             speed = name["SpeedMbps"]
         except KeyError:
             pass
+        speed = 0
         try:
             speed = name["SupportedLinkCapabilities"][0]["LinkSpeedMbps"]
         except KeyError:
-            speed = 0
+            pass
         nic_id = ""
         if name["Id"] in nic_ids:
             nic_id = nic_ids[name["Id"]]
