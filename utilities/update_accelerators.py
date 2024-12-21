@@ -22,7 +22,6 @@ from common.utils import (
     print_error_table,
     post_accelerators,
 )
-from common.switches import Switches
 from common.parser import argparser
 from population.create_glpi_computer_redfish import (
     get_accelerators,
