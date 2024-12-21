@@ -156,6 +156,12 @@ def main() -> None:
         help="path to file that contains information of multiple machines."
         + "Use this flag if you would like to import multiple machines",
     )
+    parser.parser.add_argument(
+        "-f",
+        "--file_path",
+        metavar="file_path",
+        help="Path to output file. If omitted, results will not be saved to file",
+    )
     args = parser.parser.parse_args()
 
     # Process General Config
@@ -192,7 +198,9 @@ def main() -> None:
     global PUT
     PUT = args.put
     overwrite = args.overwrite
-
+    file_path = args.file_path
+    if file_path is None:
+        file_path = ""
     urls = UrlInitialization(ip)
     Switches(switch_config)
     error_messages = {}
@@ -253,7 +261,7 @@ def main() -> None:
             print(error_message)
             error_messages[machine["ipmi_ip"]] = error_message
 
-    print_error_table(error_messages)
+    print_error_table(error_messages, file_path)
 
     print_final_help()
 
