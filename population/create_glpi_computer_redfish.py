@@ -148,8 +148,8 @@ def main() -> None:
         default=True,
         action=argparse.BooleanOptionalAction,
         help="use the --sku_for_dell if you want to use sku's for dells, and "
-        + "serial_numbers for everything else. Use --no-sku_for_dell if you want to use "
-        + "serial numbers/sku's for every device, regardless of manufacturer.",
+        + "serial_numbers for everything else. Use --no-sku_for_dell if you want to " 
+        + "use serial numbers/sku's for every device, regardless of manufacturer.",
     )
     parser.parser.add_argument(
         "-m",
