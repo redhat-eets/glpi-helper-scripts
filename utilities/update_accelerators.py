@@ -127,7 +127,7 @@ def main() -> None:
             else:
                 password = open_password
             try:
-                redfish_base_url = f"https://{address["bmcaddressfield"]}"
+                redfish_base_url = f"https://{address['bmcaddressfield']}"
                 redfish_obj = redfish.redfish_client(
                     base_url=redfish_base_url,
                     username=username,
