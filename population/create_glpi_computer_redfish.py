@@ -645,6 +645,7 @@ def post_to_glpi(  # noqa: C901
             sunbird_username,
             sunbird_password,
             sunbird_config,
+            computer_model_id,
         )
     else:
         print(
@@ -948,6 +949,7 @@ def add_rack_location_from_sunbird(
     sunbird_username: str,
     sunbird_password: str,
     sunbird_config: dict,
+    computer_model_id: int,
 ) -> None:
     """A method to check for a computer's rack location in Sunbird and post it to GLPI.
     If not all three of sunbird_username, sunbird_password, and sunbird_config are set,
@@ -963,6 +965,7 @@ def add_rack_location_from_sunbird(
         sunbird_password (str): Sunbird password
         sunbird_url (str): Sunbird URL
         sunbird_config (dict): A user-provided dictionary of lab locations and cabinets
+        computer_model_id (int): ID of the computer's model
     """
     headers = {"Accept": "application/json", "Content-Type": "application/json"}
     payload = {
@@ -1095,7 +1098,10 @@ def add_rack_location_from_sunbird(
             return
 
         check_and_update_model_size(
-            session, field=location_details, urls=urls, computer_id=computer_id
+            session,
+            field=location_details,
+            urls=urls,
+            computer_model_id=computer_model_id,
         )
 
         check_and_post(
@@ -1166,7 +1172,7 @@ def check_and_update_model_size(
     session: requests.sessions.Session,
     field: dict,
     urls: UrlInitialization,
-    computer_id: int,
+    computer_model_id: int,
 ) -> None:
     """Update a computer model's size if it doesn't match information from Sunbird
 
@@ -1174,10 +1180,8 @@ def check_and_update_model_size(
         Session (Session object): The requests session object
         field (dict): Contains information about the rack location
         urls (common.urlinitialization.UrlInitialization): GLPI API URL's
-        computer_id (int): ID of the computer associated with the rack item
+        computer_model_id (int): ID of the computer model associated with the rack item
     """
-    computer_info = session.get(url=urls.COMPUTER_URL + f"/{computer_id}")
-    computer_model_id = computer_info.json()["computermodels_id"]
     computer_model_info = session.get(
         url=urls.COMPUTER_MODEL_URL + f"/{computer_model_id}"
     )
