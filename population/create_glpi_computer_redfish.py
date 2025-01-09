@@ -222,6 +222,9 @@ def main() -> None:
             except redfish.rest.v1.RetriesExhaustedError:
                 print("Unable to logout from Redfish, continuing...")
                 pass
+            except redfish.rest.v1.BadRequestError:
+                print("Unable to logout from Redfish, continuing...")
+                pass
             if no_dns:
                 hostname = no_dns
             else:
