@@ -49,15 +49,25 @@ def main() -> None:
         group_counts = defaultdict(lambda: defaultdict(dict))
         groups = check_fields(session, urls.GROUP_URL)
         for group in groups:
-            unreservable_uri = f"{urls.BASE_URL}search/Computer?criteria[0][field]=71&criteria[0][searchtype]=equals&criteria[0][value]={group['id']}&criteria[1][link]=AND&criteria[1][field]=81&criteria[1][searchtype]=contains&criteria[1][value]=NULL"
-
+            unreservable_uri = (
+                f"{urls.BASE_URL}search/Computer?criteria[0][field]=71&"
+                "criteria[0][searchtype]=equals&"
+                "criteria[0][value]={group['id']}&criteria[1][link]=AND&"
+                "criteria[1][field]=81&criteria[1][searchtype]=contains&"
+                "criteria[1][value]=NULL"
+            )
             unreservable_computers = session.get(unreservable_uri)
             unreservable_count = unreservable_computers.json()["totalcount"]
             group_counts[group["completename"]][
                 "unreservable_count"
             ] = unreservable_count
 
-            tagged_uri = f"{urls.BASE_URL}search/Computer?criteria[0][field]=71&criteria[0][searchtype]=equals&criteria[0][value]={group['id']}&criteria[1][link]=AND&criteria[1][field]=10500&criteria[1][searchtype]=equals&criteria[1][value]=1"
+            tagged_uri = (
+                f"{urls.BASE_URL}search/Computer?criteria[0][field]=71&"
+                "criteria[0][searchtype]=equals&criteria[0][value]={group['id']}&"
+                "criteria[1][link]=AND&criteria[1][field]=10500&"
+                "criteria[1][searchtype]=equals&criteria[1][value]=1"
+            )
             tagged_computers = session.get(tagged_uri)
             tagged_count = tagged_computers.json()["totalcount"]
             group_counts[group["completename"]]["tagged_count"] = tagged_count
