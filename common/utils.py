@@ -669,7 +669,11 @@ def create_or_update_glpi_item(
     """
     if id is None:
         post_response = session.post(url=url, json={"input": glpi_post})
-        id = post_response.json()["id"]
+        try:
+            id = post_response.json()["id"]
+        except TypeError as e:
+            e.add_note(f"Couldn't post item because of: {post_response.json()}")
+            raise
         print(f"Created item at {url}")
     else:
         post_response = session.put(url=url, json={"input": glpi_post})
