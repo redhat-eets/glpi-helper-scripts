@@ -84,6 +84,14 @@ class UrlInitialization:
         self.RACK_URL = self.BASE_URL + "Rack"
         self.ITEM_RACK_URL = self.BASE_URL + "Item_Rack"
 
+        # Accelerators
+        self.DEVICE_GENERIC_TYPE_URL = self.BASE_URL + "DeviceGenericType/"
+        self.DEVICE_GENERIC_URL = self.BASE_URL + "DeviceGeneric/"
+        self.DEVICE_GENERIC_ITEM_URL = self.BASE_URL + "Item_DeviceGeneric/"
+        self.DEVICE_PCI_MODEL_URL = self.BASE_URL + "DevicePciModel/"
+        self.DEVICE_PCI_URL = self.BASE_URL + "DevicePci/"
+        self.DEVICE_PCI_ITEM_URL = self.BASE_URL + "Item_DevicePci/"
+
         # MISC
         self.USER_URL = self.BASE_URL + "USER/"
         self.LOCATION_URL = self.BASE_URL + "Location/"
@@ -92,6 +100,7 @@ class UrlInitialization:
         self.PLUGIN_URL = self.BASE_URL + "Plugin/"
         self.TAG_URL = self.BASE_URL + "PluginTagTag/"
         self.TAG_ITEM_URL = self.BASE_URL + "PluginTagTagItem/"
+        self.REGISTERED_ID_URL = self.BASE_URL + "RegisteredID/"
 
         # Redfish API URLS (Supermicro rev 1.0a)
         self.REDFISH_SYSTEM_GENERIC = "/redfish/v1/Systems"
