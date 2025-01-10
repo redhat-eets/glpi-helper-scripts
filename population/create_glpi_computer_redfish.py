@@ -876,9 +876,10 @@ def post_to_glpi(  # noqa: C901
     # Create Memory types.
     memory_item_dict = {}
     for ram in ram_list:
-        if ("Status" in ram and ram["Status"]["State"] == "Enabled") or (
-            "DIMMStatus" in ram and ram["DIMMStatus"] == "GoodInUse"
-        ):
+        if (
+            ("Status" in ram and ram["Status"]["State"] == "Enabled")
+            or ("DIMMStatus" in ram and ram["DIMMStatus"] == "GoodInUse")
+        ) and ("GPU" not in ram.get("Name", "")):
             if "MemoryDeviceType" in ram:
                 memory_type_id = check_and_post(
                     session,
