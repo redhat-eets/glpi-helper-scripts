@@ -199,8 +199,7 @@ def main() -> None:
     PUT = args.put
     overwrite = args.overwrite
     file_path = args.file_path
-    if file_path is None:
-        file_path = ""
+
     urls = UrlInitialization(ip)
     Switches(switch_config)
     error_messages = {}
