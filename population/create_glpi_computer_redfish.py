@@ -847,6 +847,7 @@ def post_to_glpi(  # noqa: C901
         network_port_id = check_and_post(
             session, urls.NETWORK_PORT_URL, search_criteria, additional_information
         )
+        speed = 0
         try:
             speed = name["SpeedMbps"]
         except KeyError:
@@ -854,7 +855,7 @@ def post_to_glpi(  # noqa: C901
         try:
             speed = name["SupportedLinkCapabilities"][0]["LinkSpeedMbps"]
         except KeyError:
-            speed = 0
+            pass
         nic_id = ""
         if name["Id"] in nic_ids:
             nic_id = nic_ids[name["Id"]]
