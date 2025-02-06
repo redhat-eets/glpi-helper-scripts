@@ -192,6 +192,9 @@ def get_sunbird_machines(
 
     sunbird_machines = {}
     for location in config_map:
+        cabinets = config_map.get(location, {}).get("Cabinets") or {}
+        if isinstance(cabinets, dict):
+            cabinets = cabinets.values()
         payload = {
             "columns": [
                 {"name": "tiSubclass", "filter": {"eq": "Standard"}},
@@ -199,7 +202,7 @@ def get_sunbird_machines(
                 {"name": "cmbLocation", "filter": {"eq": location}},
                 {
                     "name": "cmbCabinet",
-                    "filter": {"in": config_map[location]["Cabinets"]},
+                    "filter": {"in": cabinets},
                 },
             ],
             "selectedColumns": [
