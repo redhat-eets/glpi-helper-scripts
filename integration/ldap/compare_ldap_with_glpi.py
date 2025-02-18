@@ -1,8 +1,6 @@
 import subprocess
 import sys
 import re
-import os
-import argparse
 
 import requests
 

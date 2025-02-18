@@ -19,7 +19,6 @@ from email.message import EmailMessage
 
 import requests
 import urllib3
-import yaml
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization, validate_url
 from common.utils import check_fields, print_final_help, parse_config_yaml
@@ -39,9 +38,9 @@ def main() -> None:
         "--general_config",
         metavar="general_config",
         help="path to config YAML/JSON file or name of env var that contains config"
-            "data as a string, see integration/sunbird/example_sunbird.yaml. "
-            "ex: -c sunbird.yaml or -c sunbird_config, if ldap_config is an env var that "
-            "contains the config. (NOT -c $ldap_config)",
+        "data as a string, see integration/sunbird/example_sunbird.yaml. "
+        "ex: -c sunbird.yaml or -c sunbird_config, if ldap_config is an env var "
+        "that contains the config. (NOT -c $ldap_config)",
         required=True,
     )
     parser.add_argument(

@@ -831,11 +831,12 @@ def clean_accelerator_data(accelerator: dict, accelerator_ids: dict) -> dict:
                 accelerator[key] = hex(accelerator[key])
     return accelerator
 
+
 def parse_config_yaml(config_file) -> dict:
     """Process the config file, which can be passed as an env var or as a file
 
     Args:
-        config_file (string): path to LDAP config YAML/JSON file or name of env var 
+        config_file (string): path to LDAP config YAML/JSON file or name of env var
         that contains config data as a string
 
     Returns:
