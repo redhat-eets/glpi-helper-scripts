@@ -22,7 +22,7 @@ import urllib3
 import yaml
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization, validate_url
-from common.utils import check_fields, print_final_help
+from common.utils import check_fields, print_final_help, parse_config_yaml
 
 # Suppress InsecureRequestWarning caused by REST access without certificate validation.
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -38,7 +38,10 @@ def main() -> None:
         "-g",
         "--general_config",
         metavar="general_config",
-        help="path to general config YAML file, see general_config_example.yaml",
+        help="path to config YAML/JSON file or name of env var that contains config"
+            "data as a string, see integration/sunbird/example_sunbird.yaml. "
+            "ex: -c sunbird.yaml or -c sunbird_config, if ldap_config is an env var that "
+            "contains the config. (NOT -c $ldap_config)",
         required=True,
     )
     parser.add_argument(
@@ -110,8 +113,7 @@ def main() -> None:
     args = parser.parse_args()
 
     # Process General Config
-    with open(args.general_config, "r") as config_path:
-        config_map = yaml.safe_load(config_path)
+    config_map = parse_config_yaml(args.general_config)
 
     user_token = args.token
     ip = args.ip
