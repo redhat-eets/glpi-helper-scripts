@@ -194,7 +194,7 @@ def get_sunbird_machines(
     for location in config_map:
         cabinets = config_map.get(location, {}).get("Cabinets") or {}
         if isinstance(cabinets, dict):
-            cabinets = cabinets.values()
+            cabinets = list(cabinets.values())
         payload = {
             "columns": [
                 {"name": "tiSubclass", "filter": {"eq": "Standard"}},
