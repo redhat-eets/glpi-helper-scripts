@@ -14,6 +14,8 @@ from common.urlinitialization import UrlInitialization
 from common.switches import Switches
 import requests
 import pexpect
+import os
+import yaml
 import common.format_dicts as format_dicts
 from prettytable import PrettyTable
 
@@ -828,3 +830,26 @@ def clean_accelerator_data(accelerator: dict, accelerator_ids: dict) -> dict:
             if "0x" not in str(accelerator[key]):  # Ensure it's not already hex
                 accelerator[key] = hex(accelerator[key])
     return accelerator
+
+
+def parse_config_yaml(config_file) -> dict:
+    """Process the config file, which can be passed as an env var or as a file
+
+    Args:
+        config_file (string): path to LDAP config YAML/JSON file or name of env var
+        that contains config data as a string
+
+    Returns:
+        dict: Config file transformed into python dictionary
+    """
+    # Process General Config
+    if os.path.isfile(config_file):
+        # Process YAML/JSON file
+        with open(config_file, "r") as config_path:
+            group_map = yaml.safe_load(config_path)
+    else:
+        # Process env var
+        yaml_content = os.getenv(config_file, "{}")
+        group_map = yaml.safe_load(yaml_content)
+
+    return group_map

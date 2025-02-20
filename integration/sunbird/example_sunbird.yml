@@ -1,24 +1,23 @@
 ---
-    # This file should contain the locations and cabinets in Sunbird 
-    # that you would like to compare to your GLPI inventory. 
-    
-    # Some Data Center and Room names cannot be automatically parsed from Sunbird,
-    # so you can optionally provide explicit definitions for Data Center and Room for each
-    # Location. This is meant primarily for use with the create_glpi_computer_redfish.py
-    # script.
+# This file should contain the locations and cabinets in Sunbird 
+# that you would like to compare to your GLPI inventory. 
 
-    # 
-    Location 1:
-    Location 2:
-        Data Center:
-            LOC2
-        Room:
-            1234
-        Cabinets:
-            - Cabinet 1
-            - Cabinet 2
-            - Cabinet 3
-    Location 3:
-        Cabinets:
-            - Cabinet 1
-  
+# Some Data Center and Room names cannot be automatically parsed from Sunbird,
+# so you can optionally provide explicit definitions for Data Center and Room for each
+# Location. This is meant primarily for use with the create_glpi_computer_redfish.py
+# script.
+
+# Leave Cabinets: blank to search across all cabinets in that location.
+Location 1:
+Location 2:
+    Data Center:
+        LOC2
+    Room:
+        1234
+    Cabinets:
+        - Cabinet 1
+        - Cabinet 2
+        - Cabinet 3
+Location 3:
+    Cabinets:
+        - Cabinet 1

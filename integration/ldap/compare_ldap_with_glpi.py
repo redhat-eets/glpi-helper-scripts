@@ -1,10 +1,7 @@
 import subprocess
 import sys
 import re
-import os
-import argparse
 
-import yaml
 import requests
 
 sys.path.append("../..")
@@ -16,7 +13,7 @@ import urllib3
 from common.parser import argparser
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization
-from common.utils import check_fields, print_final_help
+from common.utils import check_fields, print_final_help, parse_config_yaml
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -55,7 +52,7 @@ def main():
     base_dn = args.base_dn
 
     # Process General Config
-    group_map = parse_config_yaml(args)
+    group_map = parse_config_yaml(args.ldap_config)
 
     ldap_server = args.ldap_server
 
@@ -66,28 +63,6 @@ def main():
         sync_ldap_with_glpi(session, urls, group_map)
 
     print_final_help()
-
-
-def parse_config_yaml(args: argparse.Namespace) -> dict:
-    """Process the config file, which can be passed as an env var or as a file
-
-    Args:
-        args (argparse.Namespace): Args passed in from the CLI
-
-    Returns:
-        dict: Config file transformed into python dictionary
-    """
-    # Process General Config
-    if os.path.isfile(args.ldap_config):
-        # Process YAML/JSON file
-        with open(args.ldap_config, "r") as config_path:
-            group_map = yaml.safe_load(config_path)
-    else:
-        # Process env var
-        yaml_content = os.getenv(args.ldap_config, "{}")
-        group_map = yaml.safe_load(yaml_content)
-
-    return group_map
 
 
 def gather_ldap_users(
