@@ -52,7 +52,7 @@ def main() -> None:
             unreservable_uri = (
                 f"{urls.BASE_URL}search/Computer?criteria[0][field]=71&"
                 "criteria[0][searchtype]=equals&"
-                "criteria[0][value]={group['id']}&criteria[1][link]=AND&"
+                f"criteria[0][value]={group['id']}&criteria[1][link]=AND&"
                 "criteria[1][field]=81&criteria[1][searchtype]=contains&"
                 "criteria[1][value]=NULL"
             )
@@ -64,7 +64,7 @@ def main() -> None:
 
             tagged_uri = (
                 f"{urls.BASE_URL}search/Computer?criteria[0][field]=71&"
-                "criteria[0][searchtype]=equals&criteria[0][value]={group['id']}&"
+                f"criteria[0][searchtype]=equals&criteria[0][value]={group['id']}&"
                 "criteria[1][link]=AND&criteria[1][field]=10500&"
                 "criteria[1][searchtype]=equals&criteria[1][value]=1"
             )
