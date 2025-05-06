@@ -857,7 +857,8 @@ def post_to_glpi(  # noqa: C901
         speed = 0
         try:
             speed = name["SpeedMbps"]
-            if speed == None: speed = 0
+            if speed is None: 
+                speed = 0
         except KeyError:
             pass
         try:
