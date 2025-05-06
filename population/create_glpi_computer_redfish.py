@@ -857,7 +857,7 @@ def post_to_glpi(  # noqa: C901
         speed = 0
         try:
             speed = name["SpeedMbps"]
-            if speed is None: 
+            if speed is None:
                 speed = 0
         except KeyError:
             pass
@@ -1204,6 +1204,7 @@ def add_rack_location_from_sunbird(
             {
                 "number_units": number_units,
                 "bgcolor": "#fec95c",  # Hardcoded, otherwise the rack won't show in UI
+                "position": None
             },
         )
 
