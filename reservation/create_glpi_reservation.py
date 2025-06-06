@@ -51,9 +51,6 @@ def main() -> None:
     user_token = args.token
     no_verify = args.no_verify
     reservation_list = args.list
-
-
-
     urls = UrlInitialization(ip)
 
     with SessionHandler(user_token, urls, no_verify) as session:
@@ -61,20 +58,16 @@ def main() -> None:
 
     print_final_help()
 
+
 def parse_list(
-    session,
-    list: str,
-    urls
+    session: requests.sessions.Session, list: str, urls: UrlInitialization
 ) -> None:
-    """Method for parsing the input reservation YAML and calling
-       create_glpi_reservation.py.
+    """Method for parsing the input reservation YAML and creating reservations
 
     Args:
-        ip (str):         The IP or hostname of the GLPI session
-        user_token (str): The user token to use with GLPI
-        list (str):       The YAML file path
-        no_verify (bool): If present, this will not verify the SSL session if it fails,
-                          allowing the script to proceed
+        session (Session object): The requests session object
+        list (str):               The YAML file path
+        urls (UrlInitialization): The GLPI URLs
     Returns:
         None
     """
@@ -129,8 +122,12 @@ def parse_list(
         if comment:
             final_comment += "\n" + comment
         if username is None or server is None or start is None or end is None:
-            raise KeyError(("You need to specify a username, server name, start date,"
-                            " and end date, either globally or for each machine."))
+            raise KeyError(
+                (
+                    "You need to specify a username, server name, start date,"
+                    " and end date, either globally or for each machine."
+                )
+            )
         print("Calling create_reservation:")
         create_reservations(session, username, server, start, end, final_comment, urls)
 
@@ -142,6 +139,7 @@ def parse_list(
         epic = reservations.get("jira", "")
         if comment is None:
             comment = ""
+
 
 def create_reservations(
     session: requests.sessions.Session,
@@ -156,7 +154,12 @@ def create_reservations(
 
     Args:
         session (Session object): The requests session object
-        url (str): The url to get the fields
+        username (str):           The username to use with the reservation
+        identifier (str):         The name of the machine to reserver
+        begin (str):              The start date of the reservation
+        end (str):                The end date of the reservation
+        final_comment (str):      The comment to apply to the reservation
+        urls (UrlInitialization): The GLPI URLs
 
     Returns:
         glpi_fields (list[json]): The glpi fields at the URL
@@ -187,9 +190,7 @@ def create_reservations(
         final_comment,
     )
     if reservation_id is False:
-        error(
-            f"Unable to reserve {identifier} for {username}."
-        )
+        error(f"Unable to reserve {identifier} for {username}.")
 
 
 def check_reservation_item(
