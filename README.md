@@ -130,8 +130,8 @@ The `filtering/check_glpi_reservation.py` script queries the GLPI deployment for
 ### check_glpi_computers.py
 The `filtering/check_glpi_reservation.py` script queries the GLPI deployment for computers and prints a digest of computer fields. For usage information see the help message provided by the script.
 
-### create_reservation_wrapper.py
-This is the recommended workflow for creating reservations using the REST API. One has the ability to manually manage reservations via the GUI (fine for an individual machine or to view the calendar), but for convenience there is an included wrapper around `reservation/create_glpi_reservation.py` which can take in a YAML file defining reservations of machines. The wrapper takes in the API token as well as the reservation YAML file. Required for proper function are the username for which to reserve the machine, start and end time in "YYYY-MM-DD HH:MM:SS" format, and servers by identifier. You can optionally include a Jira Epic, which will be included as a comment if specified. The global comment field will be added to the comment field below the Jira Epic tag if specified (omitted if set to None). If a server contains None (~) then it will use the global fields, otherwise they will be overwritten for that specific machine. Below is an explanation of the required YAML structure (also see `reservation/reservation_example.yaml`):
+### create_glpi_reservation.py
+This is the recommended workflow for creating reservations using the REST API. One has the ability to manually manage reservations via the GUI (fine for an individual machine or to view the calendar), but for convenience there is an included script `reservation/create_glpi_reservation.py` which can take in a YAML file defining reservations of machines. The wrapper takes in the API token as well as the reservation YAML file. Required for proper function are the username for which to reserve the machine, start and end time in "YYYY-MM-DD HH:MM:SS" format, and servers by identifier. You can optionally include a Jira Epic, which will be included as a comment if specified. The global comment field will be added to the comment field below the Jira Epic tag if specified (omitted if set to None). If a server contains None (~) then it will use the global fields, otherwise they will be overwritten for that specific machine. Below is an explanation of the required YAML structure (also see `reservation/reservation_example.yaml`):
 <pre>
 username:example_user
 start:"2021-09-30 23:59:59"
@@ -149,9 +149,6 @@ servers:
     comment:"a comment"            # (optional) override comment, if defined above
 </pre>
 For usage information see the help message provided by the script.
-
-### create_glpi_reservation.py
-The `reservation/create_glpi_reservation.py` script attempts to create a reservation in the GLPI deployment for a given username, computer name, beginning time, end time, Jira epic number and optional comment. For usage information see the help message provided by the script.
 
 ### filter_computers.py
 The `filtering/filter_computers.py` script will filter computers in a GLPI instance based on resource requirements, and whether they are currently reservable and/or reserved. For usage information see the help message provided by the script. Note that `filtering/requirements_example.yaml` is an example YAML file for filtering, demonstrating the fields available:
