@@ -14,6 +14,7 @@ import sys
 
 sys.path.append("..")
 import requests
+import yaml
 
 from common.parser import argparser
 from common.sessionhandler import SessionHandler
@@ -37,85 +38,110 @@ def main() -> None:
     parser = argparser()
     parser.parser.description = "GLPI Computer REST reservation check."
     parser.parser.add_argument(
-        "-u",
-        "--user",
-        metavar="username",
+        "-l",
+        "--list",
+        metavar="list",
         type=str,
         required=True,
-        help="the username string associated with the reservation",
+        help="the path to the yaml file of machines to reserve",
     )
-    parser.parser.add_argument(
-        "-b",
-        "--begin",
-        metavar="begin",
-        type=str,
-        required=True,
-        help="the beginning time associated with the reservation in "
-        + 'format "YYYY-MM-DD HH:MM:SS"',
-    )
-    parser.parser.add_argument(
-        "-e",
-        "--end",
-        metavar="end",
-        type=str,
-        required=True,
-        help="the ending time associated with the reservation in "
-        + 'format "YYYY-MM-DD HH:MM:SS"',
-    )
-    parser.parser.add_argument(
-        "-j",
-        "--jira",
-        metavar="jira_id",
-        type=str,
-        required=False,
-        help="the Jira epic ID associated with the reservation",
-    )
-    parser.parser.add_argument(
-        "-c",
-        "--comment",
-        metavar="comment",
-        type=str,
-        required=False,
-        help="a comment appended to the Jira epic ID to be associated with "
-        + "the reservation",
-    )
-    parser.parser.add_argument(
-        "-s",
-        "--server",
-        metavar="identifier",
-        type=str,
-        required=True,
-        help="the identifier of the server associated with the "
-        + " reservation (for instance the service tag, serial number, or "
-        + "hostname)",
-    )
+
     args = parser.parser.parse_args()
     ip = args.ip
     user_token = args.token
-    username = args.user
-    begin = args.begin
-    end = args.end
-    jira_id = args.jira
-    comment = args.comment
-    identifier = args.server
     no_verify = args.no_verify
+    reservation_list = args.list
 
-    if jira_id:
-        final_comment = jira_id
-    else:
-        final_comment = ""
-    if comment:
-        final_comment += "\n" + comment
+
 
     urls = UrlInitialization(ip)
 
     with SessionHandler(user_token, urls, no_verify) as session:
-        create_reservations(
-            session, username, identifier, begin, end, final_comment, urls
-        )
+        parse_list(session, reservation_list, urls)
 
     print_final_help()
 
+def parse_list(
+    session,
+    list: str,
+    urls
+) -> None:
+    """Method for parsing the input reservation YAML and calling
+       create_glpi_reservation.py.
+
+    Args:
+        ip (str):         The IP or hostname of the GLPI session
+        user_token (str): The user token to use with GLPI
+        list (str):       The YAML file path
+        no_verify (bool): If present, this will not verify the SSL session if it fails,
+                          allowing the script to proceed
+    Returns:
+        None
+    """
+    print("Parsing reservation file\n")
+    try:
+        f = open(list, "r")
+        reservations = yaml.safe_load(f)
+        f.close()
+    except OSError:
+        sys.exit("can't open or parse %s" % (list))
+
+    username = reservations.get("username")
+    start = reservations.get("start")
+    end = reservations.get("end")
+    comment = reservations.get("comment", "")
+    epic = reservations.get("jira", "")
+    if comment is None:
+        comment = ""
+
+    for server in reservations["servers"]:
+        print("\tServer: " + server)
+        if reservations["servers"][server] is not None:
+            if (
+                "username" in reservations["servers"][server]
+                and reservations["servers"][server]["username"] is not None
+            ):
+                username = reservations["servers"][server]["username"]
+            if (
+                "start" in reservations["servers"][server]
+                and reservations["servers"][server]["start"] is not None
+            ):
+                start = reservations["servers"][server]["start"]
+            if (
+                "end" in reservations["servers"][server]
+                and reservations["servers"][server]["end"] is not None
+            ):
+                end = reservations["servers"][server]["end"]
+            if (
+                "comment" in reservations["servers"][server]
+                and reservations["servers"][server]["comment"] is not None
+            ):
+                comment = reservations["servers"][server]["comment"]
+            if (
+                "epic" in reservations["servers"][server]
+                and reservations["servers"][server]["epic"] is not None
+            ):
+                epic = reservations["servers"][server]["epic"]
+        if epic:
+            final_comment = epic
+        else:
+            final_comment = ""
+        if comment:
+            final_comment += "\n" + comment
+        if username is None or server is None or start is None or end is None:
+            raise KeyError(("You need to specify a username, server name, start date,"
+                            " and end date, either globally or for each machine."))
+        print("Calling create_reservation:")
+        create_reservations(session, username, server, start, end, final_comment, urls)
+
+        # Reset potentially overwritten variables.
+        username = reservations["username"]
+        start = reservations["start"]
+        end = reservations["end"]
+        comment = reservations["comment"]
+        epic = reservations.get("jira", "")
+        if comment is None:
+            comment = ""
 
 def create_reservations(
     session: requests.sessions.Session,
@@ -162,15 +188,8 @@ def create_reservations(
     )
     if reservation_id is False:
         error(
-            "Unable to reserve "
-            + identifier
-            + " for "
-            + username
-            + ". This "
-            + "machine is likely already reserved in this timeframe. Please "
-            + "check GLPI."
+            f"Unable to reserve {identifier} for {username}."
         )
-    return
 
 
 def check_reservation_item(
@@ -225,8 +244,8 @@ def post_reservation(
     print("Creating GLPI Reservation Item field:")
     glpi_post = {
         "reservationitems_id": reservation_id,
-        "begin": begin,
-        "end": end,
+        "begin": str(begin),
+        "end": str(end),
         "users_id": user_id,
         "comment": final_comment,
     }
@@ -235,6 +254,7 @@ def post_reservation(
     print(str(post_response) + "\n")
     response_code = str(post_response)[-5:-2]
     if response_code != "200" and response_code != "201":
+        print(post_response.text)
         return False
 
     return post_response.json()["id"]
