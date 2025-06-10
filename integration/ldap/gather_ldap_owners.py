@@ -7,7 +7,7 @@ import sys
 
 import compare_ldap_with_glpi as ldap
 sys.path.append("../..")
-from common.utils import print_final_help
+from common.utils import print_final_help, parse_config_yaml
 
 
 def main():
@@ -41,7 +41,7 @@ def main():
     base_dn = args.base_dn
 
     # Process General Config
-    group_map = ldap.parse_config_yaml(args)
+    group_map = parse_config_yaml(args.ldap_config)
 
     ldap_server = args.ldap_server
 
@@ -51,7 +51,7 @@ def main():
 
     owners = []
     for entry in group_map:
-        owners.extend(group_map[entry]['users'])
+        owners.extend(group_map[entry]["users"])
 
     owners = list(set(owners))
 
