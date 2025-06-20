@@ -19,12 +19,7 @@ import yaml
 from common.parser import argparser
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization
-from common.utils import (
-    check_field,
-    error,
-    print_final_help,
-    print_error_table
-)
+from common.utils import check_field, error, print_final_help, print_error_table
 
 # Suppress InsecureRequestWarning caused by REST access without
 # certificate validation.
@@ -84,10 +79,8 @@ def parse_list(
     username = reservations.get("username")
     start = reservations.get("start")
     end = reservations.get("end")
-    comment = reservations.get("comment", "")
+    comment = reservations.get("comment", "") or ""
     epic = reservations.get("jira", "")
-    if comment is None:
-        comment = ""
 
     for server in reservations["servers"]:
         print("\tServer: " + server)
@@ -131,7 +124,9 @@ def parse_list(
                 )
             )
         print("Calling create_reservation:")
-        error_message = create_reservations(session, username, server, start, end, final_comment, urls)
+        error_message = create_reservations(
+            session, username, server, start, end, final_comment, urls
+        )
 
         if error_message is not None:
             error_messages[server] = f"({username}) {error_message}"
@@ -139,10 +134,8 @@ def parse_list(
         username = reservations["username"]
         start = reservations["start"]
         end = reservations["end"]
-        comment = reservations["comment"]
+        comment = reservations.get("comment") or ""
         epic = reservations.get("jira", "")
-        if comment is None:
-            comment = ""
     print_error_table(error_messages)
 
 
@@ -198,8 +191,9 @@ def create_reservations(
         print(f"Unable to reserve {identifier} for {username}.")
     else:
         print(f"{identifier} was reserved for {username}.")
-    
+
     return error_message
+
 
 def check_reservation_item(
     session: requests.sessions.Session,
@@ -263,6 +257,7 @@ def post_reservation(
     print(str(post_response) + "\n")
     if post_response.status_code not in (200, 201):
         return f"{post_response.status_code}: {post_response.text}"
+
 
 # Executes main if run as a script.
 if __name__ == "__main__":
