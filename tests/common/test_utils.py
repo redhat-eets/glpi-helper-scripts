@@ -90,7 +90,7 @@ def test_error():
             {"127.0.0.1": "Connection Error", "127.0.0.2": "Timeout"},
             (
                 "+-----------+------------------+\n"
-                "| BMC IP    | Error Message    |\n"
+                "| Machines  | Error Message    |\n"
                 "+-----------+------------------+\n"
                 "| 127.0.0.1 | Connection Error |\n"
                 "| 127.0.0.2 | Timeout          |\n"

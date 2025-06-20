@@ -19,11 +19,7 @@ import yaml
 from common.parser import argparser
 from common.sessionhandler import SessionHandler
 from common.urlinitialization import UrlInitialization
-from common.utils import (
-    check_field,
-    error,
-    print_final_help,
-)
+from common.utils import check_field, error, print_final_help, print_error_table
 
 # Suppress InsecureRequestWarning caused by REST access without
 # certificate validation.
@@ -72,6 +68,7 @@ def parse_list(
         None
     """
     print("Parsing reservation file\n")
+    error_messages = {}
     try:
         f = open(list, "r")
         reservations = yaml.safe_load(f)
@@ -82,10 +79,8 @@ def parse_list(
     username = reservations.get("username")
     start = reservations.get("start")
     end = reservations.get("end")
-    comment = reservations.get("comment", "")
+    comment = reservations.get("comment", "") or ""
     epic = reservations.get("jira", "")
-    if comment is None:
-        comment = ""
 
     for server in reservations["servers"]:
         print("\tServer: " + server)
@@ -129,16 +124,19 @@ def parse_list(
                 )
             )
         print("Calling create_reservation:")
-        create_reservations(session, username, server, start, end, final_comment, urls)
+        error_message = create_reservations(
+            session, username, server, start, end, final_comment, urls
+        )
 
+        if error_message is not None:
+            error_messages[server] = f"({username}) {error_message}"
         # Reset potentially overwritten variables.
         username = reservations["username"]
         start = reservations["start"]
         end = reservations["end"]
-        comment = reservations["comment"]
+        comment = reservations.get("comment") or ""
         epic = reservations.get("jira", "")
-        if comment is None:
-            comment = ""
+    print_error_table(error_messages)
 
 
 def create_reservations(
@@ -149,7 +147,7 @@ def create_reservations(
     end: str,
     final_comment: str,
     urls: UrlInitialization,
-) -> None:
+) -> str:
     """Method for creating GLPI reservations
 
     Args:
@@ -162,7 +160,7 @@ def create_reservations(
         urls (UrlInitialization): The GLPI URLs
 
     Returns:
-        glpi_fields (list[json]): The glpi fields at the URL
+        error_message (str): The error returned if reservation creation fails.
     """
     print("Creating reservation:\n")
 
@@ -180,7 +178,7 @@ def create_reservations(
     if reservation_item_id is None:
         error("Computer " + identifier + " is not reservable.")
 
-    reservation_id = post_reservation(
+    error_message = post_reservation(
         session,
         urls.RESERVATION_URL,
         reservation_item_id,
@@ -189,8 +187,12 @@ def create_reservations(
         user_id,
         final_comment,
     )
-    if reservation_id is False:
-        error(f"Unable to reserve {identifier} for {username}.")
+    if error_message is not None:
+        print(f"Unable to reserve {identifier} for {username}.")
+    else:
+        print(f"{identifier} was reserved for {username}.")
+
+    return error_message
 
 
 def check_reservation_item(
@@ -239,7 +241,7 @@ def post_reservation(
         final_comment (str):      The comment for the reservation
 
     Returns:
-        (str): The reservation id if created, None otherwise
+        (str): The error message if created, None otherwise
     """
     # Create a field if one was not found and return the ID.
     print("Creating GLPI Reservation Item field:")
@@ -253,12 +255,8 @@ def post_reservation(
 
     post_response = session.post(url=url, json={"input": glpi_post})
     print(str(post_response) + "\n")
-    response_code = str(post_response)[-5:-2]
-    if response_code != "200" and response_code != "201":
-        print(post_response.text)
-        return False
-
-    return post_response.json()["id"]
+    if post_response.status_code not in (200, 201):
+        return f"{post_response.status_code}: {post_response.text}"
 
 
 # Executes main if run as a script.
