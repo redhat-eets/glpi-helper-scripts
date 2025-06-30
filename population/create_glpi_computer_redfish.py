@@ -1197,55 +1197,70 @@ def add_rack_location_from_sunbird(
         number_units = get_rack_units(
             location_details, sunbird_url, sunbird_username, sunbird_password
         )
-        rack_id = check_and_post(
-            session,
-            urls.RACK_URL,
-            {"name": location_details["Rack"], "dcrooms_id": dcrooms_id},
-            {
-                "number_units": number_units,
-                "bgcolor": "#fec95c",  # Hardcoded, otherwise the rack won't show in UI
-                "position": None
-            },
-        )
+        racks = check_fields(session, urls.RACK_URL)
+        dcroom_racks = [rack for rack in racks if rack['dcrooms_id'] == dcrooms_id]
 
+        # Try to find open position ten times
+        for i in range(1,11):
+            position = len(dcroom_racks) + i
+            print(f"trying position {position} in Server Room {dcrooms_id}")
+            try:
+                rack_id = check_and_post(
+                    session,
+                    urls.RACK_URL,
+                    {"name": location_details["Rack"], "dcrooms_id": dcrooms_id},
+                    {
+                        "number_units": number_units,
+                        "bgcolor": "#fec95c",  # Hardcoded, otherwise the rack won't show in UI
+                        "position": position,
+                    },
+                )
+                break
+            except TypeError:
+                continue
+        else:
+            print("Couldn't find position for item, manually investigate. Continuing...")
+            rack_id = None
+        
+        if rack_id is not None:
         # Check for Item Rack
-        if location_details["Item_Rack"] is None:
+            if location_details["Item_Rack"] is None:
+                print(
+                    (
+                        "No U Position was retrieved from Sunbird, "
+                        "computer will not be assigned to rack."
+                    )
+                )
+                return
+
+            check_and_update_model_size(
+                session,
+                field=location_details,
+                urls=urls,
+                computer_model_id=computer_model_id,
+            )
+
+            check_and_post(
+                session,
+                urls.ITEM_RACK_URL,
+                {
+                    "itemtype": "Computer",
+                    "items_id": computer_id,
+                },
+                {
+                    "position": location_details["Item_Rack"],
+                    "racks_id": rack_id,
+                    "bgcolor": "#69ceba",  # Hardcoded, otherwise the rack won't show in UI
+                    "orientation": 0,  # Hardcoded, otherwise the rack won't show in UI
+                },
+            )
             print(
                 (
-                    "No U Position was retrieved from Sunbird, "
-                    "computer will not be assigned to rack."
+                    f"Added computer to {location_details['DataCenter']} > "
+                    f"{location_details['Room']} > {location_details['Rack']} > "
+                    f"{location_details['Item_Rack']}"
                 )
             )
-            return
-
-        check_and_update_model_size(
-            session,
-            field=location_details,
-            urls=urls,
-            computer_model_id=computer_model_id,
-        )
-
-        check_and_post(
-            session,
-            urls.ITEM_RACK_URL,
-            {
-                "itemtype": "Computer",
-                "items_id": computer_id,
-            },
-            {
-                "position": location_details["Item_Rack"],
-                "racks_id": rack_id,
-                "bgcolor": "#69ceba",  # Hardcoded, otherwise the rack won't show in UI
-                "orientation": 0,  # Hardcoded, otherwise the rack won't show in UI
-            },
-        )
-        print(
-            (
-                f"Added computer to {location_details['DataCenter']} > "
-                f"{location_details['Room']} > {location_details['Rack']} > "
-                f"{location_details['Item_Rack']}"
-            )
-        )
 
     else:
         print("Couldn't find machine in Sunbird, moving on without location details")
