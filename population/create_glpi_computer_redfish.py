@@ -625,7 +625,7 @@ def post_to_glpi(  # noqa: C901
     sunbird_config: dict,
     sku_for_dell: bool,
     lab_choice: str,
-    accelerators
+    accelerators: list,
 ) -> None:
     """A method to post the JSON created to GLPI. This method calls numerous helper
        functions which create different parts of the JSON required, get fields from
