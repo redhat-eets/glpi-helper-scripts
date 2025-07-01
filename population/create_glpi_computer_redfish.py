@@ -1197,31 +1197,9 @@ def add_rack_location_from_sunbird(
         number_units = get_rack_units(
             location_details, sunbird_url, sunbird_username, sunbird_password
         )
-        racks = check_fields(session, urls.RACK_URL)
-        dcroom_racks = [rack for rack in racks if rack['dcrooms_id'] == dcrooms_id]
-
-        # Try to find open position ten times
-        for i in range(1,11):
-            position = len(dcroom_racks) + i
-            print(f"trying position {position} in Server Room {dcrooms_id}")
-            try:
-                rack_id = check_and_post(
-                    session,
-                    urls.RACK_URL,
-                    {"name": location_details["Rack"], "dcrooms_id": dcrooms_id},
-                    {
-                        "number_units": number_units,
-                        "bgcolor": "#fec95c",  # Hardcoded, otherwise the rack won't show in UI
-                        "position": position,
-                    },
-                )
-                break
-            except TypeError:
-                continue
-        else:
-            print("Couldn't find position for item, manually investigate. Continuing...")
-            rack_id = None
-        
+        rack_id = find_position_for_rack_and_create(
+            session, urls, dcrooms_id, location_details, number_units
+        )
         if rack_id is not None:
         # Check for Item Rack
             if location_details["Item_Rack"] is None:
@@ -1250,7 +1228,8 @@ def add_rack_location_from_sunbird(
                 {
                     "position": location_details["Item_Rack"],
                     "racks_id": rack_id,
-                    "bgcolor": "#69ceba",  # Hardcoded, otherwise the rack won't show in UI
+                    # Hardcoded color, otherwise the rack won't show in UI
+                    "bgcolor": "#69ceba",
                     "orientation": 0,  # Hardcoded, otherwise the rack won't show in UI
                 },
             )
@@ -1264,6 +1243,71 @@ def add_rack_location_from_sunbird(
 
     else:
         print("Couldn't find machine in Sunbird, moving on without location details")
+
+
+def find_position_for_rack_and_create(
+    session: requests.sessions.Session,
+    urls: UrlInitialization,
+    dcrooms_id: int,
+    location_details: dict,
+    number_units: int,
+) -> int:
+    """Find an open position for a rack in the Data Center room. If the rack already
+    exists, it's position won't be updated.
+
+    Args:
+        session (requests.sessions.Session): The requests session object
+        urls (UrlInitialization): Object with relevant URL's
+        dcrooms_id (int): ID of the Data Center room
+        location_details (dict): Details about machine's location from Sunbird
+        number_units (int): Number of units in rack
+
+    Returns:
+        int: ID of created/updated rack
+    """
+    racks = check_fields(session, urls.RACK_URL)
+    dcroom_racks = [rack for rack in racks if rack["dcrooms_id"] == dcrooms_id]
+
+    # Check if rack already exists. If it does, use the same position
+    for rack in dcroom_racks:
+        if location_details["Rack"] == rack['name']:
+            position = rack["position"]
+            print(f"Using pre-existing rack position {position}")
+            rack_id = check_and_post(
+                session,
+                urls.RACK_URL,
+                {"name": location_details["Rack"], "dcrooms_id": dcrooms_id},
+                {
+                    "number_units": number_units,
+                    # Hardcoded color, otherwise the rack won't show in UI
+                    "bgcolor": "#fec95c",
+                    "position": position,
+                }
+            )
+            return rack_id
+    # Try to find open position ten times
+    for i in range(1, 11):
+        position = len(dcroom_racks) + i
+        print(f"trying position {position} in Server Room {dcrooms_id}")
+        try:
+            rack_id = check_and_post(
+                session,
+                urls.RACK_URL,
+                {"name": location_details["Rack"], "dcrooms_id": dcrooms_id},
+                {
+                    "number_units": number_units,
+                    # Hardcoded color, otherwise the rack won't show in UI
+                    "bgcolor": "#fec95c",
+                    "position": position,
+                }
+            )
+            break
+        except TypeError:
+            continue
+    else:
+        print("Couldn't find position for item, investigate manually. Continuing...")
+        rack_id = None
+    return rack_id
 
 
 def get_rack_units(
