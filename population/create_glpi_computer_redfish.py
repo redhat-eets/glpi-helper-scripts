@@ -1201,7 +1201,7 @@ def add_rack_location_from_sunbird(
             session, urls, dcrooms_id, location_details, number_units
         )
         if rack_id is not None:
-        # Check for Item Rack
+            # Check for Item Rack
             if location_details["Item_Rack"] is None:
                 print(
                     (
