@@ -60,7 +60,7 @@ def check_fields(
     """
     glpi_fields_list = []
     api_range = 0
-    api_increment = 50
+    api_increment = 10000
     more_fields = True
     while more_fields:
         params.update({"range": f"{api_range}-{api_range + api_increment}"})
