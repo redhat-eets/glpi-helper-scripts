@@ -67,11 +67,13 @@ def check_fields(
         glpi_fields = session.get(url=url, params=params).json()
         if "search" in url and "data" in glpi_fields:
             glpi_fields = glpi_fields["data"]
-            
+
             # If Search isn't set up for this object, raise error
             if not glpi_fields[0]:
-                raise ValueError((f"Search isn't set up in the GLPI API for this object: {url}."
-                 "Please use the traditional API endpoint instead."))
+                errmsg = (f"Search isn't set up in the GLPI API for this object: {url}."
+                          " Please use the traditional API"
+                          " endpoint instead.")
+                raise ValueError(errmsg)
 
         if glpi_fields and glpi_fields[0] == "ERROR_RESOURCE_NOT_FOUND_NOR_COMMONDBTM":
             more_fields = False
@@ -548,7 +550,7 @@ def get_reservations(
     """
     print("Getting reservation information:")
     reservations_output = {}
-    
+
     # Get All Information about Reservation
     payload = {
         "forcedisplay[0]": "1",
@@ -601,15 +603,16 @@ def get_reservations(
             f"Reservation {reservation['2']}": {
                 f"User {reservation['6']}": reservation["7"],
                 f"Computer {reservation['3']}": reservation["1"],
-                f"Begins": reservation["4"],
-                f"Ends": reservation["5"],
-                f"Comment": reservation["8"],
+                "Begins": reservation["4"],
+                "Ends": reservation["5"],
+                "Comment": reservation["8"],
             }
             for reservation in reservation_json
         }
     else:
         reservations_output = "No reservations."
     return reservations_output
+
 
 def get_switch_ports(lab: str, switch: str, switch_info: Switches) -> dict:
     """A helper method to get switch ports via ssh from the switch IP address

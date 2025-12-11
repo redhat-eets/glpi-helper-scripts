@@ -23,7 +23,6 @@ from common.utils import (
     check_fields,
 )
 from common.parser import argparser
-import yaml
 
 # Suppress InsecureRequestWarning caused by REST access without
 # certificate validation.
