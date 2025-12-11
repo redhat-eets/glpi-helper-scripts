@@ -20,7 +20,7 @@ from common.utils import (
     get_reservations,
 )
 from common.parser import argparser
-
+import yaml
 # Suppress InsecureRequestWarning caused by REST access without
 # certificate validation.
 import urllib3
@@ -66,7 +66,7 @@ def main() -> None:
     urls = UrlInitialization(ip)
 
     with SessionHandler(user_token, urls, no_verify) as session:
-        print(get_reservations(session, urls, identifier, user))
+        print(yaml.safe_dump(get_reservations(session, urls, identifier, user)))
 
     if not concise:
         print_final_help()
