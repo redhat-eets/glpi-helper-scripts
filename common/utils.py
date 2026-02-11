@@ -567,7 +567,7 @@ def get_reservations(
     if user and not hostname:
         payload.update(
             {
-                "criteria[0][field]": "6",
+                "criteria[0][field]": "7",
                 "criteria[0][searchtype]": "contains",
                 "criteria[0][value]": user.lower(),
             }
@@ -589,7 +589,7 @@ def get_reservations(
                 "criteria[0][searchtype]": "contains",
                 "criteria[0][value]": hostname.lower(),
                 "criteria[1][link]": "AND",
-                "criteria[1][field]": "6",
+                "criteria[1][field]": "7",
                 "criteria[1][searchtype]": "contains",
                 "criteria[1][value]": user.lower(),
             }
