@@ -1,3 +1,4 @@
+TEST
 # glpi-helper-scripts
 A repository that holds resources in support of deployments of GLPI for lab management, mainly in the form of scripting. This aims to create lightweight tooling which can be deployed to import machine information, filter reservations and machines, as well as create reservations. This tooling is higher touch but much lighter weight than a dedicated agent running on each machine. In a lab where machines are often reprovisioned/reallocated this tooling allows for tracking of equipment and the current reservation status of said equipment, allowing one to better share resources and report on usage.
 
