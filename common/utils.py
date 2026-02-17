@@ -44,35 +44,44 @@ def check_field(
     return None
 
 
-def check_fields(session: requests.sessions.Session, url: str) -> list:
+def check_fields(
+    session: requests.sessions.Session,
+    url: str,
+    params: dict = {},
+) -> list:
     """Method for getting the glpi fields at the given url
 
     Args:
         session (Session object): The requests session object
         url (str): The url to get the fields
-
+        params (dict): The parameters to pass to the url
     Returns:
         glpi_fields_list (list): The list of glpi fields at the URL
     """
     glpi_fields_list = []
     api_range = 0
-    api_increment = 50
+    api_increment = 10000
     more_fields = True
     while more_fields:
-        range_url = (
-            url + "?range=" + str(api_range) + "-" + str(api_range + api_increment)
-        )
-        glpi_fields = session.get(url=range_url)
-        if (
-            glpi_fields.json()
-            and glpi_fields.json()[0] == "ERROR_RESOURCE_NOT_FOUND_NOR_COMMONDBTM"
-        ):
+        params.update({"range": f"{api_range}-{api_range + api_increment}"})
+        glpi_fields = session.get(url=url, params=params).json()
+        if "search" in url and "data" in glpi_fields:
+            glpi_fields = glpi_fields["data"]
+
+            # If Search isn't set up for this object, raise error
+            if not glpi_fields[0]:
+                errmsg = (f"Search isn't set up in the GLPI API for this object: {url}."
+                          " Please use the traditional API"
+                          " endpoint instead.")
+                raise ValueError(errmsg)
+
+        if glpi_fields and glpi_fields[0] == "ERROR_RESOURCE_NOT_FOUND_NOR_COMMONDBTM":
             more_fields = False
-            glpi_fields_list.extend(glpi_fields.json())
-        elif glpi_fields.json() and glpi_fields.json()[0] == "ERROR_RANGE_EXCEED_TOTAL":
+            glpi_fields_list.extend(glpi_fields)
+        elif glpi_fields and glpi_fields[0] == "ERROR_RANGE_EXCEED_TOTAL":
             more_fields = False
         else:
-            glpi_fields_list.extend(glpi_fields.json())
+            glpi_fields_list.extend(glpi_fields)
             api_range += api_increment
 
     return glpi_fields_list
@@ -539,65 +548,69 @@ def get_reservations(
     Returns:
         list: reservations from GLPI
     """
-    # print("Getting reservation information:\n")
+    print("Getting reservation information:")
+    reservations_output = {}
 
-    reservations_output = ""
+    # Get All Information about Reservation
+    payload = {
+        "forcedisplay[0]": "1",
+        "forcedisplay[1]": "2",
+        "forcedisplay[2]": "3",
+        "forcedisplay[3]": "4",
+        "forcedisplay[4]": "5",
+        "forcedisplay[5]": "6",
+        "forcedisplay[6]": "7",
+        "forcedisplay[7]": "8",
 
-    reservation_json = check_fields(session, urls.RESERVATION_URL)
+    }
+
+    if user and not hostname:
+        payload.update(
+            {
+                "criteria[0][field]": "7",
+                "criteria[0][searchtype]": "contains",
+                "criteria[0][value]": user.lower(),
+            }
+        )
+
+    if hostname and not user:
+        payload.update(
+            {
+                "criteria[0][field]": "1",
+                "criteria[0][searchtype]": "contains",
+                "criteria[0][value]": hostname.lower(),
+            }
+        )
+
+    if user and hostname:
+        payload.update(
+            {
+                "criteria[0][field]": "1",
+                "criteria[0][searchtype]": "contains",
+                "criteria[0][value]": hostname.lower(),
+                "criteria[1][link]": "AND",
+                "criteria[1][field]": "7",
+                "criteria[1][searchtype]": "contains",
+                "criteria[1][value]": user.lower(),
+            }
+        )
+
+    reservation_json = check_fields(
+        session, urls.SEARCH_RESERVATION_URL, params=payload
+    )
     if reservation_json:
-        for reservation in reservation_json:
-            reservation_item_json = check_field_without_range(
-                session,
-                (urls.RESERVATION_ITEM_URL + str(reservation["reservationitems_id"])),
-            )
-            user_json = check_field_without_range(
-                session, (urls.USER_URL + str(reservation["users_id"]))
-            )
-
-            # If searching for specific user, only select
-            # reservations with that username.
-            if user and user.lower() not in user_json["name"].lower():
-                continue
-
-            item_json = check_field_without_range(
-                session,
-                urls.BASE_URL
-                + reservation_item_json["itemtype"]
-                + "/"
-                + str(reservation_item_json["items_id"]),
-            )
-
-            # If searching for specific hostname, only select
-            # reservations with that hostname.
-            if hostname and hostname != item_json["name"]:
-                continue
-
-            reservations_output += "Reservation " + str(reservation["id"]) + ":" + "\n"
-            reservations_output += (
-                "  User "
-                + str(reservation["users_id"])
-                + ": "
-                + user_json["name"]
-                + "\n"
-            )
-            reservations_output += (
-                "  "
-                + reservation_item_json["itemtype"]
-                + " "
-                + str(reservation_item_json["items_id"])
-                + ": "
-                + item_json["name"]
-                + "\n"
-            )
-            reservations_output += "  Begins: " + str(reservation["begin"]) + "\n"
-            reservations_output += "  Ends: " + str(reservation["end"]) + "\n"
-
-            if reservation["comment"]:
-                reservations_output += '  Comment: "' + reservation["comment"] + '"\n\n'
-            else:
-                reservations_output += "  Comment: N/A \n\n"
+        reservations_output = {
+            f"Reservation {reservation['2']}": {
+                f"User {reservation['6']}": reservation["7"],
+                f"Computer {reservation['3']}": reservation["1"],
+                "Begins": reservation["4"],
+                "Ends": reservation["5"],
+                "Comment": reservation["8"],
+            }
+            for reservation in reservation_json
+        }
     else:
-        reservations_output += "\tNo reservations.\n"
+        reservations_output = "No reservations."
     return reservations_output
 
 
@@ -691,7 +704,7 @@ def error(message):
 
 
 def print_error_table(error_messages: dict, file_path: str = "") -> None:
-    """Takes errors generated by imports and prints formatted table with Machines
+    """Takes errors generated by imports and prints formatted table with BMC IP's
     and their corresponding errors.
 
     Args:
