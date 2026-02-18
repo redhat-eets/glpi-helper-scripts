@@ -555,7 +555,10 @@ def get_accelerators(
 
     for link in links:
         if "PCIDevices" in link:
-            pci_devices_response = redfish_session.get(links[link][0]["@odata.id"])
+            if type(links[link]) == list:
+                pci_devices_response = redfish_session.get(links[link][0]["@odata.id"])
+            elif type(links[link]) == dict:
+                pci_devices_response = redfish_session.get(links[link]["@odata.id"])
             pci_devices = pci_devices_response.dict
             for pci_device in pci_devices.get("Members", []):
                 pci_device_response = redfish_session.get(pci_device["@odata.id"])
