@@ -72,7 +72,7 @@ def main() -> None:
     requirements = parse_list(list)
 
     with SessionHandler(user_token, urls, no_verify) as session:
-        reservations = yaml.safe_load(get_reservations(session, urls))
+        reservations = get_reservations(session, urls)
         computers = check_fields(session, urls.COMPUTER_URL)
         disks = check_fields(session, urls.DISK_ITEM_URL)
         disks.sort(key=operator.itemgetter("totalsize"))

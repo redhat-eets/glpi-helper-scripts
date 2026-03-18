@@ -108,6 +108,10 @@ class UrlInitialization:
         # Computer link
         self.COMPUTER_LINK_URL = self.HOME_URL + "/front/computer.form.php?id="
 
+        # Search Links
+        self.SEARCH_RESERVATION_URL = self.BASE_URL + "search/Reservation"
+        self.SEARCH_COMPUTER_URL = self.BASE_URL + "search/Computer"
+
 
 def validate_url(ip: str) -> str:
     """Validate and format a user-provided URL

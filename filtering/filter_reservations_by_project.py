@@ -23,7 +23,6 @@ from common.utils import (
     check_fields,
 )
 from common.parser import argparser
-import yaml
 
 # Suppress InsecureRequestWarning caused by REST access without
 # certificate validation.
@@ -55,7 +54,7 @@ def main() -> None:
     urls = UrlInitialization(ip)
 
     with SessionHandler(user_token, urls, no_verify) as session:
-        reservations = yaml.safe_load(get_reservations(session, urls))
+        reservations = get_reservations(session, urls)
         computers = check_fields(session, urls.COMPUTER_URL)
         network_equipment = check_fields(session, urls.NETWORK_EQUIPMENT_URL)
 
@@ -80,7 +79,6 @@ def get_machines_reserved_with_tag(
         + "----------------------------------------------------------------"
     )
     for computer in computers:
-        computer = yaml.safe_load(computer)
         computer_key = "Computer " + str(computer["id"])
         for reservation in reservations:
             if computer_key in reservations[reservation]:
@@ -91,7 +89,6 @@ def get_machines_reserved_with_tag(
                         print(reservations[reservation])
 
     for equipment in network_equipment:
-        equipment = yaml.safe_load(equipment)
         equipment_key = "NetworkEquipment " + str(equipment["id"])
         for reservation in reservations:
             if equipment_key in reservations[reservation]:
