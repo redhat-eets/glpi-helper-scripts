@@ -224,3 +224,8 @@ This script tags all unreservable machines with a specified tag.
 
 Example script usage:
 `python3 tag_unreservable_machines.py -i <GLPI URL> -t <GLPI API TOKEN> -v -n <TAG NAME>`
+
+## Containerfile
+You can run these scripts from a container using the `Containerfile` provided. If you
+need to access internal Red Hat services using the scripts, please see our internal repository
+for instructions, or contact the maintainers of this project.
