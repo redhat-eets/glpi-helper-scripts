@@ -220,6 +220,9 @@ def main() -> None:
                 timeout=20,
             )
             REDFISH_OBJ.login(auth="session")
+        except redfish.rest.v1.SessionCreationError:
+            print("Session auth failed, falling back to basic auth...")
+            REDFISH_OBJ.login(auth="basic")
             update_redfish_system_uri(REDFISH_OBJ, urls)
 
             system_json = get_redfish_system(REDFISH_OBJ)
