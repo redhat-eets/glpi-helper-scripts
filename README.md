@@ -225,6 +225,13 @@ This script tags all unreservable machines with a specified tag.
 Example script usage:
 `python3 tag_unreservable_machines.py -i <GLPI URL> -t <GLPI API TOKEN> -v -n <TAG NAME>`
 
+### utilities/revoke_glpi_tokens.py
+This script revokes GLPI user API tokens (and optionally personal tokens) through the GLPI REST API, either for all users or for specific users passed with `--user`. It is intended for bulk credential rotation, for example in response to a suspected credential leak. A `--dry-run` mode and a confirmation prompt are provided, and the script verifies at the end that the revocation took effect by attempting a fresh login.
+
+Example script usage:
+`python3 revoke_glpi_tokens.py --url <GLPI URL> --user-token <GLPI API TOKEN> --dry-run`
+`python3 revoke_glpi_tokens.py --url <GLPI URL> --user-token <GLPI API TOKEN> --user <USERNAME> --personal`
+
 ## Containerfile
 You can run these scripts from a container using the `Containerfile` provided. If you
 need to access internal Red Hat services using the scripts, please see our internal repository
