@@ -25,10 +25,10 @@ Usage
     ./revoke_glpi_tokens.py --user-token <admin-api-token>              # all users
     ./revoke_glpi_tokens.py --user-token <tok> --user glpi              # one user
     ./revoke_glpi_tokens.py --user-token <tok> --user a --user b        # several
-    ./revoke_glpi_tokens.py --user-token <tok> --personal              # + personal tokens
-    ./revoke_glpi_tokens.py --user-token <tok> --dry-run               # preview only
+    ./revoke_glpi_tokens.py --user-token <tok> --personal         # + personal tokens
+    ./revoke_glpi_tokens.py --user-token <tok> --dry-run          # preview only
     ./revoke_glpi_tokens.py --user-token <tok> --url http://glpi.example.com
-                                       [--app-token <tok>]             # if a client requires it
+                                       [--app-token <tok>]        # if a client needs it
 
 Only the Python 3 standard library is used.
 """
@@ -92,7 +92,10 @@ class GlpiClient:
             try:
                 payload = json.loads(raw)
             except json.JSONDecodeError:
-                raise GlpiApiError(f"HTTP {exc.code} on {method} {path}: {raw.strip()}") from None
+                detail = raw.strip()
+                raise GlpiApiError(
+                    f"HTTP {exc.code} on {method} {path}: {detail}"
+                ) from None
             headers = exc.headers
         error = glpi_error(payload)
         if error:
@@ -153,7 +156,7 @@ class GlpiClient:
             pass  # best effort logout
 
 
-def main():
+def parse_args():
     parser = argparse.ArgumentParser(
         description="Revoke GLPI user API tokens via the REST API.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -165,14 +168,72 @@ def main():
     parser.add_argument("--app-token", default=None,
                         help="App token, if an API client requires one")
     parser.add_argument("--user", action="append", default=[], metavar="NAME",
-                        help="restrict revocation to this user (repeatable); default: all users")
+                        help="restrict to this user (repeatable); default: all users")
     parser.add_argument("--personal", action="store_true",
                         help="also revoke personal tokens (glpi_users.personal_token)")
     parser.add_argument("--dry-run", action="store_true",
                         help="show what would be done, change nothing")
     parser.add_argument("--yes", action="store_true",
                         help="do not ask for confirmation")
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def select_targets(users, user_names, self_user_id):
+    """Filter the users to target, warn on unknown names, order caller last."""
+    if user_names:
+        wanted = {name.lower() for name in user_names}
+        targets = [u for u in users if str(u.get("name", "")).lower() in wanted]
+        found = {str(u.get("name", "")).lower() for u in targets}
+        for missing in sorted(wanted - found):
+            print(f"[!] warning: no such user: {missing}")
+    else:
+        targets = list(users)
+
+    if not targets:
+        sys.exit("error: no target users found")
+
+    # Revoke the caller's own account last (defensive; the session stays
+    # valid anyway, but this keeps failure modes simple to reason about).
+    targets.sort(key=lambda u: (
+        u.get("id") == self_user_id,
+        str(u.get("name", "")),
+    ))
+    return targets
+
+
+def revoke_targets(client, targets, fields):
+    """Revoke tokens for each target; returns (revoked_count, failed_count)."""
+    revoked, failed = 0, 0
+    for user in targets:
+        user_id, name = user.get("id"), user.get("name")
+        try:
+            ok, message = client.revoke_user_tokens(user_id, fields)
+        except GlpiApiError as exc:
+            ok, message = False, str(exc)
+        if ok:
+            revoked += 1
+            print(f"    {name} (id {user_id}): revoked")
+        else:
+            failed += 1
+            print(f"    {name} (id {user_id}): FAILED ({message})")
+    return revoked, failed
+
+
+def verify_revocation(url, user_token, app_token):
+    """A fresh initSession must fail if the auth token was among those revoked."""
+    print("[*] Verifying: fresh initSession with the authentication token...")
+    checker = GlpiClient(
+        url, user_token=user_token, app_token=app_token
+    )
+    try:
+        checker.init_session()
+        print("[i] token still works (its account was not in the revoked set)")
+    except GlpiApiError:
+        print("[ok] token is now dead - revocation confirmed")
+
+
+def main():
+    args = parse_args()
 
     fields = {"api_token": None}
     if args.personal:
@@ -194,24 +255,7 @@ def main():
     except GlpiApiError as exc:
         sys.exit(f"error: could not list users: {exc}")
 
-    if args.user:
-        wanted = {name.lower() for name in args.user}
-        targets = [u for u in users if str(u.get("name", "")).lower() in wanted]
-        found = {str(u.get("name", "")).lower() for u in targets}
-        for missing in sorted(wanted - found):
-            print(f"[!] warning: no such user: {missing}")
-    else:
-        targets = list(users)
-
-    if not targets:
-        sys.exit("error: no target users found")
-
-    # Revoke the caller's own account last (defensive; the session stays
-    # valid anyway, but this keeps failure modes simple to reason about).
-    targets.sort(key=lambda u: (
-        u.get("id") == client.self_user_id,
-        str(u.get("name", "")),
-    ))
+    targets = select_targets(users, args.user, client.self_user_id)
 
     preview = ", ".join(str(u.get("name")) for u in targets[:10])
     if len(targets) > 10:
@@ -229,31 +273,10 @@ def main():
             print("aborted")
             return
 
-    revoked, failed = 0, 0
-    for user in targets:
-        user_id, name = user.get("id"), user.get("name")
-        try:
-            ok, message = client.revoke_user_tokens(user_id, fields)
-        except GlpiApiError as exc:
-            ok, message = False, str(exc)
-        if ok:
-            revoked += 1
-            print(f"    {name} (id {user_id}): revoked")
-        else:
-            failed += 1
-            print(f"    {name} (id {user_id}): FAILED ({message})")
+    revoked, failed = revoke_targets(client, targets, fields)
 
     client.kill_session()
-
-    # Functional verification: a fresh initSession with the authentication
-    # token must now fail if that account's token was among those revoked.
-    print("[*] Verifying: fresh initSession with the authentication token...")
-    checker = GlpiClient(args.url, user_token=args.user_token, app_token=args.app_token)
-    try:
-        checker.init_session()
-        print("[i] token still works (expected if its account was not in the revoked set)")
-    except GlpiApiError:
-        print("[ok] token is now dead — revocation confirmed")
+    verify_revocation(args.url, args.user_token, args.app_token)
 
     print(f"[*] done: {revoked} revoked, {failed} failed")
     sys.exit(1 if failed else 0)
